@@ -62,7 +62,7 @@ export default function LoginPage() {
       <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold mb-1">Iniciar sesión</h1>
         <p className="text-sm text-gray-500 mb-6">
-          Accede a tu cuenta de VideoPapel
+          Accede a tu cuenta de Videos de Papel
         </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
