@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 
-export default function LoginButton() {
+export default function RegisterButton() {
   const handleRegister = () => {
     window.location.href = "/register"
   }
