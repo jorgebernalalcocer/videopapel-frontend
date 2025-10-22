@@ -45,7 +45,7 @@ export default function Menu() {
 
         {user ? (
           <>
-            <span className="hidden sm:inline text-sm text-gray-600">{user.email}</span>
+            <span className="hidden sm:inline text-sm text-gray-600">Hola {user.email}</span>
             <Button variant="outline" onClick={handleLogout}>
               Cerrar sesión
             </Button>

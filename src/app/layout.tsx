@@ -2,8 +2,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Menu from "@/components/Menu";
-// import Footer from "@/components/Footer" // si lo tienes
-// import Providers from "@/components/Providers"; // si usas React Query, Theme, etc. (opcional)
+import Providers from "@/components/Providers";
+import GlobalSpinner from "@/components/GlobalSpinner";
+import TopProgress from "@/components/TopProgress";
 
 export const metadata: Metadata = {
   title: "VideoPapel",
@@ -14,12 +15,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="es">
       <body className="min-h-screen bg-gray-50">
-        {/* Si usas QueryClientProvider o similares, envuelve aquí */}
-        {/* <Providers> */}
+        <Providers>
           <Menu />
+          
+          <TopProgress />
+          <GlobalSpinner />
           <main className="min-h-[calc(100vh-64px)]">{children}</main>
-          {/* <Footer /> */}
-        {/* </Providers> */}
+        </Providers>
       </body>
     </html>
   );
