@@ -12,7 +12,6 @@ export default function ClipsPage() {
           Arrastra y suelta un archivo de video o haz clic para seleccionarlo.
         </p>
       </div>
-
       <UploadVideo />
     </main>
   )
