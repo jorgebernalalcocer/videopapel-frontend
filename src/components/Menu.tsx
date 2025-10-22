@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/store/auth'
+import LoginButton from '@/components/LoginButton'
+import RegisterButton from '@/components/RegisterButton'
 
 export default function Menu() {
   const router = useRouter()
@@ -50,12 +52,8 @@ export default function Menu() {
           </>
         ) : (
           <>
-            <Link href="/login">
-              <Button variant="secondary">Iniciar sesión</Button>
-            </Link>
-            <Link href="/register">
-              <Button>Registrarse</Button>
-            </Link>
+          <LoginButton />
+          <RegisterButton />
           </>
         )}
       </nav>
