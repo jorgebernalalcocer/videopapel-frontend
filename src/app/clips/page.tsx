@@ -2,6 +2,7 @@
 'use client'
 
 import UploadVideo from '@/components/UploadVideo'
+import MyClips from '@/components/MyClips'
 
 export default function ClipsPage() {
   return (
@@ -13,6 +14,7 @@ export default function ClipsPage() {
         </p>
       </div>
       <UploadVideo />
+            <MyClips />
     </main>
   )
 }

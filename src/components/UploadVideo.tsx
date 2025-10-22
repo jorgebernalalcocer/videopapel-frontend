@@ -130,6 +130,7 @@ const createRes = await fetch(`${API_BASE}/videos/`, {
 
       setProgress(100)
       alert('¡Vídeo subido y registrado con éxito!')
+      window.dispatchEvent(new CustomEvent('videopapel:uploaded'))
       // opcional: limpiar estado o navegar a /clips/<id>
     } catch (err: any) {
       console.error(err)
