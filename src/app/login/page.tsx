@@ -6,8 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { API_URL } from '@/lib/env';
-import { Button } from '@/components/ui/button';
 import { useAuth } from '@/store/auth';
+import { Button } from '@/components/ui/button';
 
 const schema = z.object({
   email: z.string().email('Email no válido'),
@@ -29,7 +29,7 @@ export default function LoginPage() {
   const onSubmit = async (values: FormData) => {
     setServerError(null);
     try {
-      const res = await fetch(`${API_URL}/token/`, {
+      const res = await fetch(`${API_URL}/auth/token/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // si pasas a cookies httpOnly en backend: credentials: 'include',
@@ -58,8 +58,11 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
+    <div className="min-h-screen flex flex-col bg-gray-50">
+   
+
+      <main className="flex-1 flex items-center justify-center p-6">
+        <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
         <h1 className="text-2xl font-semibold mb-1">Iniciar sesión</h1>
         <p className="text-sm text-gray-500 mb-6">
           Accede a tu cuenta de Videos de Papel
@@ -118,7 +121,8 @@ export default function LoginPage() {
   <a href="/register" className="text-gray-600 hover:underline">Crear cuenta</a>
 </div>
 
-      </div>
+        </div>
+      </main>
     </div>
   );
 }

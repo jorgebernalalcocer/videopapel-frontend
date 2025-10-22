@@ -24,7 +24,7 @@ export default function ResetPasswordRequestPage() {
   const onSubmit = async (values: FormData) => {
     setServerError(null);
     try {
-      const res = await fetch(`${API_URL}/reset-password/`, {
+      const res = await fetch(`${API_URL}/auth/reset-password/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(values),

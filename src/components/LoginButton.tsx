@@ -1,10 +1,14 @@
+// src/components/LoginButton.tsx
 'use client'
 
-import { Button } from "@/components/ui/button"
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
 
 export default function LoginButton() {
+  const router = useRouter()
+
   const handleLogin = () => {
-    window.location.href = "/login"
+    router.push('/login') // ✅ navegación cliente de Next.js (sin recargar la página)
   }
 
   return (
