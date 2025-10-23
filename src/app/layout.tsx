@@ -5,6 +5,7 @@ import Menu from "@/components/Menu";
 import Providers from "@/components/Providers";
 import GlobalSpinner from "@/components/GlobalSpinner";
 import TopProgress from "@/components/TopProgress";
+import { ToasterProvider } from '@/components/ToasterProvider'
 
 export const metadata: Metadata = {
   title: "VideoPapel",
@@ -21,8 +22,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <TopProgress />
           <GlobalSpinner />
           <main className="min-h-[calc(100vh-64px)]">{children}</main>
+          <ToasterProvider />
+
         </Providers>
       </body>
     </html>
   );
 }
+

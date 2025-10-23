@@ -6,6 +6,8 @@ import { UploadCloud } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/store/auth'
 import { apiFetch } from '@/lib/api'
+import { toast } from 'sonner'
+import { CheckCircle2, XCircle } from 'lucide-react'
 
 type SignResponse = {
   cloud_name: string
@@ -110,13 +112,19 @@ export default function UploadVideo() {
         throw new Error(`Error creando Video en backend: ${err}`)
       }
 
-      setProgress(100)
-      alert('¡Vídeo subido y registrado con éxito!')
-      window.dispatchEvent(new CustomEvent('videopapel:uploaded'))
+setProgress(100)
+toast.success('¡Vídeo subido y registrado con éxito!', {
+  icon: <CheckCircle2 className="text-green-500" />,
+  duration: 5000, // ⏱ duración en ms (configurable)
+})
+window.dispatchEvent(new CustomEvent('videopapel:uploaded'))
     } catch (err: any) {
-      console.error(err)
-      alert(err.message || 'Error subiendo el vídeo')
-    } finally {
+  console.error(err)
+  toast.error('Error al subir el video', {
+    icon: <XCircle className="text-red-500" />,
+    duration: 5000, // ⏱ también configurable
+  })
+} finally {
       setUploading(false)
     }
   }, [])
