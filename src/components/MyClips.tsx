@@ -15,45 +15,49 @@ type Video = {
 }
 
 export default function MyClips() {
-  const [clips, setClips] = useState<Video[]>([])
+  const [clips, setClips] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string|null>(null)
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
+  const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE
-
   const fetchClips = useCallback(async () => {
-    if (!API_BASE) return
     setLoading(true)
     setError(null)
     try {
       const res = await fetch(`${API_BASE}/videos/`, {
-        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         credentials: 'include',
       })
-      if (!res.ok) {
-        const txt = await res.text()
-        throw new Error(`Error ${res.status}: ${txt}`)
-      }
-      const data = (await res.json()) as Video[]
-      setClips(data)
-    } catch (e: any) {
-      setError(e.message ?? 'Error al cargar tus vídeos')
+      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
+      setClips(await res.json())
+    } catch (e:any) {
+      setError(e.message || 'Error al cargar tus vídeos')
     } finally {
       setLoading(false)
     }
   }, [API_BASE, accessToken])
 
   useEffect(() => {
+    // ⛔️ No pedir hasta que el store esté hidratado y haya token
+    if (!hasHydrated || !accessToken) return
     fetchClips()
-  }, [fetchClips])
+  }, [hasHydrated, accessToken, fetchClips])
 
-  // 🔁 Re-fetch cuando el uploader termine una subida
   useEffect(() => {
     const handler = () => fetchClips()
     window.addEventListener('videopapel:uploaded', handler)
     return () => window.removeEventListener('videopapel:uploaded', handler)
   }, [fetchClips])
+
+  if (!hasHydrated) {
+    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Preparando…</p></section>
+  }
+  if (!accessToken) {
+    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Inicia sesión para ver tus vídeos.</p></section>
+  }
 
   if (loading) {
     return (

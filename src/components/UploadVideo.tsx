@@ -1,10 +1,11 @@
 // src/components/UploadVideo.tsx
 'use client'
 
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { UploadCloud } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/store/auth'
+import { apiFetch } from '@/lib/api'
 
 type SignResponse = {
   cloud_name: string
@@ -20,65 +21,57 @@ export default function UploadVideo() {
   const [progress, setProgress] = useState<number>(0)
   const [uploading, setUploading] = useState(false)
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const accessToken = useAuth((s) => s.accessToken)
 
-  const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(true)
+  // Fuerza rehidratación por si este componente se monta sin el layout/menú
+  useEffect(() => {
+    // @ts-ignore
+    useAuth.persist?.rehydrate?.()
   }, [])
 
-  const onDragLeave = useCallback(() => setIsDragging(false), [])
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
-  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault()
-    setIsDragging(false)
-    const file = e.dataTransfer.files?.[0]
-    if (file) handleVideo(file)
-  }, [])
+  // 👇 IMPORTANTÍSIMO: leer *siempre* el estado fresco justo al empezar
+  const handleVideo = useCallback(async (file: File) => {
+    const { hasHydrated, accessToken } = useAuth.getState()
+    const ready = hasHydrated && !!accessToken
 
-  const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0]
-    if (f) handleVideo(f)
-  }, [])
+    if (!ready) {
+      console.warn('Auth no lista aún (hydration/token).')
+      return
+    }
 
-  const handleVideo = async (file: File) => {
-    // Validación tipo simple (Cloudinary también valida del lado servidor)
     if (!file.type.startsWith('video/')) {
       alert('Por favor, selecciona un archivo de vídeo.')
       return
     }
+
     setFileName(file.name)
     setProgress(0)
     setUploading(true)
+
     try {
-      // 1) Pide firma al backend (requiere sesión)
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE
+      // 1) Firma (apiFetch reintenta con refresh si toca)
+      const signRes = await apiFetch('/cloudinary/sign/')
+      if (!signRes.ok) {
+        const txt = await signRes.text()
+        throw new Error(`Firma Cloudinary: ${signRes.status} ${txt}`)
+      }
+      const { cloud_name, api_key, timestamp, signature, folder } =
+        (await signRes.json()) as SignResponse
 
-const signRes = await fetch(`${API_BASE}/cloudinary/sign/`, {
-  credentials: 'include',
-  headers: accessToken
-    ? { Authorization: `Bearer ${accessToken}` }
-    : undefined,
-})
-
-      if (!signRes.ok) throw new Error('No se pudo obtener la firma de Cloudinary')
-      const { cloud_name, api_key, timestamp, signature, folder } = (await signRes.json()) as SignResponse
-
-      // 2) Envía a Cloudinary con XHR para captar progreso
+      // 2) Upload a Cloudinary con progreso
       const form = new FormData()
       form.append('file', file)
       form.append('api_key', api_key)
       form.append('timestamp', String(timestamp))
       form.append('signature', signature)
       form.append('folder', folder)
-      // Nota: resource_type=video se infiere por la URL de endpoint
 
       const cloudUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`
 
       const responseJson = await new Promise<any>((resolve, reject) => {
         const xhr = new XMLHttpRequest()
         xhr.open('POST', cloudUrl, true)
-
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable) {
             const pct = Math.round((evt.loaded / evt.total) * 100)
@@ -91,38 +84,27 @@ const signRes = await fetch(`${API_BASE}/cloudinary/sign/`, {
             const json = JSON.parse(xhr.responseText)
             if (xhr.status >= 200 && xhr.status < 300) resolve(json)
             else reject(new Error(json?.error?.message || 'Error al subir a Cloudinary'))
-          } catch (e) {
+          } catch {
             reject(new Error('Respuesta inválida de Cloudinary'))
           }
         }
         xhr.send(form)
       })
 
-      // 3) Cloudinary devuelve info útil
-      const {
-        secure_url,
-        public_id,
-        format,
-        duration, // en segundos (float)
-        original_filename,
-      } = responseJson
+      const { secure_url, public_id, format, duration, original_filename } = responseJson
 
-      // 4) Registrar en tu backend (crea fila Video)
-const createRes = await fetch(`${API_BASE}/videos/`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-  },
-  credentials: 'include',
-  body: JSON.stringify({
-    title: original_filename,
-    format,
-    file: secure_url,
-    public_id,
-    duration,
-  }),
-})
+      // 3) Registrar en backend (apiFetch maneja refresh)
+      const createRes = await apiFetch('/videos/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: original_filename,
+          format,
+          file: secure_url,
+          public_id,
+          duration,
+        }),
+      })
       if (!createRes.ok) {
         const err = await createRes.text()
         throw new Error(`Error creando Video en backend: ${err}`)
@@ -131,14 +113,30 @@ const createRes = await fetch(`${API_BASE}/videos/`, {
       setProgress(100)
       alert('¡Vídeo subido y registrado con éxito!')
       window.dispatchEvent(new CustomEvent('videopapel:uploaded'))
-      // opcional: limpiar estado o navegar a /clips/<id>
     } catch (err: any) {
       console.error(err)
       alert(err.message || 'Error subiendo el vídeo')
     } finally {
       setUploading(false)
     }
-  }
+  }, [])
+
+  // 👉 Usa el handle actualizado en los handlers (sin closures “viejas”)
+  const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }, [])
+  const onDragLeave = useCallback(() => setIsDragging(false), [])
+  const onDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) handleVideo(file)
+  }, [handleVideo])
+  const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0]
+    if (f) handleVideo(f)
+  }, [handleVideo])
 
   return (
     <div
@@ -178,10 +176,7 @@ const createRes = await fetch(`${API_BASE}/videos/`, {
       {uploading && (
         <div className="w-full max-w-md mt-5">
           <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-2 bg-blue-600 rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
+            <div className="h-2 bg-blue-600 rounded-full transition-all" style={{ width: `${progress}%` }} />
           </div>
           <p className="text-xs text-gray-600 mt-2 text-center">{progress}%</p>
         </div>

@@ -13,13 +13,9 @@ interface AuthState {
   login: (tokens: { access: string; refresh: string; user?: any }) => void
   logout: () => Promise<void>
   setHasHydrated: (v: boolean) => void
+  setTokens: (tokens: { access?: string | null; refresh?: string | null }) => void // 👈 NEW
 }
 
-/**
- * Store global de autenticación (persistido en localStorage)
- * - skipHydration: evita parpadeos al montar (no lee localStorage en SSR)
- * - hasHydrated: flag para renderizar el menú solo cuando ya hidrató
- */
 export const useAuth = create<AuthState>()(
   persist(
     (set, get) => ({
@@ -30,33 +26,39 @@ export const useAuth = create<AuthState>()(
 
       setHasHydrated: (v) => set({ hasHydrated: v }),
 
-      // Login: guarda tokens y usuario
+      // Guarda tokens y usuario al loguear
       login: ({ access, refresh, user }) =>
         set({ accessToken: access, refreshToken: refresh, user }),
 
-      // Logout profesional: revoca el refresh token en backend y limpia estado local
-logout: async () => {
-  try {
-    const refreshToken = get().refreshToken
-    if (refreshToken) {
-      await fetch(`${API_URL}/auth/token/blacklist/`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refresh: refreshToken }),
-      })
-    }
-  } catch (err) {
-    console.warn('Error al hacer logout en backend:', err)
-  } finally {
-    set({ accessToken: null, refreshToken: null, user: null })
-  }
-},
+      // 👇 NEW: actualizar tokens (p. ej., tras refresh)
+      setTokens: ({ access, refresh }) =>
+        set((state) => ({
+          accessToken: access !== undefined ? access : state.accessToken,
+          refreshToken: refresh !== undefined ? refresh : state.refreshToken,
+        })),
+
+      // Logout profesional
+      logout: async () => {
+        try {
+          const refreshToken = get().refreshToken
+          if (refreshToken) {
+            await fetch(`${API_URL}/auth/token/blacklist/`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refresh: refreshToken }),
+            })
+          }
+        } catch (err) {
+          console.warn('Error al hacer logout en backend:', err)
+        } finally {
+          set({ accessToken: null, refreshToken: null, user: null })
+        }
+      },
     }),
     {
-      name: 'videopapel-auth', // Se guarda en localStorage
-      skipHydration: true,     // 👈 evita leer durante el render inicial (fuente del parpadeo)
+      name: 'videopapel-auth',
+      skipHydration: true,
       onRehydrateStorage: () => (state) => {
-        // se llama cuando ha terminado de hidratar desde localStorage
         state?.setHasHydrated(true)
       },
     }
