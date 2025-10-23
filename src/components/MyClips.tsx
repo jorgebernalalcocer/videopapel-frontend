@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/store/auth'
+import DeleteClipButton from './DeleteClipButton' // Adjust path as needed
 
 type Video = {
   id: number
@@ -46,11 +47,15 @@ export default function MyClips() {
     fetchClips()
   }, [hasHydrated, accessToken, fetchClips])
 
-  useEffect(() => {
-    const handler = () => fetchClips()
-    window.addEventListener('videopapel:uploaded', handler)
-    return () => window.removeEventListener('videopapel:uploaded', handler)
-  }, [fetchClips])
+useEffect(() => {
+  const handler = () => fetchClips()
+  window.addEventListener('videopapel:uploaded', handler)
+  window.addEventListener('videopapel:deleted', handler) // ⬅️ Add this line
+  return () => {
+    window.removeEventListener('videopapel:uploaded', handler)
+    window.removeEventListener('videopapel:deleted', handler) // ⬅️ And this cleanup
+  }
+}, [fetchClips])
 
   if (!hasHydrated) {
     return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Preparando…</p></section>
@@ -116,6 +121,7 @@ export default function MyClips() {
               <p className="text-xs text-gray-400 mt-1">
                 Subido: {new Date(v.uploaded_at).toLocaleString()}
               </p>
+              <DeleteClipButton videoId={v.id} />
             </div>
           </li>
         ))}
