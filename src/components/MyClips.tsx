@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/store/auth'
-import DeleteClipButton from './DeleteClipButton' // Adjust path as needed
+import DeleteClipButton from './DeleteClipButton'
+import GoProjectButton from './GoProjectButton'
 
 type Video = {
   id: number
@@ -122,6 +123,7 @@ useEffect(() => {
                 Subido: {new Date(v.uploaded_at).toLocaleString()}
               </p>
               <DeleteClipButton videoId={v.id} />
+              <GoProjectButton videoId={v.id} />
             </div>
           </li>
         ))}
