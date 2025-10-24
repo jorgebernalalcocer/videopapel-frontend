@@ -5,7 +5,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { createPortal } from 'react-dom'
 
 // --- Modal base súper reusable ---
-function Modal({
+export function Modal({
   open,
   onClose,
   title,
