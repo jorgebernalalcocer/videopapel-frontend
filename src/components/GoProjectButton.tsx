@@ -12,7 +12,7 @@ export default function GoProjectButton({ videoId }: GoProjectButtonProps) {
   const router = useRouter()
 
   const handleProject = () => {
-    router.push('/Projects')
+    router.push('/projects')
   }
 
   return (

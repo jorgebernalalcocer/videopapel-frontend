@@ -1,3 +1,6 @@
+// src/app/clips/page.tsx
+'use client'
+
 // src/app/projects/page.tsx
 import MyProjects from '@/components/MyProjects'
 
