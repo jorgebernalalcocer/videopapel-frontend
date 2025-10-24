@@ -8,6 +8,7 @@ import LoginButton from '@/components/LoginButton'
 import RegisterButton from '@/components/RegisterButton'
 import LogoutButton from '@/components/LogoutButton' 
 import ClipsButton from '@/components/ClipsButton' 
+import ProjectsButton from '@/components/ProjectsButton'
 
 export default function Menu() {
   // Fuerza la rehidratación del store persistido (evita flicker)
@@ -36,6 +37,7 @@ export default function Menu() {
               Hola {user.email}
             </span>
             <ClipsButton />
+            <ProjectsButton />
             <LogoutButton />
           </>
         ) : (

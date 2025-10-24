@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/store/auth'
+import EditingCanvas from '@/components/project/EditingCanvas'
 
 // Define el tipo de dato del Proyecto, incluyendo el UUID (string)
 type Project = {
@@ -42,6 +43,8 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'include',
       })
+
+      console.log('Fetch project response status:', res.status)
 
       if (res.status === 404) {
         // Manejar el caso de proyecto no encontrado
@@ -121,12 +124,25 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
         {/* Columna 1: Visor del Proyecto */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow p-4">
           <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2>
-          <div className="aspect-video bg-black rounded-lg mb-4">
-            {/* Aquí iría el reproductor de vídeo con el resultado concatenado/recortado */}
-            <div className="h-full w-full grid place-items-center text-white/50">
-              [Reproductor / Lienzo de Edición]
-            </div>
-          </div>
+{/* Previsualización y Edición de Clips */}
+<div className="aspect-video bg-black rounded-lg mb-4 p-2">
+  {project && (project as any).primary_clip ? (
+    <EditingCanvas
+      videoSrc={(project as any).primary_clip.video_url}
+      durationMs={(project as any).primary_clip.duration_ms}
+      initialTimeMs={(project as any).primary_clip.time_start_ms ?? 0}
+      onChange={(ms) => {
+        // Aquí puedes guardar selección temporal, o preparar recorte
+        // console.log('Selected frame at', ms, 'ms')
+      }}
+    />
+  ) : (
+    <div className="h-full w-full grid place-items-center text-white/50">
+      No hay clip principal
+    </div>
+  )}
+</div>
+
           
           {/* Timeline de Clips */}
           <div className="mt-4 border-t pt-4">
