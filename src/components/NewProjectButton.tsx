@@ -4,8 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
-import { Modal } from '@/components/ui/Modal' // si lo tienes separado; si no, exporta el Modal del ConfirmProvider
-// Si no tienes Modal en archivo aparte, copia el Modal del ConfirmProvider y expórtalo desde src/components/ui/Modal.tsx
+import { Modal } from '@/components/ui/Modal'
 
 type Video = {
   id: number
@@ -129,10 +128,16 @@ export default function NewProjectButton() {
         onClose={() => !submitting && setOpen(false)}
         title={step === 1 ? 'Nombre del proyecto' : 'Elige un vídeo'}
         labelledById="new-project-title"
+        describedById={error ? 'new-project-error' : undefined}
+        size={step === 2 ? 'lg' : 'md'}
         footer={
           <div className="flex justify-between w-full">
             <div>
-              {error && <span className="text-sm text-red-600">{error}</span>}
+              {error && (
+                <span id="new-project-error" className="text-sm text-red-600">
+                  {error}
+                </span>
+              )}
             </div>
             <div className="flex gap-2">
               {step === 2 && (
