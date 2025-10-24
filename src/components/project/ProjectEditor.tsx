@@ -150,7 +150,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
               <p>Efecto: [Select Effect]</p>
               <p>Orientación: [Select Orientation]</p>
               
-              <button className="w-full mt-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+              <button className="w-full mt-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-purple-700 transition">
                 Guardar Cambios
               </button>
             </div>
