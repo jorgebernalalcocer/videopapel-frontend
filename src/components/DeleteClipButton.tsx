@@ -4,6 +4,10 @@
 import { useState } from 'react'
 import { useAuth } from '@/store/auth'
 import { useConfirm } from '@/components/ui/ConfirmProvider'
+import { toast } from "sonner";
+import { CheckCircle2, XCircle } from "lucide-react";
+
+
 
 type DeleteClipButtonProps = {
   videoId: number
@@ -50,9 +54,17 @@ export default function DeleteClipButton({ videoId }: DeleteClipButtonProps) {
         const errorText = await res.text()
         throw new Error(`Error ${res.status}: ${errorText || 'No se pudo eliminar el vídeo'}`)
       }
+      toast.success("¡Vídeo eliminado con éxito!", {
+        icon: <CheckCircle2 className="text-green-500" />,
+        duration: 5000, // ⏱ duración en ms (configurable)
+      });
       window.dispatchEvent(new CustomEvent('videopapel:deleted'))
     } catch (e: any) {
       setError(e.message || 'Error al eliminar el vídeo.')
+      toast.error("Error al eliminar el vídeo", {
+        icon: <XCircle className="text-red-500" />,
+        duration: 5000, // ⏱ también configurable
+      });
     } finally {
       setIsDeleting(false)
     }
