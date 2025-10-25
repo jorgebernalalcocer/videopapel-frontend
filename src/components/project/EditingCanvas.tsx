@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import EditingTools from '@/components/project/EditingTools'
 
 type EditingCanvasProps = {
   videoSrc: string
@@ -15,11 +16,15 @@ type EditingCanvasProps = {
   onChange?: (timeMs: number) => void
   /** desactivar generación automática de thumbs (si prefieres traerlas del backend) */
   disableAutoThumbnails?: boolean
+  /** fps de la “reproducción” (default 12) */
+  playbackFps?: number
+  /** si true, al final vuelve al inicio y sigue (default false) */
+  loop?: boolean
 }
 
 /**
  * Genera miniaturas por seek + canvas, muestra preview grande y tira de thumbs.
- * Accesible (teclas ← → para navegar), y muy reutilizable.
+ * Accesible (teclas ← → para navegar, Space para play/pausa), y muy reutilizable.
  */
 export default function EditingCanvas({
   videoSrc,
@@ -29,6 +34,8 @@ export default function EditingCanvas({
   thumbnailHeight = 68,
   onChange,
   disableAutoThumbnails = false,
+  playbackFps = 12,
+  loop = true, // al llegar al final del video vuelve al inicio
 }: EditingCanvasProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const bigCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -37,6 +44,10 @@ export default function EditingCanvas({
   const [thumbs, setThumbs] = useState<Array<{ t: number; url: string }>>([])
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // reproducción
+  const [isPlaying, setIsPlaying] = useState(false)
+  const playTimerRef = useRef<number | null>(null)
 
   const timesMs = useMemo(() => {
     // Muestras uniformes 0..duration
@@ -132,6 +143,9 @@ export default function EditingCanvas({
           : Math.min(timesMs.length - 1, idx + 1)
       setSelectedMs(timesMs[next])
       scrollThumbIntoView(timesMs[next])
+    } else if (e.key === ' ') {
+      e.preventDefault()
+      togglePlay()
     }
   }
 
@@ -140,10 +154,63 @@ export default function EditingCanvas({
     el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
   }
 
+  /* --------- reproducción --------- */
+
+  const togglePlay = () => {
+    setIsPlaying((p) => !p)
+  }
+
+  // avanza al siguiente frame “discreto” del timeline
+  const stepForward = () => {
+    const idx = nearestIndex(timesMs, selectedMs)
+    const nextIdx = idx + 1
+    if (nextIdx < timesMs.length) {
+      const t = timesMs[nextIdx]
+      setSelectedMs(t)
+      scrollThumbIntoView(t)
+    } else if (loop) {
+      const t = timesMs[0]
+      setSelectedMs(t)
+      scrollThumbIntoView(t)
+    } else {
+      setIsPlaying(false) // fin
+    }
+  }
+
+  // gestionar el temporizador
+  useEffect(() => {
+    if (!isPlaying) {
+      // parar
+      if (playTimerRef.current) {
+        window.clearInterval(playTimerRef.current)
+        playTimerRef.current = null
+      }
+      return
+    }
+    // iniciar
+    const intervalMs = Math.max(16, Math.round(1000 / playbackFps)) // clamp a ~60fps máx.
+    playTimerRef.current = window.setInterval(stepForward, intervalMs)
+    return () => {
+      if (playTimerRef.current) {
+        window.clearInterval(playTimerRef.current)
+        playTimerRef.current = null
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isPlaying, playbackFps, selectedMs, timesMs, loop])
+
   return (
     <div className="w-full">
       {/* Preview grande */}
       <div className="rounded-lg overflow-hidden bg-black relative">
+        {generating && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="inline-flex flex-col items-center gap-3 text-white text-sm">
+              <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white" aria-label="Generando miniaturas" />
+              <span>Generando miniaturas…</span>
+            </div>
+          </div>
+        )}
         {/* video oculto para capturas */}
         <video
           ref={videoRef}
@@ -218,6 +285,13 @@ export default function EditingCanvas({
           </ul>
         )}
       </div>
+
+      {/* Barra de herramientas (misma altura que la tira de frames) */}
+      <EditingTools
+        heightPx={thumbnailHeight}
+        isPlaying={isPlaying}
+        onTogglePlay={togglePlay}
+      />
     </div>
   )
 }
