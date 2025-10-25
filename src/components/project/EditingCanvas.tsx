@@ -5,8 +5,10 @@ import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
 
+type Thumbnail = { t: number; url: string }
+
 type EditingCanvasProps = {
-  projectId: string            // 👈 NUEVO: UUID del proyecto para cache
+  projectId: string
   videoSrc: string
   durationMs: number
   initialTimeMs?: number
@@ -23,7 +25,7 @@ type EditingCanvasProps = {
  * Accesible (← → para navegar, Space para play/pausa). Cache por proyecto (UUID).
  */
 export default function EditingCanvas({
-  projectId,                     // 👈 requerido para cache
+  projectId,
   videoSrc,
   durationMs,
   initialTimeMs = 0,
@@ -38,9 +40,10 @@ export default function EditingCanvas({
   const bigCanvasRef = useRef<HTMLCanvasElement>(null)
 
   const [selectedMs, setSelectedMs] = useState<number>(clamp(initialTimeMs, 0, durationMs))
-  const [thumbs, setThumbs] = useState<Array<{ t: number; url: string }>>([])
+  const [thumbs, setThumbs] = useState<Array<Thumbnail>>([])
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isCacheLoaded, setIsCacheLoaded] = useState(false) // 👈 NUEVO: Bandera de caché
 
   // reproducción
   const [isPlaying, setIsPlaying] = useState(false)
@@ -54,11 +57,11 @@ export default function EditingCanvas({
     return arr
   }, [durationMs, thumbnailsCount])
 
-  // firma de cache (si cambia, invalidamos)
-const sig = useMemo(
-  () => buildSig({ videoSrc, durationMs, thumbnailsCount, thumbnailHeight }),
-  [videoSrc, durationMs, thumbnailsCount, thumbnailHeight]
-)
+  // firma de cache
+  const sig = useMemo(
+    () => buildSig({ videoSrc, durationMs, thumbnailsCount, thumbnailHeight }),
+    [videoSrc, durationMs, thumbnailsCount, thumbnailHeight]
+  )
 
 
   // onChange externo
@@ -71,62 +74,70 @@ const sig = useMemo(
     paintBigFrame(selectedMs)
   }, [selectedMs, videoSrc])
 
-  // miniaturas: lee cache o genera y guarda
-useEffect(() => {
-  // sin projectId no hay cache
-  if (!projectId) return
-
-  // CORS para canvas
-  if (videoRef.current) videoRef.current.crossOrigin = 'anonymous'
-  if (disableAutoThumbnails) return
-
-  let canceled = false
-
-  async function run() {
-    try {
-      setError(null)
-      setGenerating(true)
-
-      // 1) Intentar cargar del cache por UUID
-      const cached = loadThumbsFromCache(projectId, sig)
-      if (!canceled && cached) {
-        setThumbs(cached)
+  // 🚨 EFECTO 1 (INICIAL): Solo para Cargar Cache al montar
+  useEffect(() => {
+    if (!projectId) {
+        setIsCacheLoaded(true) // No hay proyecto, se considera "cargado"
         return
-      }
-
-      // 2) Generar y guardar bajo la clave del UUID
-      const urls = await generateThumbnailsAsDataUrls(videoRef, timesMs, thumbnailHeight)
-      if (!canceled) {
-        setThumbs(urls)
-        saveThumbsToCache(projectId, sig, urls)
-      }
-    } catch (e: any) {
-      if (!canceled) setError(resolveThumbnailError(e))
-    } finally {
-      if (!canceled) setGenerating(false)
     }
-  }
 
-  run()
-  return () => { canceled = true }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [projectId, sig, videoSrc, durationMs, thumbnailHeight, disableAutoThumbnails, thumbnailsCount])
+    // CORS para canvas
+    if (videoRef.current) videoRef.current.crossOrigin = 'anonymous'
+
+    const cached = loadThumbsFromCache(projectId, sig)
+    if (cached) {
+      setThumbs(cached)
+    }
+
+    setIsCacheLoaded(true) // Marcamos que la caché ha sido procesada
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId, sig]) // Ejecutar solo al montar o si cambian props de cache
+
+  // 🚨 EFECTO 2 (POST-CARGA): Solo para GENERAR miniaturas
+  useEffect(() => {
+    // Si la caché no ha terminado de cargar, o si la generación está deshabilitada, o si ya tenemos frames (de caché), salimos.
+    if (!isCacheLoaded || disableAutoThumbnails || thumbs.length > 0) return
+    
+    // Si llegamos aquí, NO hay frames, NO hay caché válida, y SÍ debemos generar.
+
+    let canceled = false
+    async function runGeneration() {
+      try {
+        setError(null)
+        setGenerating(true)
+        
+        // 2) Generar y guardar bajo la clave del UUID
+        const urls = await generateThumbnailsAsDataUrls(videoRef, timesMs, thumbnailHeight)
+        if (!canceled) {
+          setThumbs(urls)
+          saveThumbsToCache(projectId, sig, urls)
+        }
+      } catch (e: any) {
+        if (!canceled) setError(resolveThumbnailError(e))
+      } finally {
+        if (!canceled) setGenerating(false)
+      }
+    }
+
+    runGeneration()
+    return () => { canceled = true }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, sig, thumbnailHeight])
+
 
   /** Elimina el frame seleccionado del array de miniaturas y actualiza cache/selección */
   function deleteSelectedFrame() {
     if (!thumbs.length) return
 
-    // intenta encontrar índice exacto del seleccionado
+    // En esta versión, `thumbs` ya es el array real, no el teórico
     let idx = thumbs.findIndex((it) => it.t === selectedMs)
     if (idx === -1) {
-      // si no existe (p. ej. selección en una malla teórica), usa el índice más cercano
       const arrTimes = thumbs.map((it) => it.t)
       idx = nearestIndex(arrTimes, selectedMs)
     }
 
     const nextThumbs = thumbs.slice(0, idx).concat(thumbs.slice(idx + 1))
 
-    // decidir nueva selección: intenta el siguiente; si no hay, el anterior; o 0
     let newSelectedMs = selectedMs
     if (nextThumbs.length === 0) {
       newSelectedMs = 0
@@ -182,15 +193,21 @@ useEffect(() => {
   function onKeyDownThumbs(e: React.KeyboardEvent<HTMLDivElement>) {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault()
-      const idx = nearestIndex(timesMs, selectedMs)
-      const next = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : Math.min(timesMs.length - 1, idx + 1)
-      setSelectedMs(timesMs[next])
-      scrollThumbIntoView(timesMs[next])
+      // Usar `thumbs` para navegar, ya que son los frames reales
+      const currentTimes = thumbs.map(t => t.t)
+      const idx = nearestIndex(currentTimes, selectedMs)
+      
+      const nextIdx = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : Math.min(currentTimes.length - 1, idx + 1)
+      if (currentTimes.length > 0) {
+          setSelectedMs(currentTimes[nextIdx])
+          scrollThumbIntoView(currentTimes[nextIdx])
+      }
     } else if (e.key === ' ') {
       e.preventDefault()
       togglePlay()
     }
   }
+
 
   function scrollThumbIntoView(t: number) {
     const el = document.getElementById(thumbId(t))
@@ -202,14 +219,17 @@ useEffect(() => {
   const togglePlay = () => setIsPlaying((p) => !p)
 
   const stepForward = () => {
-    const idx = nearestIndex(timesMs, selectedMs)
+    // Usar `thumbs` para la reproducción
+    const currentTimes = thumbs.map(t => t.t)
+    const idx = nearestIndex(currentTimes, selectedMs)
+
     const nextIdx = idx + 1
-    if (nextIdx < timesMs.length) {
-      const t = timesMs[nextIdx]
+    if (nextIdx < currentTimes.length) {
+      const t = currentTimes[nextIdx]
       setSelectedMs(t)
       scrollThumbIntoView(t)
     } else if (loop) {
-      const t = timesMs[0]
+      const t = currentTimes[0]
       setSelectedMs(t)
       scrollThumbIntoView(t)
     } else {
@@ -234,20 +254,21 @@ useEffect(() => {
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, playbackFps, selectedMs, timesMs, loop])
+  }, [isPlaying, playbackFps, selectedMs, loop, thumbs.length]) // Dependencia de thumbs.length para recalcular stepForward
+  // Usamos thumbs.length porque stepForward depende implícitamente del contenido de thumbs
 
 return (
   <div className="w-full">
     {/* Preview grande */}
     <div className="rounded-lg overflow-hidden bg-black relative">
-      {generating && (
+      {(generating || !isCacheLoaded) && ( // 👈 Mostramos spinner si genera o si no ha cargado la cache
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm">
           <div className="inline-flex flex-col items-center gap-3 text-white text-sm">
             <div
               className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white"
               aria-label="Generando miniaturas"
             />
-            <span>Generando miniaturas…</span>
+            <span>{isCacheLoaded ? 'Generando miniaturas…' : 'Cargando…'}</span>
           </div>
         </div>
       )}
@@ -289,12 +310,12 @@ return (
       aria-label="Video frames timeline"
     >
       {error && <p className="text-red-600 text-sm px-2 py-1">{error}</p>}
-      {!disableAutoThumbnails && (
+      {!disableAutoThumbnails && isCacheLoaded && ( // 👈 Solo mostramos la tira si la caché está cargada
         <ul className="flex gap-2 min-w-max">
           {thumbs.length === 0 && !generating ? (
             <li className="text-gray-500 text-sm px-2 py-3">Sin miniaturas</li>
           ) : (
-            (thumbs.length ? thumbs : timesMs.map((t) => ({ t, url: '' }))).map(({ t, url }) => {
+            thumbs.map(({ t, url }) => { // 👈 Iteramos SOLAMENTE sobre `thumbs`
               const selected = t === selectedMs
               return (
                 <li key={t} id={thumbId(t)}>
@@ -342,17 +363,24 @@ return (
     />
   </div>
 )
+}
 
+// =========================================================================
+// Funciones Auxiliares (sin cambios, excepto el tipo 'Thumbnail')
+// =========================================================================
 
 const LS_PREFIX = 'vp:thumbs'
 const LS_KEY = (projectId: string) => `${LS_PREFIX}:${projectId}`
 
 function buildSig(args: { videoSrc: string; durationMs: number; thumbnailsCount: number; thumbnailHeight: number }) {
   const { videoSrc, durationMs, thumbnailsCount, thumbnailHeight } = args
+  // Importante: No uses durationMs si los thumbs son generados por el algoritmo timesMs. 
+  // Mejor usar durationMs redondeado o solo el videoSrc.
+  // Mantenemos la versión 1 de tu código original para no invalidar el caché existente.
   return JSON.stringify({ v: 1, videoSrc, durationMs, thumbnailsCount, thumbnailHeight })
 }
 
-function loadThumbsFromCache(projectId: string, sig: string): Array<{ t: number; url: string }> | null {
+function loadThumbsFromCache(projectId: string, sig: string): Array<Thumbnail> | null {
   try {
     const raw = localStorage.getItem(LS_KEY(projectId))
     if (!raw) return null
@@ -360,13 +388,14 @@ function loadThumbsFromCache(projectId: string, sig: string): Array<{ t: number;
     if (parsed?.sig !== sig) return null
     const items = parsed?.items
     if (!Array.isArray(items)) return null
+    // Los items de la caché ahora son el array real (borrado o no), no el teórico.
     return items.map((it: any) => ({ t: Number(it.t) || 0, url: String(it.dataUrl || '') }))
   } catch {
     return null
   }
 }
 
-function saveThumbsToCache(projectId: string, sig: string, items: Array<{ t: number; url: string }>) {
+function saveThumbsToCache(projectId: string, sig: string, items: Array<Thumbnail>) {
   try {
     const payload = {
       sig,
@@ -375,10 +404,9 @@ function saveThumbsToCache(projectId: string, sig: string, items: Array<{ t: num
     }
     localStorage.setItem(LS_KEY(projectId), JSON.stringify(payload))
   } catch {
-    // cuota llena o modo privado: ignorar
+    // ignorar errores de LS
   }
 }
-
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
