@@ -43,9 +43,9 @@ export default function EditingCanvas({
   const [thumbs, setThumbs] = useState<Array<Thumbnail>>([])
   const [generating, setGenerating] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isCacheLoaded, setIsCacheLoaded] = useState(false) // 👈 NUEVO: Bandera de caché
+  const [isCacheLoaded, setIsCacheLoaded] = useState(false)
+  const [hasPendingChanges, setHasPendingChanges] = useState(false)
 
-  // reproducción
   const [isPlaying, setIsPlaying] = useState(false)
   const playTimerRef = useRef<number | null>(null)
 
@@ -125,7 +125,7 @@ export default function EditingCanvas({
   }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, sig, thumbnailHeight])
 
 
-  /** Elimina el frame seleccionado del array de miniaturas y actualiza cache/selección */
+  /** Elimina el frame seleccionado del array de miniaturas (no persiste hasta guardar) */
   function deleteSelectedFrame() {
     if (!thumbs.length) return
 
@@ -150,15 +150,7 @@ export default function EditingCanvas({
     setThumbs(nextThumbs)
     setSelectedMs(newSelectedMs)
     scrollThumbIntoView(newSelectedMs)
-
-    // persiste en cache si hay projectId
-    try {
-      if (projectId) {
-        saveThumbsToCache(projectId, sig, nextThumbs)
-      }
-    } catch {
-      // ignorar errores de LS
-    }
+    setHasPendingChanges(true)
   }
 
   function formatTime(ms: number) {
@@ -257,8 +249,19 @@ export default function EditingCanvas({
   }, [isPlaying, playbackFps, selectedMs, loop, thumbs.length]) // Dependencia de thumbs.length para recalcular stepForward
   // Usamos thumbs.length porque stepForward depende implícitamente del contenido de thumbs
 
-return (
-  <div className="w-full">
+  const handleSave = () => {
+    if (!projectId || !sig || !hasPendingChanges) return
+    try {
+      saveThumbsToCache(projectId, sig, thumbs)
+      setHasPendingChanges(false)
+      // TODO: llamada al backend (pending)
+    } catch {
+      setError('No se pudieron guardar los cambios localmente.')
+    }
+  }
+
+  return (
+    <div className="w-full">
     {/* Preview grande */}
     <div className="rounded-lg overflow-hidden bg-black relative">
       {(generating || !isCacheLoaded) && ( // 👈 Mostramos spinner si genera o si no ha cargado la cache
@@ -360,6 +363,8 @@ return (
       heightPx={thumbnailHeight}
       isPlaying={isPlaying}
       onTogglePlay={togglePlay}
+      onSave={handleSave}
+      canSave={hasPendingChanges && !generating}
     />
   </div>
 )

@@ -7,12 +7,16 @@ type EditingToolsProps = {
   heightPx: number
   isPlaying: boolean
   onTogglePlay: () => void
+  onSave?: () => void
+  canSave?: boolean
 }
 
 export default function EditingTools({
   heightPx,
   isPlaying,
   onTogglePlay,
+  onSave,
+  canSave = false,
 }: EditingToolsProps) {
   return (
     <div
@@ -32,10 +36,15 @@ export default function EditingTools({
         {isPlaying ? 'Pausar' : 'Reproducir'}
       </Button>
 
-      {/* deja espacio para futuras herramientas (recorte, zoom, etc.) */}
-      <div className="text-xs text-gray-500 ml-2">
-        (más herramientas próximamente)
-      </div>
+      <Button
+        type="button"
+        variant="default"
+        onClick={onSave}
+        disabled={!canSave}
+        className="ml-auto"
+      >
+        Guardar cambios
+      </Button>
     </div>
   )
 }
