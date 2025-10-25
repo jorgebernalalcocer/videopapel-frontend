@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
+import DeleteFrameButton from '@/components/project/DeleteFrameButton'
 
 type EditingCanvasProps = {
   projectId: string            // 👈 NUEVO: UUID del proyecto para cache
@@ -111,6 +112,43 @@ useEffect(() => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
 }, [projectId, sig, videoSrc, durationMs, thumbnailHeight, disableAutoThumbnails, thumbnailsCount])
 
+  /** Elimina el frame seleccionado del array de miniaturas y actualiza cache/selección */
+  function deleteSelectedFrame() {
+    if (!thumbs.length) return
+
+    // intenta encontrar índice exacto del seleccionado
+    let idx = thumbs.findIndex((it) => it.t === selectedMs)
+    if (idx === -1) {
+      // si no existe (p. ej. selección en una malla teórica), usa el índice más cercano
+      const arrTimes = thumbs.map((it) => it.t)
+      idx = nearestIndex(arrTimes, selectedMs)
+    }
+
+    const nextThumbs = thumbs.slice(0, idx).concat(thumbs.slice(idx + 1))
+
+    // decidir nueva selección: intenta el siguiente; si no hay, el anterior; o 0
+    let newSelectedMs = selectedMs
+    if (nextThumbs.length === 0) {
+      newSelectedMs = 0
+    } else if (idx < nextThumbs.length) {
+      newSelectedMs = nextThumbs[idx].t
+    } else {
+      newSelectedMs = nextThumbs[nextThumbs.length - 1].t
+    }
+
+    setThumbs(nextThumbs)
+    setSelectedMs(newSelectedMs)
+    scrollThumbIntoView(newSelectedMs)
+
+    // persiste en cache si hay projectId
+    try {
+      if (projectId) {
+        saveThumbsToCache(projectId, sig, nextThumbs)
+      }
+    } catch {
+      // ignorar errores de LS
+    }
+  }
 
   function formatTime(ms: number) {
     const s = Math.floor(ms / 1000)
@@ -198,99 +236,113 @@ useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, playbackFps, selectedMs, timesMs, loop])
 
-  return (
-    <div className="w-full">
-      {/* Preview grande */}
-      <div className="rounded-lg overflow-hidden bg-black relative">
-        {generating && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-            <div className="inline-flex flex-col items-center gap-3 text-white text-sm">
-              <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white" aria-label="Generando miniaturas" />
-              <span>Generando miniaturas…</span>
-            </div>
+return (
+  <div className="w-full">
+    {/* Preview grande */}
+    <div className="rounded-lg overflow-hidden bg-black relative">
+      {generating && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="inline-flex flex-col items-center gap-3 text-white text-sm">
+            <div
+              className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-white"
+              aria-label="Generando miniaturas"
+            />
+            <span>Generando miniaturas…</span>
           </div>
-        )}
-        <video
-          ref={videoRef}
-          src={videoSrc}
-          preload="metadata"
-          muted
-          playsInline
-          crossOrigin="anonymous"
-          className="hidden"
-        />
-        <canvas ref={bigCanvasRef} className="w-full h-auto block" aria-label="Preview frame" />
-       <div className="absolute bottom-2 right-2 flex items-center gap-2">
-          <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
-            {formatTime(selectedMs)}
-          </div>
-          {/* Botón que avanza un fotograma */}
-          <PlayButton onClick={stepForward} />
         </div>
-      </div>
+      )}
 
-      {/* Tira de miniaturas */}
-      <div
-        className="mt-4 overflow-x-auto border rounded-lg p-2 bg-white focus:outline-none"
-        tabIndex={0}
-        onKeyDown={onKeyDownThumbs}
-        aria-label="Video frames timeline"
-      >
-        {error && <p className="text-red-600 text-sm px-2 py-1">{error}</p>}
-        {!disableAutoThumbnails && (
-          <ul className="flex gap-2 min-w-max">
-            {thumbs.length === 0 && !generating ? (
-              <li className="text-gray-500 text-sm px-2 py-3">Sin miniaturas</li>
-            ) : (
-              (thumbs.length ? thumbs : timesMs.map((t) => ({ t, url: '' }))).map(({ t, url }) => {
-                const selected = t === selectedMs
-                return (
-                  <li key={t} id={thumbId(t)}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedMs(t)}
-                      className={`relative block rounded-md overflow-hidden border ${
-                        selected ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200 hover:border-gray-400'
-                      }`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      {url ? (
-                        <img
-                          src={url}
-                          alt={`Frame ${formatTime(t)}`}
-                          height={thumbnailHeight}
-                          className="block"
-                          style={{ height: thumbnailHeight, width: 'auto' }}
-                        />
-                      ) : (
-                        <div
-                          className="bg-gray-100 grid place-items-center text-xs text-gray-500"
-                          style={{ height: thumbnailHeight, width: thumbnailHeight * (16 / 9) }}
-                        >
-                          {generating ? '···' : formatTime(t)}
-                        </div>
-                      )}
-                      <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1 rounded">
-                        {formatTime(t)}
-                      </span>
-                    </button>
-                  </li>
-                )
-              })
-            )}
-          </ul>
-        )}
-      </div>
-
-      {/* Barra de herramientas (misma altura que la tira de frames) */}
-      <EditingTools
-        heightPx={thumbnailHeight}
-        isPlaying={isPlaying}
-        onTogglePlay={togglePlay}
+      {/* Estos deben ir DENTRO del contenedor relativo */}
+      <video
+        ref={videoRef}
+        src={videoSrc}
+        preload="metadata"
+        muted
+        playsInline
+        crossOrigin="anonymous"
+        className="hidden"
       />
+      <canvas ref={bigCanvasRef} className="w-full h-auto block" aria-label="Preview frame" />
+
+      {/* Izquierda inferior: Delete */}
+      <div className="absolute bottom-2 left-2 flex items-center gap-2">
+        <DeleteFrameButton
+          onClick={deleteSelectedFrame}
+          disabled={!thumbs.length || generating}
+        />
+      </div>
+
+      {/* Derecha inferior: contador + Play */}
+      <div className="absolute bottom-2 right-2 flex items-center gap-2">
+        <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
+          {formatTime(selectedMs)}
+        </div>
+        <PlayButton onClick={stepForward} />
+      </div>
     </div>
-  )
-}
+
+    {/* Tira de miniaturas */}
+    <div
+      className="mt-4 overflow-x-auto border rounded-lg p-2 bg-white focus:outline-none"
+      tabIndex={0}
+      onKeyDown={onKeyDownThumbs}
+      aria-label="Video frames timeline"
+    >
+      {error && <p className="text-red-600 text-sm px-2 py-1">{error}</p>}
+      {!disableAutoThumbnails && (
+        <ul className="flex gap-2 min-w-max">
+          {thumbs.length === 0 && !generating ? (
+            <li className="text-gray-500 text-sm px-2 py-3">Sin miniaturas</li>
+          ) : (
+            (thumbs.length ? thumbs : timesMs.map((t) => ({ t, url: '' }))).map(({ t, url }) => {
+              const selected = t === selectedMs
+              return (
+                <li key={t} id={thumbId(t)}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedMs(t)}
+                    className={`relative block rounded-md overflow-hidden border ${
+                      selected ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    {url ? (
+                      <img
+                        src={url}
+                        alt={`Frame ${formatTime(t)}`}
+                        height={thumbnailHeight}
+                        className="block"
+                        style={{ height: thumbnailHeight, width: 'auto' }}
+                      />
+                    ) : (
+                      <div
+                        className="bg-gray-100 grid place-items-center text-xs text-gray-500"
+                        style={{ height: thumbnailHeight, width: thumbnailHeight * (16 / 9) }}
+                      >
+                        {generating ? '···' : formatTime(t)}
+                      </div>
+                    )}
+                    <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1 rounded">
+                      {formatTime(t)}
+                    </span>
+                  </button>
+                </li>
+              )
+            })
+          )}
+        </ul>
+      )}
+    </div>
+
+    {/* Barra de herramientas (misma altura que la tira de frames) */}
+    <EditingTools
+      heightPx={thumbnailHeight}
+      isPlaying={isPlaying}
+      onTogglePlay={togglePlay}
+    />
+  </div>
+)
+
 
 const LS_PREFIX = 'vp:thumbs'
 const LS_KEY = (projectId: string) => `${LS_PREFIX}:${projectId}`
