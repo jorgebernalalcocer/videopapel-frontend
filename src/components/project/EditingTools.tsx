@@ -9,6 +9,7 @@ type EditingToolsProps = {
   onTogglePlay: () => void
   onSave?: () => void
   canSave?: boolean
+  isSaving?: boolean
 }
 
 export default function EditingTools({
@@ -17,6 +18,7 @@ export default function EditingTools({
   onTogglePlay,
   onSave,
   canSave = false,
+  isSaving = false,
 }: EditingToolsProps) {
   return (
     <div
@@ -40,10 +42,10 @@ export default function EditingTools({
         type="button"
         variant="default"
         onClick={onSave}
-        disabled={!canSave}
+        disabled={!canSave || isSaving}
         className="ml-auto"
       >
-        Guardar cambios
+        {isSaving ? 'Guardando…' : 'Guardar cambios'}
       </Button>
     </div>
   )

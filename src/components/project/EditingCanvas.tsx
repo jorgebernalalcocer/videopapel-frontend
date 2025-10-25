@@ -9,9 +9,13 @@ type Thumbnail = { t: number; url: string }
 
 type EditingCanvasProps = {
   projectId: string
+  clipId: number
+  apiBase: string
+  accessToken: string | null
   videoSrc: string
   durationMs: number
   initialTimeMs?: number
+  initialFrames?: number[]
   thumbnailsCount?: number
   thumbnailHeight?: number
   onChange?: (timeMs: number) => void
@@ -26,9 +30,13 @@ type EditingCanvasProps = {
  */
 export default function EditingCanvas({
   projectId,
+  clipId,
+  apiBase,
+  accessToken,
   videoSrc,
   durationMs,
   initialTimeMs = 0,
+  initialFrames,
   thumbnailsCount = 40,
   thumbnailHeight = 68,
   onChange,
@@ -45,22 +53,36 @@ export default function EditingCanvas({
   const [error, setError] = useState<string | null>(null)
   const [isCacheLoaded, setIsCacheLoaded] = useState(false)
   const [hasPendingChanges, setHasPendingChanges] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const [isPlaying, setIsPlaying] = useState(false)
   const playTimerRef = useRef<number | null>(null)
 
   const timesMs = useMemo(() => {
+    if (initialFrames && initialFrames.length) {
+      const unique = Array.from(new Set(initialFrames.map((n) => Math.max(0, Math.round(n)))))
+      unique.sort((a, b) => a - b)
+      return unique
+    }
     if (thumbnailsCount <= 1) return [0]
     const step = durationMs / (thumbnailsCount - 1)
     const arr = Array.from({ length: thumbnailsCount }, (_, i) => Math.round(i * step))
     arr[arr.length - 1] = durationMs
     return arr
-  }, [durationMs, thumbnailsCount])
+  }, [initialFrames, durationMs, thumbnailsCount])
 
   // firma de cache
   const sig = useMemo(
-    () => buildSig({ videoSrc, durationMs, thumbnailsCount, thumbnailHeight }),
-    [videoSrc, durationMs, thumbnailsCount, thumbnailHeight]
+    () =>
+      buildSig({
+        clipId,
+        videoSrc,
+        durationMs,
+        thumbnailsCount,
+        thumbnailHeight,
+        framesVersion: initialFrames?.join(',') ?? null,
+      }),
+    [clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, initialFrames]
   )
 
 
@@ -76,27 +98,26 @@ export default function EditingCanvas({
 
   // 🚨 EFECTO 1 (INICIAL): Solo para Cargar Cache al montar
   useEffect(() => {
-    if (!projectId) {
-        setIsCacheLoaded(true) // No hay proyecto, se considera "cargado"
-        return
+    if (!projectId || !clipId) {
+      setIsCacheLoaded(true)
+      return
     }
 
-    // CORS para canvas
     if (videoRef.current) videoRef.current.crossOrigin = 'anonymous'
 
-    const cached = loadThumbsFromCache(projectId, sig)
+    const cached = loadThumbsFromCache(projectId, clipId, sig)
     if (cached) {
       setThumbs(cached)
+      setHasPendingChanges(false)
     }
 
-    setIsCacheLoaded(true) // Marcamos que la caché ha sido procesada
+    setIsCacheLoaded(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, sig]) // Ejecutar solo al montar o si cambian props de cache
+  }, [projectId, clipId, sig])
 
   // 🚨 EFECTO 2 (POST-CARGA): Solo para GENERAR miniaturas
   useEffect(() => {
-    // Si la caché no ha terminado de cargar, o si la generación está deshabilitada, o si ya tenemos frames (de caché), salimos.
-    if (!isCacheLoaded || disableAutoThumbnails || thumbs.length > 0) return
+    if (!isCacheLoaded || disableAutoThumbnails || thumbs.length > 0 || !projectId || !clipId) return
     
     // Si llegamos aquí, NO hay frames, NO hay caché válida, y SÍ debemos generar.
 
@@ -106,11 +127,12 @@ export default function EditingCanvas({
         setError(null)
         setGenerating(true)
         
-        // 2) Generar y guardar bajo la clave del UUID
+        // Generar y guardar bajo la clave del UUID + clip
         const urls = await generateThumbnailsAsDataUrls(videoRef, timesMs, thumbnailHeight)
         if (!canceled) {
           setThumbs(urls)
-          saveThumbsToCache(projectId, sig, urls)
+          saveThumbsToCache(projectId, clipId, sig, urls)
+          setHasPendingChanges(false)
         }
       } catch (e: any) {
         if (!canceled) setError(resolveThumbnailError(e))
@@ -122,7 +144,7 @@ export default function EditingCanvas({
     runGeneration()
     return () => { canceled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, sig, thumbnailHeight])
+  }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, clipId, sig, thumbnailHeight])
 
 
   /** Elimina el frame seleccionado del array de miniaturas (no persiste hasta guardar) */
@@ -151,6 +173,38 @@ export default function EditingCanvas({
     setSelectedMs(newSelectedMs)
     scrollThumbIntoView(newSelectedMs)
     setHasPendingChanges(true)
+  }
+
+  async function handleSaveChanges() {
+    if (!projectId || !clipId) return
+    if (!accessToken) {
+      setError('Inicia sesión para guardar los cambios.')
+      return
+    }
+    if (!hasPendingChanges) return
+
+    try {
+      setIsSaving(true)
+      setError(null)
+      const res = await fetch(`${apiBase}/projects/${projectId}/clips/${clipId}/frames/`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ frames: thumbs.map((t) => t.t) }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status}`)
+      }
+      saveThumbsToCache(projectId, clipId, sig, thumbs)
+      setHasPendingChanges(false)
+    } catch (e: any) {
+      setError(e.message || 'No se pudieron guardar los cambios.')
+    } finally {
+      setIsSaving(false)
+    }
   }
 
   function formatTime(ms: number) {
@@ -248,17 +302,6 @@ export default function EditingCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, playbackFps, selectedMs, loop, thumbs.length]) // Dependencia de thumbs.length para recalcular stepForward
   // Usamos thumbs.length porque stepForward depende implícitamente del contenido de thumbs
-
-  const handleSave = () => {
-    if (!projectId || !sig || !hasPendingChanges) return
-    try {
-      saveThumbsToCache(projectId, sig, thumbs)
-      setHasPendingChanges(false)
-      // TODO: llamada al backend (pending)
-    } catch {
-      setError('No se pudieron guardar los cambios localmente.')
-    }
-  }
 
   return (
     <div className="w-full">
@@ -363,8 +406,9 @@ export default function EditingCanvas({
       heightPx={thumbnailHeight}
       isPlaying={isPlaying}
       onTogglePlay={togglePlay}
-      onSave={handleSave}
-      canSave={hasPendingChanges && !generating}
+      onSave={handleSaveChanges}
+      canSave={Boolean(accessToken) && hasPendingChanges && !generating}
+      isSaving={isSaving}
     />
   </div>
 )
@@ -375,19 +419,23 @@ export default function EditingCanvas({
 // =========================================================================
 
 const LS_PREFIX = 'vp:thumbs'
-const LS_KEY = (projectId: string) => `${LS_PREFIX}:${projectId}`
+const LS_KEY = (projectId: string, clipId: number | string) => `${LS_PREFIX}:${projectId}:${clipId}`
 
-function buildSig(args: { videoSrc: string; durationMs: number; thumbnailsCount: number; thumbnailHeight: number }) {
-  const { videoSrc, durationMs, thumbnailsCount, thumbnailHeight } = args
-  // Importante: No uses durationMs si los thumbs son generados por el algoritmo timesMs. 
-  // Mejor usar durationMs redondeado o solo el videoSrc.
-  // Mantenemos la versión 1 de tu código original para no invalidar el caché existente.
-  return JSON.stringify({ v: 1, videoSrc, durationMs, thumbnailsCount, thumbnailHeight })
+function buildSig(args: {
+  clipId: number
+  videoSrc: string
+  durationMs: number
+  thumbnailsCount: number
+  thumbnailHeight: number
+  framesVersion?: string | null
+}) {
+  const { clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, framesVersion } = args
+  return JSON.stringify({ v: 2, clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, framesVersion })
 }
 
-function loadThumbsFromCache(projectId: string, sig: string): Array<Thumbnail> | null {
+function loadThumbsFromCache(projectId: string, clipId: number | string, sig: string): Array<Thumbnail> | null {
   try {
-    const raw = localStorage.getItem(LS_KEY(projectId))
+    const raw = localStorage.getItem(LS_KEY(projectId, clipId))
     if (!raw) return null
     const parsed = JSON.parse(raw)
     if (parsed?.sig !== sig) return null
@@ -400,14 +448,14 @@ function loadThumbsFromCache(projectId: string, sig: string): Array<Thumbnail> |
   }
 }
 
-function saveThumbsToCache(projectId: string, sig: string, items: Array<Thumbnail>) {
+function saveThumbsToCache(projectId: string, clipId: number | string, sig: string, items: Array<Thumbnail>) {
   try {
     const payload = {
       sig,
       createdAt: Date.now(),
       items: items.map((i) => ({ t: i.t, dataUrl: i.url })),
     }
-    localStorage.setItem(LS_KEY(projectId), JSON.stringify(payload))
+    localStorage.setItem(LS_KEY(projectId, clipId), JSON.stringify(payload))
   } catch {
     // ignorar errores de LS
   }

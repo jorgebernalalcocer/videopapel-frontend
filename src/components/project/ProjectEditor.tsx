@@ -6,14 +6,22 @@ import { useAuth } from '@/store/auth'
 import EditingCanvas from '@/components/project/EditingCanvas'
 
 // Define el tipo de dato del Proyecto, incluyendo el UUID (string)
+type ProjectClipPayload = {
+  id: number
+  video_url: string
+  duration_ms: number
+  frames?: number[] | null
+  time_start_ms?: number | null
+  time_end_ms?: number | null
+}
+
 type Project = {
   id: string
   name: string | null
   owner_id: number
   status: string
   created_at: string
-  // Añade aquí cualquier otro campo que necesites del modelo Project
-  // Por ejemplo, detalles del clip principal o configuraciones
+  primary_clip?: ProjectClipPayload | null
 }
 
 interface ProjectEditorProps {
@@ -126,13 +134,17 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2>
 {/* Previsualización y Edición de Clips */}
 <div className="aspect-video bg-black rounded-lg mb-4 p-2">
-  {project && (project as any).primary_clip ? (
+{project.primary_clip ? (
     <EditingCanvas
       projectId={project.id}
-      videoSrc={(project as any).primary_clip.video_url}
-      durationMs={(project as any).primary_clip.duration_ms}
+      clipId={project.primary_clip.id}
+      apiBase={API_BASE}
+      accessToken={accessToken}
+      videoSrc={project.primary_clip.video_url}
+      durationMs={project.primary_clip.duration_ms}
       playbackFps={2}
-      initialTimeMs={(project as any).primary_clip.time_start_ms ?? 0}
+      initialTimeMs={project.primary_clip.time_start_ms ?? 0}
+      initialFrames={project.primary_clip.frames ?? undefined}
       onChange={(ms) => {
         // Aquí puedes guardar selección temporal, o preparar recorte
         // console.log('Selected frame at', ms, 'ms')
