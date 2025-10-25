@@ -128,8 +128,10 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
 <div className="aspect-video bg-black rounded-lg mb-4 p-2">
   {project && (project as any).primary_clip ? (
     <EditingCanvas
+      projectId={project.id}
       videoSrc={(project as any).primary_clip.video_url}
       durationMs={(project as any).primary_clip.duration_ms}
+      playbackFps={4}
       initialTimeMs={(project as any).primary_clip.time_start_ms ?? 0}
       onChange={(ms) => {
         // Aquí puedes guardar selección temporal, o preparar recorte

@@ -4,29 +4,24 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import EditingTools from '@/components/project/EditingTools'
 
 type EditingCanvasProps = {
+  projectId: string            // 👈 NUEVO: UUID del proyecto para cache
   videoSrc: string
   durationMs: number
-  /** fotograma inicial seleccionado en ms (default 0) */
   initialTimeMs?: number
-  /** nº de miniaturas a muestrear de manera uniforme (default 40) */
   thumbnailsCount?: number
-  /** alto de cada miniatura en px (default 68) */
   thumbnailHeight?: number
-  /** callback al cambiar la selección */
   onChange?: (timeMs: number) => void
-  /** desactivar generación automática de thumbs (si prefieres traerlas del backend) */
   disableAutoThumbnails?: boolean
-  /** fps de la “reproducción” (default 12) */
   playbackFps?: number
-  /** si true, al final vuelve al inicio y sigue (default false) */
   loop?: boolean
 }
 
 /**
- * Genera miniaturas por seek + canvas, muestra preview grande y tira de thumbs.
- * Accesible (teclas ← → para navegar, Space para play/pausa), y muy reutilizable.
+ * Genera miniaturas (o las lee del localStorage), muestra preview grande y tira de thumbs.
+ * Accesible (← → para navegar, Space para play/pausa). Cache por proyecto (UUID).
  */
 export default function EditingCanvas({
+  projectId,                     // 👈 requerido para cache
   videoSrc,
   durationMs,
   initialTimeMs = 0,
@@ -35,7 +30,7 @@ export default function EditingCanvas({
   onChange,
   disableAutoThumbnails = false,
   playbackFps = 12,
-  loop = true, // al llegar al final del video vuelve al inicio
+  loop = true,
 }: EditingCanvasProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const bigCanvasRef = useRef<HTMLCanvasElement>(null)
@@ -50,58 +45,71 @@ export default function EditingCanvas({
   const playTimerRef = useRef<number | null>(null)
 
   const timesMs = useMemo(() => {
-    // Muestras uniformes 0..duration
     if (thumbnailsCount <= 1) return [0]
     const step = durationMs / (thumbnailsCount - 1)
     const arr = Array.from({ length: thumbnailsCount }, (_, i) => Math.round(i * step))
-    arr[arr.length - 1] = durationMs // asegurar el último = duration
+    arr[arr.length - 1] = durationMs
     return arr
   }, [durationMs, thumbnailsCount])
 
-  // disparar onChange hacia fuera
+  // firma de cache (si cambia, invalidamos)
+const sig = useMemo(
+  () => buildSig({ videoSrc, durationMs, thumbnailsCount, thumbnailHeight }),
+  [videoSrc, durationMs, thumbnailsCount, thumbnailHeight]
+)
+
+
+  // onChange externo
   useEffect(() => {
     onChange?.(selectedMs)
   }, [selectedMs, onChange])
 
-  // pintar el fotograma grande cuando cambie la selección
+  // preview grande
   useEffect(() => {
     paintBigFrame(selectedMs)
   }, [selectedMs, videoSrc])
 
-  // generar miniaturas automáticamente (si está activado)
-  useEffect(() => {
-    // Forzar CORS anónimo antes de cargar el video (necesario para canvas)
-    if (videoRef.current) {
-      videoRef.current.crossOrigin = 'anonymous'
-    }
+  // miniaturas: lee cache o genera y guarda
+useEffect(() => {
+  // sin projectId no hay cache
+  if (!projectId) return
 
-    if (disableAutoThumbnails) return
-    let canceled = false
-    async function run() {
+  // CORS para canvas
+  if (videoRef.current) videoRef.current.crossOrigin = 'anonymous'
+  if (disableAutoThumbnails) return
+
+  let canceled = false
+
+  async function run() {
+    try {
       setError(null)
       setGenerating(true)
-      try {
-        const urls = await generateThumbnails(videoRef, timesMs, thumbnailHeight)
-        if (!canceled) setThumbs(urls)
-      } catch (e: any) {
-        if (!canceled) setError(resolveThumbnailError(e))
-      } finally {
-        if (!canceled) setGenerating(false)
+
+      // 1) Intentar cargar del cache por UUID
+      const cached = loadThumbsFromCache(projectId, sig)
+      if (!canceled && cached) {
+        setThumbs(cached)
+        return
       }
+
+      // 2) Generar y guardar bajo la clave del UUID
+      const urls = await generateThumbnailsAsDataUrls(videoRef, timesMs, thumbnailHeight)
+      if (!canceled) {
+        setThumbs(urls)
+        saveThumbsToCache(projectId, sig, urls)
+      }
+    } catch (e: any) {
+      if (!canceled) setError(resolveThumbnailError(e))
+    } finally {
+      if (!canceled) setGenerating(false)
     }
-    run()
-    return () => {
-      canceled = true
-      // liberar blobs
-      setThumbs((prev) => {
-        prev.forEach((p) => {
-          if (p.url.startsWith('blob:')) URL.revokeObjectURL(p.url)
-        })
-        return []
-      })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [videoSrc, durationMs, thumbnailHeight, disableAutoThumbnails, thumbnailsCount])
+  }
+
+  run()
+  return () => { canceled = true }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [projectId, sig, videoSrc, durationMs, thumbnailHeight, disableAutoThumbnails, thumbnailsCount])
+
 
   function formatTime(ms: number) {
     const s = Math.floor(ms / 1000)
@@ -122,7 +130,6 @@ export default function EditingCanvas({
       await seekVideo(video, tMs / 1000)
       const w = video.videoWidth || 1280
       const h = video.videoHeight || 720
-      // Ajustar canvas al tamaño del video (mantener nitidez)
       canvas.width = w
       canvas.height = h
       const ctx = canvas.getContext('2d')
@@ -137,10 +144,7 @@ export default function EditingCanvas({
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault()
       const idx = nearestIndex(timesMs, selectedMs)
-      const next =
-        e.key === 'ArrowLeft'
-          ? Math.max(0, idx - 1)
-          : Math.min(timesMs.length - 1, idx + 1)
+      const next = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : Math.min(timesMs.length - 1, idx + 1)
       setSelectedMs(timesMs[next])
       scrollThumbIntoView(timesMs[next])
     } else if (e.key === ' ') {
@@ -156,11 +160,8 @@ export default function EditingCanvas({
 
   /* --------- reproducción --------- */
 
-  const togglePlay = () => {
-    setIsPlaying((p) => !p)
-  }
+  const togglePlay = () => setIsPlaying((p) => !p)
 
-  // avanza al siguiente frame “discreto” del timeline
   const stepForward = () => {
     const idx = nearestIndex(timesMs, selectedMs)
     const nextIdx = idx + 1
@@ -173,22 +174,19 @@ export default function EditingCanvas({
       setSelectedMs(t)
       scrollThumbIntoView(t)
     } else {
-      setIsPlaying(false) // fin
+      setIsPlaying(false)
     }
   }
 
-  // gestionar el temporizador
   useEffect(() => {
     if (!isPlaying) {
-      // parar
       if (playTimerRef.current) {
         window.clearInterval(playTimerRef.current)
         playTimerRef.current = null
       }
       return
     }
-    // iniciar
-    const intervalMs = Math.max(16, Math.round(1000 / playbackFps)) // clamp a ~60fps máx.
+    const intervalMs = Math.max(16, Math.round(1000 / playbackFps))
     playTimerRef.current = window.setInterval(stepForward, intervalMs)
     return () => {
       if (playTimerRef.current) {
@@ -211,7 +209,6 @@ export default function EditingCanvas({
             </div>
           </div>
         )}
-        {/* video oculto para capturas */}
         <video
           ref={videoRef}
           src={videoSrc}
@@ -221,11 +218,7 @@ export default function EditingCanvas({
           crossOrigin="anonymous"
           className="hidden"
         />
-        <canvas
-          ref={bigCanvasRef}
-          className="w-full h-auto block"
-          aria-label="Preview frame"
-        />
+        <canvas ref={bigCanvasRef} className="w-full h-auto block" aria-label="Preview frame" />
         <div className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded">
           {formatTime(selectedMs)}
         </div>
@@ -238,9 +231,7 @@ export default function EditingCanvas({
         onKeyDown={onKeyDownThumbs}
         aria-label="Video frames timeline"
       >
-        {error && (
-          <p className="text-red-600 text-sm px-2 py-1">{error}</p>
-        )}
+        {error && <p className="text-red-600 text-sm px-2 py-1">{error}</p>}
         {!disableAutoThumbnails && (
           <ul className="flex gap-2 min-w-max">
             {thumbs.length === 0 && !generating ? (
@@ -296,7 +287,41 @@ export default function EditingCanvas({
   )
 }
 
-/* ---------- helpers ---------- */
+const LS_PREFIX = 'vp:thumbs'
+const LS_KEY = (projectId: string) => `${LS_PREFIX}:${projectId}`
+
+function buildSig(args: { videoSrc: string; durationMs: number; thumbnailsCount: number; thumbnailHeight: number }) {
+  const { videoSrc, durationMs, thumbnailsCount, thumbnailHeight } = args
+  return JSON.stringify({ v: 1, videoSrc, durationMs, thumbnailsCount, thumbnailHeight })
+}
+
+function loadThumbsFromCache(projectId: string, sig: string): Array<{ t: number; url: string }> | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY(projectId))
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed?.sig !== sig) return null
+    const items = parsed?.items
+    if (!Array.isArray(items)) return null
+    return items.map((it: any) => ({ t: Number(it.t) || 0, url: String(it.dataUrl || '') }))
+  } catch {
+    return null
+  }
+}
+
+function saveThumbsToCache(projectId: string, sig: string, items: Array<{ t: number; url: string }>) {
+  try {
+    const payload = {
+      sig,
+      createdAt: Date.now(),
+      items: items.map((i) => ({ t: i.t, dataUrl: i.url })),
+    }
+    localStorage.setItem(LS_KEY(projectId), JSON.stringify(payload))
+  } catch {
+    // cuota llena o modo privado: ignorar
+  }
+}
+
 
 function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n))
@@ -345,7 +370,6 @@ function seekVideo(video: HTMLVideoElement, timeSec: number) {
       video.removeEventListener('seeked', onSeeked)
       video.removeEventListener('error', onError)
     }
-    // Evitar loops si el tiempo es igual
     if (Math.abs(video.currentTime - timeSec) < 0.01) {
       resolve()
       return
@@ -361,8 +385,8 @@ function seekVideo(video: HTMLVideoElement, timeSec: number) {
   })
 }
 
-/** genera miniaturas para una lista de tiempos (ms) y devuelve blob URLs */
-async function generateThumbnails(
+/** genera miniaturas (data URLs) para una lista de tiempos (ms) */
+async function generateThumbnailsAsDataUrls(
   videoRef: React.RefObject<HTMLVideoElement>,
   timesMs: number[],
   thumbnailHeight: number
@@ -370,7 +394,6 @@ async function generateThumbnails(
   const video = videoRef.current
   if (!video) throw new Error('Video element not ready')
 
-  // Asegurar metadata cargada
   if (Number.isNaN(video.duration) || video.duration === 0) {
     await new Promise<void>((resolve) => {
       const onLoaded = () => {
@@ -393,13 +416,8 @@ async function generateThumbnails(
   for (const t of timesMs) {
     await seekVideo(video, t / 1000)
     ctx.drawImage(video, 0, 0, width, thumbnailHeight)
-    const blob: Blob | null = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.8))
-    if (blob) {
-      const url = URL.createObjectURL(blob)
-      out.push({ t, url })
-    } else {
-      out.push({ t, url: '' })
-    }
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8) // 👈 data URL (guardable en LS)
+    out.push({ t, url: dataUrl })
   }
   return out
 }
