@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
+import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 
 type EditingCanvasProps = {
@@ -219,8 +220,12 @@ useEffect(() => {
           className="hidden"
         />
         <canvas ref={bigCanvasRef} className="w-full h-auto block" aria-label="Preview frame" />
-        <div className="absolute bottom-2 right-2 text-xs bg-black/60 text-white px-2 py-1 rounded">
-          {formatTime(selectedMs)}
+       <div className="absolute bottom-2 right-2 flex items-center gap-2">
+          <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
+            {formatTime(selectedMs)}
+          </div>
+          {/* Botón que avanza un fotograma */}
+          <PlayButton onClick={stepForward} />
         </div>
       </div>
 

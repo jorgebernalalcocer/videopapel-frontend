@@ -131,7 +131,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
       projectId={project.id}
       videoSrc={(project as any).primary_clip.video_url}
       durationMs={(project as any).primary_clip.duration_ms}
-      playbackFps={4}
+      playbackFps={2}
       initialTimeMs={(project as any).primary_clip.time_start_ms ?? 0}
       onChange={(ms) => {
         // Aquí puedes guardar selección temporal, o preparar recorte
