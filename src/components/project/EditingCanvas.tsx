@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
@@ -96,6 +96,43 @@ export default function EditingCanvas({
     paintBigFrame(selectedMs)
   }, [selectedMs, videoSrc])
 
+  const persistFrames = useCallback(
+    async (
+      frames: number[],
+      items: Thumbnail[] | null,
+      { silent = false }: { silent?: boolean } = {}
+    ) => {
+      if (!projectId || !clipId || !accessToken) {
+        if (!silent) {
+          setError('Inicia sesión para guardar los cambios.')
+        }
+        return false
+      }
+      try {
+        const res = await fetch(`${apiBase}/projects/${projectId}/clips/${clipId}/frames/`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ frames }),
+        })
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || `Error ${res.status}`)
+        }
+        saveThumbsToCache(projectId, clipId, sig, items ?? thumbs)
+        return true
+      } catch (e: any) {
+        if (!silent) {
+          setError(e.message || 'No se pudieron guardar los cambios.')
+        }
+        return false
+      }
+    },
+    [projectId, clipId, accessToken, apiBase, sig, thumbs]
+  )
+
   // 🚨 EFECTO 1 (INICIAL): Solo para Cargar Cache al montar
   useEffect(() => {
     if (!projectId || !clipId) {
@@ -109,6 +146,7 @@ export default function EditingCanvas({
     if (cached) {
       setThumbs(cached)
       setHasPendingChanges(false)
+      setGenerating(false)
     }
 
     setIsCacheLoaded(true)
@@ -132,7 +170,13 @@ export default function EditingCanvas({
         if (!canceled) {
           setThumbs(urls)
           saveThumbsToCache(projectId, clipId, sig, urls)
-          setHasPendingChanges(false)
+          persistFrames(urls.map((f) => f.t), urls, { silent: true })
+            .then((saved) => {
+              if (!canceled) setHasPendingChanges(!saved)
+            })
+            .catch(() => {
+              if (!canceled) setHasPendingChanges(true)
+            })
         }
       } catch (e: any) {
         if (!canceled) setError(resolveThumbnailError(e))
@@ -144,7 +188,7 @@ export default function EditingCanvas({
     runGeneration()
     return () => { canceled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, clipId, sig, thumbnailHeight])
+  }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, clipId, sig, thumbnailHeight, persistFrames])
 
 
   /** Elimina el frame seleccionado del array de miniaturas (no persiste hasta guardar) */
@@ -176,35 +220,14 @@ export default function EditingCanvas({
   }
 
   async function handleSaveChanges() {
-    if (!projectId || !clipId) return
-    if (!accessToken) {
-      setError('Inicia sesión para guardar los cambios.')
-      return
-    }
     if (!hasPendingChanges) return
-
-    try {
-      setIsSaving(true)
-      setError(null)
-      const res = await fetch(`${apiBase}/projects/${projectId}/clips/${clipId}/frames/`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify({ frames: thumbs.map((t) => t.t) }),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Error ${res.status}`)
-      }
-      saveThumbsToCache(projectId, clipId, sig, thumbs)
+    setIsSaving(true)
+    setError(null)
+    const success = await persistFrames(thumbs.map((t) => t.t), thumbs)
+    if (success) {
       setHasPendingChanges(false)
-    } catch (e: any) {
-      setError(e.message || 'No se pudieron guardar los cambios.')
-    } finally {
-      setIsSaving(false)
     }
+    setIsSaving(false)
   }
 
   function formatTime(ms: number) {
