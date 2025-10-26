@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play } from 'lucide-react' // si usas lucide; opcional
+import { Play, Plus } from 'lucide-react'
 
 type EditingToolsProps = {
   heightPx: number
@@ -10,6 +10,7 @@ type EditingToolsProps = {
   onSave?: () => void
   canSave?: boolean
   isSaving?: boolean
+  onInsertVideo?: () => void
 }
 
 export default function EditingTools({
@@ -19,6 +20,7 @@ export default function EditingTools({
   onSave,
   canSave = false,
   isSaving = false,
+  onInsertVideo,
 }: EditingToolsProps) {
   return (
     <div
@@ -36,6 +38,16 @@ export default function EditingTools({
         {/* Icono opcional; quítalo si no usas lucide */}
         <Play className="h-4 w-4" />
         {isPlaying ? 'Pausar' : 'Reproducir'}
+      </Button>
+
+      <Button
+        type="button"
+        variant="outline"
+        onClick={onInsertVideo}
+        className="inline-flex items-center gap-2"
+      >
+        <Plus className="h-4 w-4" />
+        Insertar vídeo
       </Button>
 
       <Button

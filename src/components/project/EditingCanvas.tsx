@@ -4,8 +4,15 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
+import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
 
 type Thumbnail = { t: number; url: string }
+type ClipState = {
+  clipId: number
+  videoSrc: string
+  durationMs: number
+  frames: number[]
+}
 
 type EditingCanvasProps = {
   projectId: string
@@ -54,39 +61,94 @@ export default function EditingCanvas({
   const [isCacheLoaded, setIsCacheLoaded] = useState(false)
   const [hasPendingChanges, setHasPendingChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [videoPickerOpen, setVideoPickerOpen] = useState(false)
+  const [overrideClip, setOverrideClip] = useState<ClipState | null>(null)
+  const initialFramesSignature = useMemo(() => initialFrames?.join(',') ?? null, [initialFrames])
 
   const [isPlaying, setIsPlaying] = useState(false)
   const playTimerRef = useRef<number | null>(null)
 
+  const baseClip = useMemo<ClipState>(() => ({
+    clipId,
+    videoSrc,
+    durationMs,
+    frames: initialFrames ?? [],
+  }), [clipId, videoSrc, durationMs, initialFrames])
+
+const activeClip = overrideClip ?? baseClip
+
+  const activeClipId = activeClip.clipId
+  const activeVideoSrc = activeClip.videoSrc
+  const activeDurationMs = activeClip.durationMs
+  const activeFrames = activeClip.frames
+
   const timesMs = useMemo(() => {
-    if (initialFrames && initialFrames.length) {
-      const unique = Array.from(new Set(initialFrames.map((n) => Math.max(0, Math.round(n)))))
+    if (activeFrames && activeFrames.length) {
+      const unique = Array.from(new Set(activeFrames.map((n) => Math.max(0, Math.round(n)))))
       unique.sort((a, b) => a - b)
       return unique
     }
-    if (thumbnailsCount <= 1) return [0]
-    const step = durationMs / (thumbnailsCount - 1)
-    const arr = Array.from({ length: thumbnailsCount }, (_, i) => Math.round(i * step))
-    arr[arr.length - 1] = durationMs
-    return arr
-  }, [initialFrames, durationMs, thumbnailsCount])
+    return generateTimesFromDuration(activeDurationMs, thumbnailsCount)
+  }, [activeFrames, activeDurationMs, thumbnailsCount])
 
   // firma de cache
   const sig = useMemo(
     () =>
       buildSig({
-        clipId,
-        videoSrc,
-        durationMs,
+        clipId: activeClipId,
+        videoSrc: activeVideoSrc,
+        durationMs: activeDurationMs,
         thumbnailsCount,
         thumbnailHeight,
-        framesVersion: initialFrames?.join(',') ?? null,
+        framesVersion: activeFrames?.join(',') ?? null,
       }),
-    [clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, initialFrames]
+    [activeClipId, activeVideoSrc, activeDurationMs, thumbnailsCount, thumbnailHeight, activeFrames]
   )
 
 
   // onChange externo
+  const handleInsertVideo = useCallback(async (video: VideoItem) => {
+    if (!projectId || !accessToken) {
+      setError('Inicia sesión para insertar vídeos en el proyecto.')
+      return
+    }
+    setGenerating(true)
+    setError(null)
+    try {
+      const res = await fetch(`${apiBase}/projects/${projectId}/clips/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ video_id: video.id }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status}`)
+      }
+      const clip = await res.json()
+      setOverrideClip({
+        clipId: clip.id,
+        videoSrc: clip.video_url,
+        durationMs: clip.duration_ms,
+        frames: clip.frames ?? [],
+      })
+      setThumbs([])
+      setSelectedMs(0)
+      setHasPendingChanges(false)
+      setIsCacheLoaded(false)
+    } catch (e: any) {
+      setError(e.message || 'No se pudo insertar el vídeo.')
+    } finally {
+      setGenerating(false)
+    }
+  }, [projectId, apiBase, accessToken])
+
+  useEffect(() => {
+    setOverrideClip(null)
+  }, [clipId, videoSrc, durationMs, initialFramesSignature])
+
   useEffect(() => {
     onChange?.(selectedMs)
   }, [selectedMs, onChange])
@@ -94,7 +156,7 @@ export default function EditingCanvas({
   // preview grande
   useEffect(() => {
     paintBigFrame(selectedMs)
-  }, [selectedMs, videoSrc])
+  }, [selectedMs, activeVideoSrc])
 
   const persistFrames = useCallback(
     async (
@@ -102,14 +164,14 @@ export default function EditingCanvas({
       items: Thumbnail[] | null,
       { silent = false }: { silent?: boolean } = {}
     ) => {
-      if (!projectId || !clipId || !accessToken) {
+      if (!projectId || !activeClipId || !accessToken) {
         if (!silent) {
           setError('Inicia sesión para guardar los cambios.')
         }
         return false
       }
       try {
-        const res = await fetch(`${apiBase}/projects/${projectId}/clips/${clipId}/frames/`, {
+        const res = await fetch(`${apiBase}/projects/${projectId}/clips/${activeClipId}/frames/`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -121,7 +183,7 @@ export default function EditingCanvas({
           const text = await res.text()
           throw new Error(text || `Error ${res.status}`)
         }
-        saveThumbsToCache(projectId, clipId, sig, items ?? thumbs)
+        saveThumbsToCache(projectId, activeClipId, sig, items ?? thumbs)
         return true
       } catch (e: any) {
         if (!silent) {
@@ -130,19 +192,19 @@ export default function EditingCanvas({
         return false
       }
     },
-    [projectId, clipId, accessToken, apiBase, sig, thumbs]
+    [projectId, activeClipId, accessToken, apiBase, sig, thumbs]
   )
 
   // 🚨 EFECTO 1 (INICIAL): Solo para Cargar Cache al montar
   useEffect(() => {
-    if (!projectId || !clipId) {
+    if (!projectId || !activeClipId) {
       setIsCacheLoaded(true)
       return
     }
 
     if (videoRef.current) videoRef.current.crossOrigin = 'anonymous'
 
-    const cached = loadThumbsFromCache(projectId, clipId, sig)
+    const cached = loadThumbsFromCache(projectId, activeClipId, sig)
     if (cached) {
       setThumbs(cached)
       setHasPendingChanges(false)
@@ -151,11 +213,11 @@ export default function EditingCanvas({
 
     setIsCacheLoaded(true)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, clipId, sig])
+  }, [projectId, activeClipId, sig])
 
   // 🚨 EFECTO 2 (POST-CARGA): Solo para GENERAR miniaturas
   useEffect(() => {
-    if (!isCacheLoaded || disableAutoThumbnails || thumbs.length > 0 || !projectId || !clipId) return
+    if (!isCacheLoaded || disableAutoThumbnails || thumbs.length > 0 || !projectId || !activeClipId) return
     
     // Si llegamos aquí, NO hay frames, NO hay caché válida, y SÍ debemos generar.
 
@@ -169,7 +231,7 @@ export default function EditingCanvas({
         const urls = await generateThumbnailsAsDataUrls(videoRef, timesMs, thumbnailHeight)
         if (!canceled) {
           setThumbs(urls)
-          saveThumbsToCache(projectId, clipId, sig, urls)
+          saveThumbsToCache(projectId, activeClipId, sig, urls)
           persistFrames(urls.map((f) => f.t), urls, { silent: true })
             .then((saved) => {
               if (!canceled) setHasPendingChanges(!saved)
@@ -188,8 +250,7 @@ export default function EditingCanvas({
     runGeneration()
     return () => { canceled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, clipId, sig, thumbnailHeight, persistFrames])
-
+  }, [isCacheLoaded, disableAutoThumbnails, thumbs.length, timesMs, projectId, activeClipId, sig, thumbnailHeight, persistFrames])
 
   /** Elimina el frame seleccionado del array de miniaturas (no persiste hasta guardar) */
   function deleteSelectedFrame() {
@@ -343,9 +404,9 @@ export default function EditingCanvas({
       )}
 
       {/* Estos deben ir DENTRO del contenedor relativo */}
-      <video
-        ref={videoRef}
-        src={videoSrc}
+        <video
+          ref={videoRef}
+          src={activeVideoSrc}
         preload="metadata"
         muted
         playsInline
@@ -432,6 +493,15 @@ export default function EditingCanvas({
       onSave={handleSaveChanges}
       canSave={Boolean(accessToken) && hasPendingChanges && !generating}
       isSaving={isSaving}
+      onInsertVideo={() => setVideoPickerOpen(true)}
+    />
+
+    <VideoPickerModal
+      open={videoPickerOpen}
+      onClose={() => setVideoPickerOpen(false)}
+      apiBase={apiBase}
+      accessToken={accessToken}
+      onSelect={handleInsertVideo}
     />
   </div>
 )
@@ -581,4 +651,13 @@ async function generateThumbnailsAsDataUrls(
     out.push({ t, url: dataUrl })
   }
   return out
+}
+
+function generateTimesFromDuration(durationMs: number, framesCount: number) {
+  if (framesCount <= 1) return [0]
+  const safeDuration = durationMs && durationMs > 0 ? durationMs : framesCount * 1000
+  const step = safeDuration / (framesCount - 1)
+  const arr = Array.from({ length: framesCount }, (_, i) => Math.round(i * step))
+  arr[arr.length - 1] = safeDuration
+  return arr
 }
