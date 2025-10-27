@@ -19,7 +19,6 @@ type ClipState = {
 }
 
 type EditingCanvasProps = {
-    onInsertVideo?: () => void  // ⬅️ nuevo
   projectId: string
   apiBase: string
   accessToken: string | null
@@ -40,10 +39,13 @@ type EditingCanvasProps = {
   disableAutoThumbnails?: boolean
   playbackFps?: number
   loop?: boolean
+
+  // Abrir modal en el padre
+  onInsertVideo?: () => void
 }
 
 type CombinedThumb = {
-  id: string
+  id: string              // `${clipId}:${tLocal}`
   clipId: number
   tLocal: number
   tGlobal: number
@@ -74,17 +76,16 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     disableAutoThumbnails = false,
     playbackFps = 12,
     loop = true,
-    onInsertVideo,             // ✅ AÑADE ESTO
+    onInsertVideo,
   } = props
 
   const isMulti = Array.isArray(clips) && clips.length > 0
 
-  // Refs/UI
   const videoRef = useRef<HTMLVideoElement>(null)
   const bigCanvasRef = useRef<HTMLCanvasElement>(null)
 
-  // Estado
   const [selectedGlobalMs, setSelectedGlobalMs] = useState<number>(initialTimeMs)
+  const [selectedId, setSelectedId] = useState<string | null>(null) // 👈 selección por id
   const [error, setError] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [isCacheLoaded, setIsCacheLoaded] = useState(false)
@@ -93,20 +94,18 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const playTimerRef = useRef<number | null>(null)
 
-  // Single-clip de compatibilidad
+  // Compat single-clip
   const baseClip: ClipState | null = useMemo(() => {
     if (isMulti) return null
     if (!clipId || !videoSrc || !durationMs) return null
     return { clipId, videoSrc, durationMs, frames: initialFrames ?? [] }
   }, [isMulti, clipId, videoSrc, durationMs, initialFrames])
 
-  // Clips ordenados
   const clipsOrdered = useMemo<ClipState[]>(() => {
     if (isMulti) return clips!.slice()
     return baseClip ? [baseClip] : []
   }, [isMulti, clips, baseClip])
 
-  // Offsets acumulados globales
   const clipOffsets = useMemo(() => {
     const out: Record<number, { offset: number; start: number; end: number }> = {}
     let acc = 0
@@ -126,7 +125,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     [clipOffsets]
   )
 
-  // Cargar/generar thumbs por clip y fusionar
+  // Cargar/generar thumbs por clip, aplicar ventana [start, end) y fusionar
   useEffect(() => {
     let canceled = false
     ;(async () => {
@@ -152,7 +151,6 @@ export default function EditingCanvas(props: EditingCanvasProps) {
           let items = loadThumbsFromCache(projectId, c.clipId, sig)
 
           if (!items || items.length === 0) {
-            // Si no hay caché, usa frames del backend o tiempos generados
             const seeds: Thumbnail[] =
               (c.frames?.length
                 ? c.frames
@@ -161,17 +159,15 @@ export default function EditingCanvas(props: EditingCanvasProps) {
             items = seeds
           }
 
-          // Recorta a la ventana [start, end]
-          items = items.filter((it) => it.t >= start && it.t <= end)
+          // 👇 Ventana semiabierta: [start, end)
+          items = items.filter((it) => it.t >= start && it.t < end)
 
-          // Generar dataURLs si faltan
+          // Construir URLs Cloudinary si falta url
           if (items.some((it) => !it.url) && !disableAutoThumbnails) {
-// ✅ Ahora: construye URLs directas a fotogramas Cloudinary
-items = items.map((it) => ({
-  t: it.t,
-  url: cloudinaryFrameUrlFromVideoUrl(c.videoSrc, it.t, thumbnailHeight),
-}))
-
+            items = items.map((it) => ({
+              t: it.t,
+              url: cloudinaryFrameUrlFromVideoUrl(c.videoSrc, it.t, thumbnailHeight),
+            }))
             saveThumbsToCache(projectId, c.clipId, sig, items)
 
             // Persistir frames en backend (silencioso)
@@ -185,9 +181,7 @@ items = items.map((it) => ({
                   },
                   body: JSON.stringify({ frames: items.map((i) => i.t) }),
                 })
-              } catch {
-                /* noop */
-              }
+              } catch { /* noop */ }
             }
           }
 
@@ -207,6 +201,12 @@ items = items.map((it) => ({
           setCombinedThumbs(all)
           setIsCacheLoaded(true)
           setGenerating(false)
+
+          // Inicializa selección si no existe
+          if (!selectedId && all.length) {
+            setSelectedId(all[0].id)
+            setSelectedGlobalMs(all[0].tGlobal)
+          }
         }
       } catch (e: any) {
         if (!canceled) {
@@ -217,26 +217,25 @@ items = items.map((it) => ({
       }
     })()
 
-    return () => {
-      canceled = true
-    }
+    return () => { canceled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, clipsOrdered, clipOffsets, thumbnailsCount, thumbnailHeight, disableAutoThumbnails])
 
-  // onChange externo
+  // Notifica externamente por tiempo (si alguien lo usa)
   useEffect(() => {
     onChange?.(selectedGlobalMs)
   }, [selectedGlobalMs, onChange])
 
-  // Pintar frame grande al cambiar selección
+  // Pintar frame grande al cambiar la selección
   useEffect(() => {
     ;(async () => {
-      const current = nearestByGlobal(selectedGlobalMs, combinedThumbs)
+      const current =
+        (selectedId ? combinedThumbs.find(t => t.id === selectedId) : null) ??
+        nearestByGlobal(selectedGlobalMs, combinedThumbs)
       if (!current) return
       await paintBigFrameForSrc(current.videoSrc, current.tLocal)
     })()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedGlobalMs, combinedThumbs])
+  }, [selectedId, selectedGlobalMs, combinedThumbs])
 
   async function paintBigFrameForSrc(src: string, tLocalMs: number) {
     const video = videoRef.current
@@ -255,27 +254,30 @@ items = items.map((it) => ({
       const ctx = canvas.getContext('2d')
       if (!ctx) return
       ctx.drawImage(video, 0, 0, w, h)
-    } catch {
-      /* noop */
-    }
+    } catch { /* noop */ }
   }
 
-  // Reproducción
+  /* --------- reproducción --------- */
+
   const togglePlay = () => setIsPlaying((p) => !p)
 
   function stepForward() {
     if (!combinedThumbs.length) return
-    const idx = nearestIndex(
-      combinedThumbs.map((t) => t.tGlobal),
-      selectedGlobalMs
-    )
+    const idx = selectedId
+      ? combinedThumbs.findIndex(t => t.id === selectedId)
+      : nearestIndex(combinedThumbs.map(t => t.tGlobal), selectedGlobalMs)
+
     const nextIdx = idx + 1
     if (nextIdx < combinedThumbs.length) {
-      setSelectedGlobalMs(combinedThumbs[nextIdx].tGlobal)
-      scrollThumbIntoView(combinedThumbs[nextIdx].id)
+      const n = combinedThumbs[nextIdx]
+      setSelectedId(n.id)
+      setSelectedGlobalMs(n.tGlobal)
+      scrollThumbIntoView(n.id)
     } else if (loop) {
-      setSelectedGlobalMs(combinedThumbs[0].tGlobal)
-      scrollThumbIntoView(combinedThumbs[0].id)
+      const n = combinedThumbs[0]
+      setSelectedId(n.id)
+      setSelectedGlobalMs(n.tGlobal)
+      scrollThumbIntoView(n.id)
     } else {
       setIsPlaying(false)
     }
@@ -283,75 +285,44 @@ items = items.map((it) => ({
 
   useEffect(() => {
     if (!isPlaying) {
-      if (playTimerRef.current) {
-        clearInterval(playTimerRef.current)
-        playTimerRef.current = null
-      }
+      if (playTimerRef.current) { clearInterval(playTimerRef.current); playTimerRef.current = null }
       return
     }
     const intervalMs = Math.max(16, Math.round(1000 / playbackFps))
     playTimerRef.current = window.setInterval(stepForward, intervalMs)
     return () => {
-      if (playTimerRef.current) {
-        clearInterval(playTimerRef.current)
-        playTimerRef.current = null
-      }
+      if (playTimerRef.current) { clearInterval(playTimerRef.current); playTimerRef.current = null }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isPlaying, playbackFps, selectedGlobalMs, loop, combinedThumbs.length])
+  }, [isPlaying, playbackFps, selectedGlobalMs, loop, combinedThumbs.length, selectedId])
 
-  // Borrar/guardar
+  /* --------- borrar / guardar --------- */
+
   function deleteSelectedFrame() {
     if (!combinedThumbs.length) return
-    const idx = nearestIndex(
-      combinedThumbs.map((t) => t.tGlobal),
-      selectedGlobalMs
-    )
+
+    const idx = selectedId
+      ? combinedThumbs.findIndex(t => t.id === selectedId)
+      : nearestIndex(combinedThumbs.map(t => t.tGlobal), selectedGlobalMs)
+
     const next = combinedThumbs.slice(0, idx).concat(combinedThumbs.slice(idx + 1))
     setCombinedThumbs(next)
-    setSelectedGlobalMs(next[idx] ? next[idx].tGlobal : next.at(-1)?.tGlobal ?? 0)
+
+    if (next[idx]) {
+      const n = next[idx]
+      setSelectedId(n.id)
+      setSelectedGlobalMs(n.tGlobal)
+    } else if (next.length) {
+      const last = next[next.length - 1]
+      setSelectedId(last.id)
+      setSelectedGlobalMs(last.tGlobal)
+    } else {
+      setSelectedId(null)
+      setSelectedGlobalMs(0)
+    }
+
     setHasPendingChanges(true)
   }
-
-  // Construye una URL de miniatura (JPG) para un frame de un vídeo de Cloudinary
-function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number): string {
-  // Ejemplos de entrada:
-  // https://res.cloudinary.com/<cloud>/video/upload/v1/videopapel/videos/abc123.mp4
-  // https://res.cloudinary.com/<cloud>/video/upload/q_auto,f_auto/v169/.../my/video/id.mp4
-  // Salida: .../video/upload/so_{segundos},c_scale,h_{h}/(v.../)?<public_id>.jpg
-
-  const url = new URL(videoUrl)
-  const parts = url.pathname.split('/').filter(Boolean) // ["<cloud>", "video", "upload", "..."]
-  // Buscamos "video", "upload"
-  const uploadIdx = parts.findIndex((p, i, arr) => p === 'upload' && arr[i - 1] === 'video')
-  if (uploadIdx === -1) return videoUrl // fallback
-
-  // Detecta versión (v123...) si existe
-  let version = ''
-  let afterUpload = parts.slice(uploadIdx + 1) // puede empezar con transformaciones o con v123
-  if (afterUpload[0] && /^v\d+$/i.test(afterUpload[0])) {
-    version = afterUpload.shift()! // "v123"
-  } else {
-    // podría haber transformaciones: las ignoramos para el frame
-    // si hay un "v123" más adelante, lo extraemos
-    const vIdx = afterUpload.findIndex(p => /^v\d+$/i.test(p))
-    if (vIdx >= 0) {
-      version = afterUpload[vIdx]
-      afterUpload = afterUpload.slice(vIdx + 1)
-    }
-  }
-
-  const publicIdWithExt = afterUpload.join('/') // e.g. "videopapel/videos/abc123.mp4"
-  const publicId = publicIdWithExt.replace(/\.[^.]+$/, '') // sin extensión
-
-  const secs = Math.max(0, tMs / 1000)
-  const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.max(1, Math.round(h))}`
-  // Rearma path:
-  const base = `/` + parts.slice(0, uploadIdx + 1).join('/') // "/<cloud>/video/upload"
-  const ver = version ? `/${version}` : ''
-  const outPath = `${base}/${trans}${ver}/${publicId}.jpg`
-  return `${url.origin}${outPath}`
-}
 
   async function handleSaveChanges() {
     if (!hasPendingChanges || !accessToken) return
@@ -386,7 +357,8 @@ function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number
     }
   }
 
-  // Render
+  /* --------- Render --------- */
+
   return (
     <div className="w-full">
       <div className="rounded-lg overflow-hidden bg-black relative">
@@ -421,10 +393,16 @@ function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number
         onKeyDown={(e) => {
           if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
             e.preventDefault()
-            const times = combinedThumbs.map((t) => t.tGlobal)
-            const idx = nearestIndex(times, selectedGlobalMs)
-            const nextIdx = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : Math.min(times.length - 1, idx + 1)
-            if (times.length > 0) setSelectedGlobalMs(times[nextIdx])
+            const idx = selectedId
+              ? combinedThumbs.findIndex(t => t.id === selectedId)
+              : nearestIndex(combinedThumbs.map(t => t.tGlobal), selectedGlobalMs)
+            const nextIdx = e.key === 'ArrowLeft' ? Math.max(0, idx - 1) : Math.min(combinedThumbs.length - 1, idx + 1)
+            if (combinedThumbs.length > 0) {
+              const n = combinedThumbs[nextIdx]
+              setSelectedId(n.id)
+              setSelectedGlobalMs(n.tGlobal)
+              scrollThumbIntoView(n.id)
+            }
           } else if (e.key === ' ') {
             e.preventDefault()
             togglePlay()
@@ -438,12 +416,12 @@ function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number
               <li className="text-gray-500 text-sm px-2 py-3">Sin miniaturas</li>
             ) : (
               combinedThumbs.map((it) => {
-                const selected = Math.abs(it.tGlobal - selectedGlobalMs) < 1
+                const selected = it.id === selectedId // 👈 selección por id
                 return (
                   <li key={it.id} id={`thumb-${it.id}`}>
                     <button
                       type="button"
-                      onClick={() => setSelectedGlobalMs(it.tGlobal)}
+                      onClick={() => { setSelectedId(it.id); setSelectedGlobalMs(it.tGlobal) }}
                       className={`relative block rounded-md overflow-hidden border ${
                         selected ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200 hover:border-gray-400'
                       }`}
@@ -477,15 +455,15 @@ function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number
         )}
       </div>
 
-<EditingTools
-  heightPx={thumbnailHeight}
-  isPlaying={isPlaying}
-  onTogglePlay={togglePlay}
-  onSave={handleSaveChanges}
-  canSave={Boolean(accessToken) && hasPendingChanges && !generating}
-  isSaving={isSaving}
-  onInsertVideo={onInsertVideo}   // ⬅️ aquí
-/>
+      <EditingTools
+        heightPx={thumbnailHeight}
+        isPlaying={isPlaying}
+        onTogglePlay={togglePlay}
+        onSave={handleSaveChanges}
+        canSave={Boolean(accessToken) && hasPendingChanges && !generating}
+        isSaving={isSaving}
+        onInsertVideo={onInsertVideo}
+      />
     </div>
   )
 }
@@ -506,7 +484,6 @@ function buildSig(args: {
   framesVersion?: string | null
 }) {
   const { clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, framesVersion } = args
-  // v3 por cambios multi-clip
   return JSON.stringify({ v: 3, clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, framesVersion })
 }
 
@@ -532,9 +509,36 @@ function saveThumbsToCache(projectId: string, clipId: number | string, sig: stri
       items: items.map((i) => ({ t: i.t, dataUrl: i.url })),
     }
     localStorage.setItem(LS_KEY(projectId, clipId), JSON.stringify(payload))
-  } catch {
-    // ignore
+  } catch { /* ignore */ }
+}
+
+// URL Cloudinary de frame para previsualización/tienda de thumbs
+function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number): string {
+  const url = new URL(videoUrl)
+  const parts = url.pathname.split('/').filter(Boolean)
+  const uploadIdx = parts.findIndex((p, i, arr) => p === 'upload' && arr[i - 1] === 'video')
+  if (uploadIdx === -1) return videoUrl
+
+  let version = ''
+  let afterUpload = parts.slice(uploadIdx + 1)
+  if (afterUpload[0] && /^v\d+$/i.test(afterUpload[0])) {
+    version = afterUpload.shift()!
+  } else {
+    const vIdx = afterUpload.findIndex(p => /^v\d+$/i.test(p))
+    if (vIdx >= 0) {
+      version = afterUpload[vIdx]
+      afterUpload = afterUpload.slice(vIdx + 1)
+    }
   }
+
+  const publicIdWithExt = afterUpload.join('/')
+  const publicId = publicIdWithExt.replace(/\.[^.]+$/, '')
+  const secs = Math.max(0, tMs / 1000)
+  const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.max(1, Math.round(h))}`
+  const base = `/` + parts.slice(0, uploadIdx + 1).join('/')
+  const ver = version ? `/${version}` : ''
+  const outPath = `${base}/${trans}${ver}/${publicId}.jpg`
+  return `${url.origin}${outPath}`
 }
 
 async function setVideoSrcAndWait(video: HTMLVideoElement, src: string) {
@@ -543,14 +547,8 @@ async function setVideoSrcAndWait(video: HTMLVideoElement, src: string) {
       video.removeEventListener('loadedmetadata', onLoaded)
       video.removeEventListener('error', onError)
     }
-    const onLoaded = () => {
-      cleanup()
-      resolve()
-    }
-    const onError = () => {
-      cleanup()
-      reject(new Error('Error cargando video'))
-    }
+    const onLoaded = () => { cleanup(); resolve() }
+    const onError = () => { cleanup(); reject(new Error('Error cargando video')) }
     video.addEventListener('loadedmetadata', onLoaded, { once: true })
     video.addEventListener('error', onError, { once: true })
     video.src = src
@@ -561,42 +559,6 @@ function nearestByGlobal(tGlobal: number, arr: CombinedThumb[]) {
   if (!arr.length) return null
   const idx = nearestIndex(arr.map((a) => a.tGlobal), tGlobal)
   return arr[idx] ?? null
-}
-
-async function generateThumbnailsAsDataUrlsForSrc(
-  src: string,
-  videoRef: React.RefObject<HTMLVideoElement>,
-  timesMs: number[],
-  thumbnailHeight: number
-) {
-  const video = videoRef.current
-  if (!video) throw new Error('Video element not ready')
-  await setVideoSrcAndWait(video, src)
-  if (Number.isNaN(video.duration) || video.duration === 0) {
-    await new Promise<void>((resolve) => {
-      const onLoaded = () => {
-        video.removeEventListener('loadedmetadata', onLoaded)
-        resolve()
-      }
-      video.addEventListener('loadedmetadata', onLoaded)
-    })
-  }
-  const ratio = (video.videoWidth || 1280) / (video.videoHeight || 720)
-  const width = Math.round(thumbnailHeight * ratio)
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = thumbnailHeight
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('No canvas context')
-
-  const out: Array<{ t: number; url: string }> = []
-  for (const t of timesMs) {
-    await seekVideo(video, t / 1000)
-    ctx.drawImage(video, 0, 0, width, thumbnailHeight)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
-    out.push({ t, url: dataUrl })
-  }
-  return out
 }
 
 function generateTimesFromDuration(durationMs: number, framesCount: number) {
@@ -640,22 +602,13 @@ function nearestIndex(arr: number[], target: number) {
 
 function seekVideo(video: HTMLVideoElement, timeSec: number) {
   return new Promise<void>((resolve, reject) => {
-    const onSeeked = () => {
-      cleanup()
-      resolve()
-    }
-    const onError = () => {
-      cleanup()
-      reject(new Error('Seek error'))
-    }
+    const onSeeked = () => { cleanup(); resolve() }
+    const onError = () => { cleanup(); reject(new Error('Seek error')) }
     const cleanup = () => {
       video.removeEventListener('seeked', onSeeked)
       video.removeEventListener('error', onError)
     }
-    if (Math.abs(video.currentTime - timeSec) < 0.01) {
-      resolve()
-      return
-    }
+    if (Math.abs(video.currentTime - timeSec) < 0.01) { resolve(); return }
     video.addEventListener('seeked', onSeeked, { once: true })
     video.addEventListener('error', onError, { once: true })
     try {
@@ -665,7 +618,4 @@ function seekVideo(video: HTMLVideoElement, timeSec: number) {
       reject(e as Error)
     }
   })
-
-  
-
 }
