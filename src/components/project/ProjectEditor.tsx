@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/store/auth'
 import EditingCanvas from '@/components/project/EditingCanvas'
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
+import QualitySelector from '@/components/project/QualitySelector'
+import PrintQualityBadge from '@/components/project/PrintQualityBadge'
 
 /* =========================
    Tipos
@@ -230,7 +232,21 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
             <h2 className="text-xl font-semibold mb-3">Configuración de Salida</h2>
             <div className="space-y-3 text-sm">
               <p>Tamaño: [Select PrintSize]</p>
-              <p>Calidad: [Select PrintQuality]</p>
+ <PrintQualityBadge
+      name={(project as any).print_quality?.name ?? project.print_quality_name}
+      ppi={(project as any).print_quality?.points_per_inch ?? project.print_quality_ppi}
+      className="inline-block"
+    />
+
+    {/* Tu selector existente */}
+    <QualitySelector
+      apiBase={API_BASE}
+      accessToken={accessToken}
+      projectId={project.id}
+      // value={project.print_quality?.id ?? project.print_quality_id}
+      onSaved={() => fetchProject()}  // refresca tras guardar
+    />
+
               <p>Efecto: [Select Effect]</p>
               <p>Orientación: [Select Orientation]</p>
 

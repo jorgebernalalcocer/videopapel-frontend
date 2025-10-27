@@ -535,7 +535,15 @@ function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number
   const publicIdWithExt = afterUpload.join('/')
   const publicId = publicIdWithExt.replace(/\.[^.]+$/, '')
   const secs = Math.max(0, tMs / 1000)
-  const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.max(1, Math.round(h))}`
+
+  // Calidad de los thumnails
+  //maxima
+  // const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.round(h)},q_90,f_jpg`
+  // alta
+  // const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.round(h)},q_auto:eco,f_webp`
+  // baja
+    const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.round(h)},q_auto:low,f_webp`
+
   const base = `/` + parts.slice(0, uploadIdx + 1).join('/')
   const ver = version ? `/${version}` : ''
   const outPath = `${base}/${trans}${ver}/${publicId}.jpg`
