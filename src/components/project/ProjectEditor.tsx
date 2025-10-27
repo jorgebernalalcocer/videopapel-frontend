@@ -51,6 +51,10 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
 
+const [exporting, setExporting] = useState(false)
+const [exportError, setExportError] = useState<string | null>(null)
+
+
   /* --------- fetch proyecto --------- */
   const fetchProject = useCallback(async () => {
     if (!accessToken || !projectId) return
@@ -70,6 +74,42 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
       setLoading(false)
     }
   }, [API_BASE, accessToken, projectId])
+
+  // dentro del componente ProjectEditor
+
+
+
+async function handleExportPdf() {
+  if (!accessToken) return
+  setExporting(true)
+  setExportError(null)
+  try {
+    const res = await fetch(`${API_BASE}/projects/${project.id}/export-pdf/`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      credentials: 'include',
+    })
+    const data = await res.json()
+    if (!res.ok) throw new Error(data?.detail || `Export ${res.status}`)
+
+    let url = data?.file // 👈 usa la pública
+    if (!url) throw new Error('Respuesta sin URL de archivo')
+
+    // Si viniera relativa, normalízala al API_BASE
+    if (url.startsWith('/')) {
+      url = `${API_BASE.replace(/\/+$/, '')}${url}`
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer')
+  } catch (e: any) {
+    setExportError(e.message || 'No se pudo generar el PDF')
+  } finally {
+    setExporting(false)
+  }
+}
+
+
+
 
   /* --------- fetch clips --------- */
   const fetchClips = useCallback(async () => {
@@ -256,15 +296,19 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
             </div>
           </div>
 
-          <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
-            <h2 className="text-xl font-semibold mb-3 text-green-800">Exportar y Comprar</h2>
-            <button className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition">
-              Generar PDF / Iniciar Compra
-            </button>
-            <p className="text-xs text-green-700 mt-2">
-              Se utilizarán los clips y configuraciones actuales.
-            </p>
-          </div>
+<div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
+  <h2 className="text-xl font-semibold mb-3 text-green-800">Exportar y Comprar</h2>
+  <button
+    className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
+    onClick={handleExportPdf}
+    disabled={exporting}
+  >
+    {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
+  </button>
+  {exportError && <p className="text-xs text-red-600 mt-2">{exportError}</p>}
+  <p className="text-xs text-green-700 mt-2">Se utilizarán los clips y configuraciones actuales.</p>
+</div>
+
         </aside>
       </div>
 
