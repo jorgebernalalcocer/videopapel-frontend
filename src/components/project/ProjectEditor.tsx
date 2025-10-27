@@ -4,8 +4,12 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useAuth } from '@/store/auth'
 import EditingCanvas from '@/components/project/EditingCanvas'
+import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
 
-// Define el tipo de dato del Proyecto, incluyendo el UUID (string)
+/* =========================
+   Tipos
+========================= */
+
 type ProjectClipPayload = {
   id: number
   video_url: string
@@ -13,6 +17,7 @@ type ProjectClipPayload = {
   frames?: number[] | null
   time_start_ms?: number | null
   time_end_ms?: number | null
+  position?: number | null
 }
 
 type Project = {
@@ -25,46 +30,38 @@ type Project = {
 }
 
 interface ProjectEditorProps {
-  projectId: string // El UUID del proyecto
+  projectId: string // UUID del proyecto
 }
+
+/* =========================
+   Componente
+========================= */
 
 export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [project, setProject] = useState<Project | null>(null)
+  const [clips, setClips] = useState<ProjectClipPayload[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [creatingClip, setCreatingClip] = useState(false)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
 
-  // 1. Función para cargar los datos del proyecto
+  /* --------- fetch proyecto --------- */
   const fetchProject = useCallback(async () => {
     if (!accessToken || !projectId) return
-
     setLoading(true)
     setError(null)
-
-    // Usamos el UUID para el endpoint de detalle
-    const url = `${API_BASE}/projects/${projectId}/`
-
     try {
-      const res = await fetch(url, {
+      const res = await fetch(`${API_BASE}/projects/${projectId}/`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'include',
       })
-
-      console.log('Fetch project response status:', res.status)
-
-      if (res.status === 404) {
-        // Manejar el caso de proyecto no encontrado
-        throw new Error('Proyecto no encontrado (404)')
-      }
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`Error ${res.status}: ${text || 'Fallo al cargar el proyecto'}`)
-      }
-
+      if (res.status === 404) throw new Error('Proyecto no encontrado (404)')
+      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text() || 'Fallo al cargar el proyecto'}`)
       setProject(await res.json())
-
     } catch (e: any) {
       setError(e.message || 'Error al cargar los detalles del proyecto.')
     } finally {
@@ -72,13 +69,65 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
     }
   }, [API_BASE, accessToken, projectId])
 
-  // 2. Ejecutar la carga al montar y si cambia el ID o el token
+  /* --------- fetch clips --------- */
+  const fetchClips = useCallback(async () => {
+    if (!accessToken || !projectId) return
+    try {
+      const res = await fetch(`${API_BASE}/projects/${projectId}/clips/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      console.log('Fetch clips response:', res)
+      if (!res.ok) throw new Error(`Clips ${res.status}`)
+      const data: ProjectClipPayload[] = await res.json()
+      data.sort((a, b) => (a.position ?? 1) - (b.position ?? 1))
+      setClips(data)
+    } catch (e) {
+      // No tiramos la UI entera por error de clips; mostramos vacío y permitimos reintentar con acciones
+      console.error(e)
+    }
+  }, [API_BASE, accessToken, projectId])
+
+  /* --------- montar --------- */
   useEffect(() => {
     fetchProject()
   }, [fetchProject])
 
+  useEffect(() => {
+    fetchClips()
+  }, [fetchClips])
 
-  // --- Renderizado de estados ---
+  /* --------- insertar vídeo (crear clip) --------- */
+  const handleSelectVideo = useCallback(async (video: VideoItem) => {
+    if (!accessToken) return
+    setActionError(null)
+    setCreatingClip(true)
+    try {
+      const res = await fetch(`${API_BASE}/projects/${projectId}/clips/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ video_id: video.id }),
+      })
+      console.log('Create clip response:', res)
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status} al crear el clip`)
+      }
+      // Refrescamos clips y cerramos modal
+      await fetchClips()
+      setPickerOpen(false)
+    } catch (e: any) {
+      setActionError(e.message || 'No se pudo insertar el vídeo.')
+    } finally {
+      setCreatingClip(false)
+    }
+  }, [API_BASE, accessToken, projectId, fetchClips])
+
+  /* --------- Render: estados --------- */
 
   if (loading) {
     return (
@@ -99,16 +148,14 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   }
 
   if (!project) {
-    // Esto no debería suceder si el 404 se manejó en el error, pero es un buen fallback
     return (
-        <div className="p-8 text-center">
-            <p className="text-xl font-semibold text-gray-700">Proyecto no disponible.</p>
-        </div>
+      <div className="p-8 text-center">
+        <p className="text-xl font-semibold text-gray-700">Proyecto no disponible.</p>
+      </div>
     )
   }
 
-
-  // --- Interfaz Principal del Editor ---
+  /* --------- Render principal --------- */
 
   return (
     <div className="w-full h-full p-4 bg-gray-50">
@@ -117,61 +164,68 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           Editor: {project.name || 'Proyecto sin nombre'}
         </h1>
         <div className="text-sm text-gray-500">
-          Estado: <span className={`font-medium ${project.status === 'draft' ? 'text-blue-500' : 'text-green-600'}`}>
+          Estado:{' '}
+          <span className={`font-medium ${project.status === 'draft' ? 'text-blue-500' : 'text-green-600'}`}>
             {project.status.toUpperCase()}
           </span>
         </div>
       </header>
 
-      {/* ---------------------------------------------------- */}
-      {/* 🚀 Zona principal de edición / previsualización aquí */}
-      {/* ---------------------------------------------------- */}
-      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Columna 1: Visor del Proyecto */}
+        {/* Columna 1: Visor */}
         <div className="lg:col-span-2 bg-white rounded-xl shadow p-4">
           <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2>
-{/* Previsualización y Edición de Clips */}
-<div className="aspect-video bg-black rounded-lg mb-4 p-2">
-{project.primary_clip ? (
-    <EditingCanvas
-      projectId={project.id}
-      clipId={project.primary_clip.id}
-      apiBase={API_BASE}
-      accessToken={accessToken}
-      videoSrc={project.primary_clip.video_url}
-      durationMs={project.primary_clip.duration_ms}
-      playbackFps={2}
-      initialTimeMs={project.primary_clip.time_start_ms ?? 0}
-      initialFrames={project.primary_clip.frames ?? undefined}
-      onChange={(ms) => {
-        // Aquí puedes guardar selección temporal, o preparar recorte
-        // console.log('Selected frame at', ms, 'ms')
-      }}
-    />
-  ) : (
-    <div className="h-full w-full grid place-items-center text-white/50">
-      No hay clip principal
-    </div>
-  )}
-</div>
 
-          
-          {/* Timeline de Clips */}
+          <div className="aspect-video bg-black rounded-lg mb-4 p-2">
+            {clips.length ? (
+              <EditingCanvas
+                projectId={project.id}
+                clips={clips.map((c) => ({
+                  clipId: c.id,
+                  videoSrc: c.video_url,
+                  durationMs: (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
+                  frames: c.frames ?? [],
+                  timeStartMs: c.time_start_ms ?? 0,
+                  timeEndMs: c.time_end_ms ?? c.duration_ms,
+                }))}
+                apiBase={API_BASE}
+                accessToken={accessToken}
+                playbackFps={2}
+                onChange={() => {}}
+                onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
+              />
+            ) : (
+              <div className="h-full w-full grid place-items-center text-white/50">
+                Sin clips
+                <button
+                  className="ml-3 px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 text-white text-sm"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  Insertar vídeo
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Timeline/Lista de clips (placeholder) */}
           <div className="mt-4 border-t pt-4">
             <h3 className="text-lg font-medium mb-2">Clips en el Proyecto</h3>
-            {/* Componente para manejar ProjectClip list y ordering */}
             <div className="bg-gray-100 p-3 rounded-md min-h-[100px]">
-              [ProjectClipList / Timeline Component]
+              {clips.length === 0 ? 'No hay clips' : (
+                <ul className="text-sm text-gray-700 list-disc pl-5">
+                  {clips.map((c) => (
+                    <li key={c.id}>
+                      #{c.position} · {c.video_url?.split('/').pop()} ({(c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0)} ms)
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Columna 2: Configuración y Propiedades */}
+        {/* Columna 2: Configuración */}
         <aside className="lg:col-span-1 space-y-6">
-          
-          {/* Panel de Configuración de Impresión */}
           <div className="bg-white rounded-xl shadow p-4 border">
             <h2 className="text-xl font-semibold mb-3">Configuración de Salida</h2>
             <div className="space-y-3 text-sm">
@@ -179,14 +233,13 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
               <p>Calidad: [Select PrintQuality]</p>
               <p>Efecto: [Select Effect]</p>
               <p>Orientación: [Select Orientation]</p>
-              
+
               <button className="w-full mt-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-purple-700 transition">
                 Guardar Cambios
               </button>
             </div>
           </div>
 
-          {/* Panel de Exportación */}
           <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
             <h2 className="text-xl font-semibold mb-3 text-green-800">Exportar y Comprar</h2>
             <button className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition">
@@ -198,7 +251,17 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           </div>
         </aside>
       </div>
-      
+
+      {/* Modal de selección de vídeo */}
+      <VideoPickerModal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        onSelect={handleSelectVideo}
+        busy={creatingClip}
+        error={actionError || undefined}
+      />
     </div>
   )
 }
