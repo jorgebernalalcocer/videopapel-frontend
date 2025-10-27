@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
+import { FunctionSquare } from 'lucide-react'
 
 /* =========================
    Tipos
