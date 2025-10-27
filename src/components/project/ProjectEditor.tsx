@@ -232,11 +232,11 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
             <h2 className="text-xl font-semibold mb-3">Configuración de Salida</h2>
             <div className="space-y-3 text-sm">
               <p>Tamaño: [Select PrintSize]</p>
- <PrintQualityBadge
-      name={(project as any).print_quality?.name ?? project.print_quality_name}
-      ppi={(project as any).print_quality?.points_per_inch ?? project.print_quality_ppi}
-      className="inline-block"
-    />
+<PrintQualityBadge
+  name={project.print_quality_name}
+  ppi={project.print_quality_ppi}
+  compact
+/>
 
     {/* Tu selector existente */}
     <QualitySelector
