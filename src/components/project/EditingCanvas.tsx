@@ -84,6 +84,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const bigCanvasRef = useRef<HTMLCanvasElement>(null)
+  const bigCanvasWrapperRef = useRef<HTMLDivElement>(null)
 
   const [selectedGlobalMs, setSelectedGlobalMs] = useState<number>(initialTimeMs)
   const [selectedId, setSelectedId] = useState<string | null>(null) // 👈 selección por id
@@ -250,10 +251,22 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       await seekVideo(video, tLocalMs / 1000)
       const w = video.videoWidth || 1280
       const h = video.videoHeight || 720
+      if (w <= 0 || h <= 0) return
+      const wrapper = bigCanvasWrapperRef.current
+      const maxW = wrapper?.clientWidth ?? w
+      const maxH = wrapper?.clientHeight ?? h
+      const ratioBase = Math.min(maxW / w, maxH / h)
+      const ratio = Number.isFinite(ratioBase) && ratioBase > 0 ? ratioBase : 1
+      const displayW = Math.max(1, Math.round(w * ratio))
+      const displayH = Math.max(1, Math.round(h * ratio))
+
       canvas.width = w
       canvas.height = h
+      canvas.style.width = `${displayW}px`
+      canvas.style.height = `${displayH}px`
       const ctx = canvas.getContext('2d')
       if (!ctx) return
+      ctx.clearRect(0, 0, w, h)
       ctx.drawImage(video, 0, 0, w, h)
     } catch { /* noop */ }
   }
@@ -361,7 +374,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   /* --------- Render --------- */
 
   return (
-    <div className="w-full flex flex-col gap-4 max-h-[90vh] min-h-0">
+    <div className="w-full flex flex-col gap-4 h-[90vh] min-h-0">
       <div className="rounded-lg overflow-hidden bg-black relative flex-1 min-h-0 flex items-center justify-center">
         {(generating || !isCacheLoaded) && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -373,7 +386,9 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         )}
 
         <video ref={videoRef} preload="metadata" muted playsInline className="hidden" />
-        <canvas ref={bigCanvasRef} className="block h-auto w-auto max-h-full max-w-full bg-black" />
+        <div ref={bigCanvasWrapperRef} className="flex h-full w-full items-center justify-center max-h-full max-w-full">
+          <canvas ref={bigCanvasRef} className="block h-auto w-auto max-h-full max-w-full bg-black" />
+        </div>
 
         <div className="absolute bottom-2 left-2 flex items-center gap-2">
           <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
