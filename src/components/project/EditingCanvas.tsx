@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
-import { FunctionSquare } from 'lucide-react'
+import { Maximize2, Minimize2 } from 'lucide-react'
 
 /* =========================
    Tipos
@@ -94,6 +94,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [hasPendingChanges, setHasPendingChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isFrameFullScreen, setIsFrameFullScreen] = useState(false)
   const playTimerRef = useRef<number | null>(null)
 
   // Compat single-clip
@@ -235,11 +236,11 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         (selectedId ? combinedThumbs.find(t => t.id === selectedId) : null) ??
         nearestByGlobal(selectedGlobalMs, combinedThumbs)
       if (!current) return
-      await paintBigFrameForSrc(current.videoSrc, current.tLocal)
+      await paintBigFrameForSrc(current.videoSrc, current.tLocal, isFrameFullScreen)
     })()
-  }, [selectedId, selectedGlobalMs, combinedThumbs])
+  }, [selectedId, selectedGlobalMs, combinedThumbs, isFrameFullScreen])
 
-  async function paintBigFrameForSrc(src: string, tLocalMs: number) {
+  async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: boolean) {
     const video = videoRef.current
     const canvas = bigCanvasRef.current
     if (!video || !canvas) return
@@ -255,7 +256,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       const wrapper = bigCanvasWrapperRef.current
       const maxW = wrapper?.clientWidth ?? w
       const maxH = wrapper?.clientHeight ?? h
-      const ratioBase = Math.min(maxW / w, maxH / h)
+      const ratioBase = fillViewer ? Math.max(maxW / w, maxH / h) : Math.min(maxW / w, maxH / h)
       const ratio = Number.isFinite(ratioBase) && ratioBase > 0 ? ratioBase : 1
       const displayW = Math.max(1, Math.round(w * ratio))
       const displayH = Math.max(1, Math.round(h * ratio))
@@ -373,6 +374,10 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
   /* --------- Render --------- */
 
+  const canvasClassName = isFrameFullScreen
+    ? 'block bg-black'
+    : 'block h-auto w-auto max-h-full max-w-full bg-black'
+
   return (
     <div className="w-full flex flex-col gap-4 h-[90vh] min-h-0">
       <div className="rounded-lg overflow-hidden bg-black relative flex-1 min-h-0 flex items-center justify-center">
@@ -386,12 +391,21 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         )}
 
         <video ref={videoRef} preload="metadata" muted playsInline className="hidden" />
-        <div ref={bigCanvasWrapperRef} className="flex h-full w-full items-center justify-center max-h-full max-w-full">
-          <canvas ref={bigCanvasRef} className="block h-auto w-auto max-h-full max-w-full bg-black" />
+        <div ref={bigCanvasWrapperRef} className="flex h-full w-full items-center justify-center max-h-full max-w-full overflow-hidden">
+          <canvas ref={bigCanvasRef} className={canvasClassName} />
         </div>
 
         <div className="absolute bottom-2 left-2 flex items-center gap-2">
           <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
+          <button
+            type="button"
+            onClick={() => setIsFrameFullScreen((prev) => !prev)}
+            className="inline-flex items-center gap-1 rounded-md bg-white/10 px-2 py-1 text-xs font-medium text-white shadow-sm ring-1 ring-white/20 backdrop-blur transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 disabled:opacity-50"
+            aria-pressed={isFrameFullScreen}
+          >
+            {isFrameFullScreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+            Visualización
+          </button>
         </div>
 
         <div className="absolute bottom-2 right-2 flex items-center gap-2">

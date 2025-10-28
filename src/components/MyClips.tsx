@@ -36,7 +36,7 @@ export default function MyClips() {
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
       setClips(await res.json())
     } catch (e:any) {
-      setError(e.message || 'Error al cargar tus vídeos')
+      setError(e.message || 'Error al cargar tus videos')
     } finally {
       setLoading(false)
     }
@@ -62,7 +62,7 @@ useEffect(() => {
     return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Preparando…</p></section>
   }
   if (!accessToken) {
-    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Inicia sesión para ver tus vídeos.</p></section>
+    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Inicia sesión para ver tus videos.</p></section>
   }
 
   if (loading) {
@@ -87,7 +87,7 @@ useEffect(() => {
     return (
       <section className="mt-12 w-full max-w-5xl">
         <h2 className="text-2xl font-semibold mb-4">Mis clips</h2>
-        <p className="text-gray-500">Aún no has subido ningún vídeo.</p>
+        <p className="text-gray-500">Aún no has subido ningún video.</p>
       </section>
     )
   }
@@ -109,13 +109,13 @@ useEffect(() => {
         />
       ) : (
         <div className="w-full h-full flex items-center justify-center text-white text-sm">
-          Sin URL de vídeo
+          Sin URL de video
         </div>
       )}
     </div>
 
             <div className="p-3">
-              <h3 className="text-sm font-semibold truncate">{v.title || `Vídeo #${v.id}`}</h3>
+              <h3 className="text-sm font-semibold truncate">{v.title || `Video #${v.id}`}</h3>
               <p className="text-xs text-gray-500 mt-1">
                 {msToTime(v.duration_ms)} • {v.format?.toUpperCase() || '—'}
               </p>

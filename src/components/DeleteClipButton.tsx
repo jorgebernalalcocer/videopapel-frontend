@@ -28,7 +28,7 @@ export default function DeleteClipButton({ videoId }: DeleteClipButtonProps) {
       title: 'Eliminar clip',
       description: (
         <>
-          ¿Seguro que quieres eliminar este vídeo? <br />
+          ¿Seguro que quieres eliminar este video? <br />
           <span className="text-red-600">Esta acción es irreversible.</span>
         </>
       ),
@@ -52,16 +52,16 @@ export default function DeleteClipButton({ videoId }: DeleteClipButtonProps) {
       })
       if (!res.ok) {
         const errorText = await res.text()
-        throw new Error(`Error ${res.status}: ${errorText || 'No se pudo eliminar el vídeo'}`)
+        throw new Error(`Error ${res.status}: ${errorText || 'No se pudo eliminar el video'}`)
       }
-      toast.success("¡Vídeo eliminado con éxito!", {
+      toast.success("¡Video eliminado con éxito!", {
         icon: <CheckCircle2 className="text-green-500" />,
         duration: 5000, // ⏱ duración en ms (configurable)
       });
       window.dispatchEvent(new CustomEvent('videopapel:deleted'))
     } catch (e: any) {
-      setError(e.message || 'Error al eliminar el vídeo.')
-      toast.error("Error al eliminar el vídeo", {
+      setError(e.message || 'Error al eliminar el video.')
+      toast.error("Error al eliminar el video", {
         icon: <XCircle className="text-red-500" />,
         duration: 5000, // ⏱ también configurable
       });

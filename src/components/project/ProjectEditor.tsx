@@ -150,7 +150,7 @@ async function handleExportPdf() {
     fetchClips()
   }, [fetchClips])
 
-  /* --------- insertar vídeo (crear clip) --------- */
+  /* --------- insertar video (crear clip) --------- */
   const handleSelectVideo = useCallback(async (video: VideoItem) => {
     if (!accessToken) return
     setActionError(null)
@@ -174,7 +174,7 @@ async function handleExportPdf() {
       await fetchClips()
       setPickerOpen(false)
     } catch (e: any) {
-      setActionError(e.message || 'No se pudo insertar el vídeo.')
+      setActionError(e.message || 'No se pudo insertar el video.')
     } finally {
       setCreatingClip(false)
     }
@@ -254,7 +254,7 @@ async function handleExportPdf() {
                   className="ml-3 px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 text-white text-sm"
                   onClick={() => setPickerOpen(true)}
                 >
-                  Insertar vídeo
+                  Insertar video
                 </button>
               </div>
             )}
@@ -353,7 +353,7 @@ async function handleExportPdf() {
         </aside>
       </div>
 
-      {/* Modal de selección de vídeo */}
+      {/* Modal de selección de video */}
       <VideoPickerModal
         open={pickerOpen}
         onClose={() => setPickerOpen(false)}

@@ -62,7 +62,21 @@ export default function EditingTools({
         `}
       >
         <Plus className="h-4 w-4" />
-        Insertar vídeo
+        Insertar video
+      </Button>
+
+            <Button
+        type="button"
+        variant="outline"
+        onClick={handleInsertClick}
+        aria-disabled={insertDisabled}
+        className={`
+          inline-flex items-center gap-2
+          ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
+        `}
+      >
+        <Plus className="h-4 w-4" />
+        Insertar imagen
       </Button>
 
       <Button

@@ -53,7 +53,7 @@ export default function NewProjectButton() {
       const data = await res.json()
       setVideos(Array.isArray(data) ? data : data.results ?? [])
     } catch (e: any) {
-      setError(e.message || 'No se pudieron cargar los vídeos')
+      setError(e.message || 'No se pudieron cargar los videos')
     } finally {
       setLoadingVideos(false)
     }
@@ -126,7 +126,7 @@ export default function NewProjectButton() {
       <Modal
         open={open}
         onClose={() => !submitting && setOpen(false)}
-        title={step === 1 ? 'Nombre del proyecto' : 'Elige un vídeo'}
+        title={step === 1 ? 'Nombre del proyecto' : 'Elige un video'}
         labelledById="new-project-title"
         describedById={error ? 'new-project-error' : undefined}
         size={step === 2 ? 'lg' : 'md'}
@@ -200,9 +200,9 @@ export default function NewProjectButton() {
         ) : (
           <div className="space-y-3">
             {loadingVideos ? (
-              <p className="text-gray-500 text-sm">Cargando vídeos…</p>
+              <p className="text-gray-500 text-sm">Cargando videos…</p>
             ) : videos.length === 0 ? (
-              <p className="text-gray-500 text-sm">No tienes vídeos todavía.</p>
+              <p className="text-gray-500 text-sm">No tienes videos todavía.</p>
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-auto pr-1">
                 {videos.map((v) => {
@@ -220,17 +220,17 @@ export default function NewProjectButton() {
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
                             src={v.thumbnail}
-                            alt={v.title || `Vídeo ${v.id}`}
+                            alt={v.title || `Video ${v.id}`}
                             className="w-full h-full object-cover"
                           />
                         ) : (
                           <div className="w-full h-full grid place-items-center text-white text-xs">
-                            {v.title || `Vídeo #${v.id}`}
+                            {v.title || `Video #${v.id}`}
                           </div>
                         )}
                       </div>
                       <div className="p-2">
-                        <p className="text-sm font-medium truncate">{v.title || `Vídeo #${v.id}`}</p>
+                        <p className="text-sm font-medium truncate">{v.title || `Video #${v.id}`}</p>
                         <p className="text-xs text-gray-500">{formatMs(v.duration_ms)} • {v.format?.toUpperCase() || '—'}</p>
                       </div>
                     </li>

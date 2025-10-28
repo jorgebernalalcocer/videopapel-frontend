@@ -43,7 +43,7 @@ export default function UploadVideo() {
     }
 
     if (!file.type.startsWith("video/")) {
-      alert("Por favor, selecciona un archivo de vídeo.");
+      alert("Por favor, selecciona un archivo de video.");
       return;
     }
 
@@ -118,7 +118,7 @@ export default function UploadVideo() {
       }
 
       setProgress(100);
-      toast.success("¡Vídeo subido y registrado con éxito!", {
+      toast.success("¡Video subido y registrado con éxito!", {
         icon: <CheckCircle2 className="text-green-500" />,
         duration: 5000, // ⏱ duración en ms (configurable)
       });

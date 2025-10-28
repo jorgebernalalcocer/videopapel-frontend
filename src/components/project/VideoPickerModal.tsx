@@ -41,7 +41,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
       const list = Array.isArray(data) ? data : data.results ?? []
       setVideos(list)
     } catch (e: any) {
-      setError(e.message || 'No se pudieron cargar los vídeos')
+      setError(e.message || 'No se pudieron cargar los videos')
     } finally {
       setLoading(false)
     }
@@ -66,7 +66,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
         setSelectedVideo(null)
         onClose()
       }}
-      title="Elige un vídeo"
+      title="Elige un video"
       size="lg"
       footer={
         <div className="flex justify-between w-full">
@@ -95,9 +95,9 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
       }
     >
       {loading ? (
-        <p className="text-gray-500 text-sm">Cargando vídeos…</p>
+        <p className="text-gray-500 text-sm">Cargando videos…</p>
       ) : videos.length === 0 ? (
-        <p className="text-gray-500 text-sm">No tienes vídeos todavía.</p>
+        <p className="text-gray-500 text-sm">No tienes videos todavía.</p>
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-auto pr-1">
           {videos.map((v) => {
@@ -114,17 +114,17 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
                   {v.thumbnail ? (
                     <img
                       src={v.thumbnail}
-                      alt={v.title || `Vídeo ${v.id}`}
+                      alt={v.title || `Video ${v.id}`}
                       className="w-full h-full object-cover"
                     />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-white text-xs">
-                      {v.title || `Vídeo #${v.id}`}
+                      {v.title || `Video #${v.id}`}
                     </div>
                   )}
                 </div>
                 <div className="p-2">
-                  <p className="text-sm font-medium truncate">{v.title || `Vídeo #${v.id}`}</p>
+                  <p className="text-sm font-medium truncate">{v.title || `Video #${v.id}`}</p>
                   <p className="text-xs text-gray-500">
                     {(v.duration_ms / 1000).toFixed(1)}s • {v.format?.toUpperCase() || '—'}
                   </p>
