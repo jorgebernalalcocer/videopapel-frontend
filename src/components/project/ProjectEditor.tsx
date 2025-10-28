@@ -7,6 +7,8 @@ import EditingCanvas from '@/components/project/EditingCanvas'
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
 import QualitySelector from '@/components/project/QualitySelector'
 import PrintQualityBadge from '@/components/project/PrintQualityBadge'
+import PrintSizeSelector from '@/components/project/PrintSizeSelector'
+import PrintSizeBadge from '@/components/project/PrintSizeBadge'
 
 /* =========================
    Tipos
@@ -28,6 +30,14 @@ type Project = {
   owner_id: number
   status: string
   created_at: string
+  updated_at?: string
+  print_quality_id?: number | null
+  print_quality_name?: string | null
+  print_quality_ppi?: number | null
+  print_size_id?: number | null
+  print_size_label?: string | null
+  print_size_width_mm?: number | null
+  print_size_height_mm?: number | null
   primary_clip?: ProjectClipPayload | null
 }
 
@@ -271,22 +281,31 @@ async function handleExportPdf() {
           <div className="bg-white rounded-xl shadow p-4 border">
             <h2 className="text-xl font-semibold mb-3">Configuración de Salida</h2>
             <div className="space-y-3 text-sm">
-              <p>Tamaño: [Select PrintSize]</p>
-<PrintQualityBadge
-  name={project.print_quality_name}
-  ppi={project.print_quality_ppi}
-  compact
-/>
-
-    {/* Tu selector existente */}
-    <QualitySelector
-      apiBase={API_BASE}
-      accessToken={accessToken}
-      projectId={project.id}
-      // value={project.print_quality?.id ?? project.print_quality_id}
-      onSaved={() => fetchProject()}  // refresca tras guardar
-    />
-
+              <PrintQualityBadge
+                name={project.print_quality_name}
+                ppi={project.print_quality_ppi}
+                compact
+              />
+              <PrintSizeBadge
+                name={project.print_size_label}
+                widthMm={project.print_size_width_mm}
+                heightMm={project.print_size_height_mm}
+                compact
+              />
+              <QualitySelector
+                apiBase={API_BASE}
+                accessToken={accessToken}
+                projectId={project.id}
+                value={project.print_quality_id ?? null}
+                onSaved={() => fetchProject()}  // refresca tras guardar
+              />
+              <PrintSizeSelector
+                apiBase={API_BASE}
+                accessToken={accessToken}
+                projectId={project.id}
+                value={project.print_size_id ?? null}
+                onSaved={() => fetchProject()}  // refresca tras guardar
+              />
               <p>Efecto: [Select Effect]</p>
               <p>Orientación: [Select Orientation]</p>
 
