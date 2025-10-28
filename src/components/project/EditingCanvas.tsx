@@ -361,8 +361,8 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   /* --------- Render --------- */
 
   return (
-    <div className="w-full">
-      <div className="rounded-lg overflow-hidden bg-black relative">
+    <div className="w-full flex flex-col gap-4 max-h-[90vh] min-h-0">
+      <div className="rounded-lg overflow-hidden bg-black relative flex-1 min-h-0 flex items-center justify-center">
         {(generating || !isCacheLoaded) && (
           <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/60 backdrop-blur-sm">
             <div className="inline-flex flex-col items-center gap-3 text-white text-sm">
@@ -373,7 +373,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         )}
 
         <video ref={videoRef} preload="metadata" muted playsInline className="hidden" />
-        <canvas ref={bigCanvasRef} className="w-full h-auto block" />
+        <canvas ref={bigCanvasRef} className="block h-auto w-auto max-h-full max-w-full bg-black" />
 
         <div className="absolute bottom-2 left-2 flex items-center gap-2">
           <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
@@ -389,7 +389,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
       {/* Timeline global */}
       <div
-        className="mt-4 overflow-x-auto border rounded-lg p-2 bg-white focus:outline-none"
+        className="overflow-x-auto border rounded-lg p-2 bg-white focus:outline-none flex-none"
         tabIndex={0}
         onKeyDown={(e) => {
           if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
@@ -456,15 +456,17 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         )}
       </div>
 
-      <EditingTools
-        heightPx={thumbnailHeight}
-        isPlaying={isPlaying}
-        onTogglePlay={togglePlay}
-        onSave={handleSaveChanges}
-        canSave={Boolean(accessToken) && hasPendingChanges && !generating}
-        isSaving={isSaving}
-        onInsertVideo={onInsertVideo}
-      />
+      <div className="flex-none">
+        <EditingTools
+          heightPx={thumbnailHeight}
+          isPlaying={isPlaying}
+          onTogglePlay={togglePlay}
+          onSave={handleSaveChanges}
+          canSave={Boolean(accessToken) && hasPendingChanges && !generating}
+          isSaving={isSaving}
+          onInsertVideo={onInsertVideo}
+        />
+      </div>
     </div>
   )
 }
