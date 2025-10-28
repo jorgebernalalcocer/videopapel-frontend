@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Play, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 
 type EditingToolsProps = {
   heightPx: number
@@ -22,6 +23,17 @@ export default function EditingTools({
   isSaving = false,
   onInsertVideo,
 }: EditingToolsProps) {
+  // 🔁 Relación inversa: si se puede guardar => bloquear inserción
+  const insertDisabled = canSave && !isSaving
+
+  const handleInsertClick = () => {
+    if (insertDisabled) {
+      toast.warning("Debes de guardar cambios antes de insertar un nuevo video")
+      return
+    }
+    onInsertVideo?.()
+  }
+
   return (
     <div
       className="mt-3 border rounded-lg bg-white flex items-center gap-2 px-2"
@@ -35,7 +47,6 @@ export default function EditingTools({
         className="inline-flex items-center gap-2"
         title={isPlaying ? 'Pausar' : 'Reproducir'}
       >
-        {/* Icono opcional; quítalo si no usas lucide */}
         <Play className="h-4 w-4" />
         {isPlaying ? 'Pausar' : 'Reproducir'}
       </Button>
@@ -43,8 +54,12 @@ export default function EditingTools({
       <Button
         type="button"
         variant="outline"
-        onClick={onInsertVideo}
-        className="inline-flex items-center gap-2"
+        onClick={handleInsertClick}
+        aria-disabled={insertDisabled}
+        className={`
+          inline-flex items-center gap-2
+          ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
+        `}
       >
         <Plus className="h-4 w-4" />
         Insertar vídeo
@@ -52,7 +67,7 @@ export default function EditingTools({
 
       <Button
         type="button"
-        variant="default"
+        variant="outline"
         onClick={onSave}
         disabled={!canSave || isSaving}
         className="ml-auto"
