@@ -7,7 +7,7 @@ import EditingCanvas from '@/components/project/EditingCanvas'
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
 import QualitySelector from '@/components/project/QualitySelector'
 import PrintQualityBadge from '@/components/project/PrintQualityBadge'
-import PrintSizeSelector from '@/components/project/PrintSizeSelector'
+import SizeSelector from '@/components/project/SizeSelector'
 import PrintSizeBadge from '@/components/project/PrintSizeBadge'
 
 /* =========================
@@ -299,7 +299,7 @@ async function handleExportPdf() {
                 value={project.print_quality_id ?? null}
                 onSaved={() => fetchProject()}  // refresca tras guardar
               />
-              <PrintSizeSelector
+              <SizeSelector
                 apiBase={API_BASE}
                 accessToken={accessToken}
                 projectId={project.id}
