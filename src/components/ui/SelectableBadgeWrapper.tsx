@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, type ReactNode } from 'react'
+import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { Modal, type ModalProps } from './Modal'
 
 /**
@@ -12,7 +12,7 @@ import { Modal, type ModalProps } from './Modal'
  * @param badgeProps Las props que se pasan al BadgeComponent.
  * @param selectorProps Las props que se pasan al SelectorComponent (incluyendo la lógica de API).
  */
-export default function SelectableBadgeWrapper<T extends object, U extends object>({
+export default function SelectableBadgeWrapper<T extends object, U extends { className?: string }>({
   BadgeComponent,
   SelectorComponent,
   badgeProps,
@@ -27,7 +27,7 @@ export default function SelectableBadgeWrapper<T extends object, U extends objec
   
   // Props
   badgeProps: T
-  selectorProps: U
+  selectorProps: U | ((helpers: { closeModal: () => void }) => U)
   
   // Customización del Modal
   modalTitle: ReactNode
@@ -36,26 +36,32 @@ export default function SelectableBadgeWrapper<T extends object, U extends objec
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const openModal = () => setIsOpen(true)
-  const closeModal = () => setIsOpen(false)
+  const openModal = useCallback(() => setIsOpen(true), [])
+  const closeModal = useCallback(() => setIsOpen(false), [])
+
+  const resolvedSelectorProps = useMemo<U>(() => {
+    return typeof selectorProps === 'function'
+      ? (selectorProps as (helpers: { closeModal: () => void }) => U)({ closeModal })
+      : selectorProps
+  }, [selectorProps, closeModal])
+  const selectorPropsWithClassName = useMemo(() => {
+    const mergedClassName = ['mt-4', resolvedSelectorProps.className].filter(Boolean).join(' ')
+    return {
+      ...resolvedSelectorProps,
+      className: mergedClassName,
+    } as U
+  }, [resolvedSelectorProps])
 
   // El Badge se envuelve en un div cliqueable.
   const badgeElement = useMemo(() => (
-    <div 
-      onClick={openModal} 
-      className="cursor-pointer inline-block focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-full" // Añadimos focus state para accesibilidad
-      tabIndex={0}
-      role="button"
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          openModal()
-          e.preventDefault()
-        }
-      }}
+    <button
+      type="button"
+      onClick={openModal}
+      className="inline-block rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
     >
       <BadgeComponent {...badgeProps} />
-    </div>
-  ), [BadgeComponent, badgeProps])
+    </button>
+  ), [BadgeComponent, badgeProps, openModal])
 
   return (
     <>
@@ -73,7 +79,7 @@ export default function SelectableBadgeWrapper<T extends object, U extends objec
       >
         {/* Renderizar el selector con sus props */}
         {/* Le damos una pequeña clase de margen para separarlo del título del modal */}
-        <SelectorComponent {...selectorProps} className="mt-4" />
+        <SelectorComponent {...selectorPropsWithClassName} />
       </Modal>
     </>
   )

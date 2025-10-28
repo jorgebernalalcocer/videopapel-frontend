@@ -9,6 +9,7 @@ import QualitySelector from '@/components/project/QualitySelector'
 import PrintQualityBadge from '@/components/project/PrintQualityBadge'
 import SizeSelector from '@/components/project/SizeSelector'
 import PrintSizeBadge from '@/components/project/PrintSizeBadge'
+import SelectableBadgeWrapper from '@/components/ui/SelectableBadgeWrapper'
 
 /* =========================
    Tipos
@@ -281,31 +282,52 @@ async function handleExportPdf() {
           <div className="bg-white rounded-xl shadow p-4 border">
             <h2 className="text-xl font-semibold mb-3">Configuración de Salida</h2>
             <div className="space-y-3 text-sm">
-              <PrintQualityBadge
-                name={project.print_quality_name}
-                ppi={project.print_quality_ppi}
-                compact
-              />
-              <PrintSizeBadge
-                name={project.print_size_label}
-                widthMm={project.print_size_width_mm}
-                heightMm={project.print_size_height_mm}
-                compact
-              />
-              <QualitySelector
-                apiBase={API_BASE}
-                accessToken={accessToken}
-                projectId={project.id}
-                value={project.print_quality_id ?? null}
-                onSaved={() => fetchProject()}  // refresca tras guardar
-              />
-              <SizeSelector
-                apiBase={API_BASE}
-                accessToken={accessToken}
-                projectId={project.id}
-                value={project.print_size_id ?? null}
-                onSaved={() => fetchProject()}  // refresca tras guardar
-              />
+              <div className="flex flex-wrap gap-2">
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintQualityBadge}
+                  SelectorComponent={QualitySelector}
+                  badgeProps={{
+                    name: project.print_quality_name,
+                    ppi: project.print_quality_ppi,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_quality_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar calidad de impresión"
+                  modalDescription="Elige la calidad con la que se generarán las impresiones."
+                />
+
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintSizeBadge}
+                  SelectorComponent={SizeSelector}
+                  badgeProps={{
+                    name: project.print_size_label,
+                    widthMm: project.print_size_width_mm,
+                    heightMm: project.print_size_height_mm,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_size_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar tamaño de impresión"
+                  modalDescription="Escoge el tamaño que se aplicará al proyecto."
+                />
+              </div>
               <p>Efecto: [Select Effect]</p>
               <p>Orientación: [Select Orientation]</p>
 
