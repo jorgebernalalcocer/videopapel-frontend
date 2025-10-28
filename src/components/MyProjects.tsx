@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 
 type Project = {
-  id: number
+  id: string
   name: string | null
   status: 'draft' | 'ready' | 'exported'
   created_at: string
@@ -21,6 +21,7 @@ export default function MyProjects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const hasHydrated = useAuth((s) => s.hasHydrated)
@@ -36,7 +37,7 @@ export default function MyProjects() {
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
       const data = await res.json()
-      setProjects(data?.results ?? data) // soporta paginación DRF o lista simple
+      setProjects(data?.results ?? data)
     } catch (e: any) {
       setError(e.message || 'Error al cargar tus proyectos')
     } finally {
@@ -57,21 +58,42 @@ export default function MyProjects() {
     }
   }, [fetchProjects])
 
-  if (!hasHydrated) {
-    return <p className="text-gray-500">Preparando…</p>
+  async function duplicateProject(id: string) {
+    if (!accessToken) return
+    setDuplicatingId(id)
+    setError(null)
+    try {
+      const res = await fetch(`${API_BASE}/projects/${id}/duplicate/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
+      const clone: Project = await res.json()
+
+      // Opción A: refrescar toda la lista
+      // await fetchProjects()
+
+      // Opción B: insertar el clon sin esperar a recargar
+      setProjects((prev) => [clone, ...prev])
+
+      // dispara evento por si otros componentes escuchan
+      window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
+    } catch (e: any) {
+      setError(e.message || 'No se pudo duplicar el proyecto')
+    } finally {
+      setDuplicatingId(null)
+    }
   }
-  if (!accessToken) {
-    return <p className="text-gray-500">Inicia sesión para ver tus proyectos.</p>
-  }
-  if (loading) {
-    return <p className="text-gray-500">Cargando…</p>
-  }
-  if (error) {
-    return <p className="text-red-600 text-sm">{error}</p>
-  }
-  if (!projects.length) {
-    return <p className="text-gray-500">Aún no tienes proyectos.</p>
-  }
+
+  if (!hasHydrated) return <p className="text-gray-500">Preparando…</p>
+  if (!accessToken) return <p className="text-gray-500">Inicia sesión para ver tus proyectos.</p>
+  if (loading) return <p className="text-gray-500">Cargando…</p>
+  if (error) return <p className="text-red-600 text-sm">{error}</p>
+  if (!projects.length) return <p className="text-gray-500">Aún no tienes proyectos.</p>
 
   return (
     <section className="w-full">
@@ -110,6 +132,20 @@ export default function MyProjects() {
                 >
                   Exportar
                 </Link>
+
+                {/* Nuevo botón: Duplicar */}
+                <button
+                  type="button"
+                  onClick={() => duplicateProject(p.id)}
+                  disabled={duplicatingId === p.id}
+                  title="Duplicar proyecto"
+                  className="
+                    px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50
+                    disabled:opacity-60 disabled:cursor-not-allowed
+                  "
+                >
+                  {duplicatingId === p.id ? 'Duplicando…' : 'Duplicar'}
+                </button>
               </div>
             </div>
           </li>
