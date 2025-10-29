@@ -58,7 +58,7 @@ export default function DeleteProjectButton({
         throw new Error(text || `Error ${res.status} al eliminar el proyecto`)
       }
 
-      toast.success('Proyecto eliminado', {
+      toast.success('Proyecto eliminado correctamente', {
         icon: <CheckCircle2 className="text-green-500" />,
         duration: 5000,
       })
