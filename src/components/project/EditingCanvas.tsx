@@ -240,16 +240,16 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     })()
   }, [selectedId, selectedGlobalMs, combinedThumbs, isFrameFullScreen])
 
-  async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: boolean) {
-    const video = videoRef.current
-    const canvas = bigCanvasRef.current
-    if (!video || !canvas) return
+async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: boolean) {
+  const video = videoRef.current
+  const canvas = bigCanvasRef.current
+  if (!video || !canvas) return
 
-    if (video.src !== src) {
-      await setVideoSrcAndWait(video, src)
-    }
-    try {
-      await seekVideo(video, tLocalMs / 1000)
+  if (video.src !== src) {
+    await setVideoSrcAndWait(video, src)
+  }
+  try {
+    await seekVideo(video, tLocalMs / 1000) // 👈 Aquí la primera búsqueda puede fallar
       const w = video.videoWidth || 1280
       const h = video.videoHeight || 720
       if (w <= 0 || h <= 0) return
@@ -640,19 +640,55 @@ function nearestIndex(arr: number[], target: number) {
   return bestIdx
 }
 
+// En lugar de la versión actual de 'seekVideo'
 function seekVideo(video: HTMLVideoElement, timeSec: number) {
   return new Promise<void>((resolve, reject) => {
-    const onSeeked = () => { cleanup(); resolve() }
-    const onError = () => { cleanup(); reject(new Error('Seek error')) }
+    let resolved = false
     const cleanup = () => {
       video.removeEventListener('seeked', onSeeked)
+      video.removeEventListener('loadeddata', onLoadedData)
       video.removeEventListener('error', onError)
     }
-    if (Math.abs(video.currentTime - timeSec) < 0.01) { resolve(); return }
+
+    const checkAndResolve = () => {
+      // Garantiza que la búsqueda se ha completado Y que el video tiene datos actuales.
+      if (resolved || video.readyState >= video.HAVE_CURRENT_DATA) {
+        if (!resolved) {
+          resolved = true
+          cleanup()
+          resolve()
+        }
+        return true
+      }
+      return false
+    }
+
+    const onSeeked = () => {
+      // Después de buscar, damos un pequeño respiro (timeout 0) para que
+      // el navegador actualice el readyState si no lo hizo inmediatamente.
+      // O simplemente confiamos en el chequeo de estado.
+      checkAndResolve()
+    }
+    const onLoadedData = () => checkAndResolve()
+    const onError = () => { cleanup(); reject(new Error('Seek error')) }
+
+    // Si ya estamos cerca del tiempo y hay datos suficientes, resolvemos inmediatamente.
+    if (Math.abs(video.currentTime - timeSec) < 0.05 && video.readyState >= video.HAVE_CURRENT_DATA) {
+      resolve()
+      return
+    }
+
+    // Si todavía no se ha resuelto, adjuntamos listeners y buscamos.
     video.addEventListener('seeked', onSeeked, { once: true })
+    video.addEventListener('loadeddata', onLoadedData, { once: true }) // Por si acaso
     video.addEventListener('error', onError, { once: true })
+
     try {
       video.currentTime = timeSec
+      // En caso de que la búsqueda se complete tan rápido que el 'seeked' no se active
+      // o el estado se actualice justo después de añadir los listeners.
+      // Comprobación final después de disparar la búsqueda.
+      if (checkAndResolve()) return
     } catch (e) {
       cleanup()
       reject(e as Error)
