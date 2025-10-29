@@ -10,6 +10,8 @@ import PrintQualityBadge from '@/components/project/PrintQualityBadge'
 import SizeSelector from '@/components/project/SizeSelector'
 import PrintSizeBadge from '@/components/project/PrintSizeBadge'
 import SelectableBadgeWrapper from '@/components/ui/SelectableBadgeWrapper'
+import PrintOrientationBadge from '@/components/project/PrintOrientationBadge'
+import OrientationSelector from '@/components/project/OrientationSelector'
 
 /* =========================
    Tipos
@@ -39,6 +41,9 @@ type Project = {
   print_size_label?: string | null
   print_size_width_mm?: number | null
   print_size_height_mm?: number | null
+  print_orientation_id?: number | null
+  print_orientation_label?: string | null
+  print_orientation_type?: 'vertical' | 'horizontal' | 'cuadrado' | null
   primary_clip?: ProjectClipPayload | null
 }
 
@@ -327,9 +332,28 @@ async function handleExportPdf() {
                   modalTitle="Seleccionar tamaño de impresión"
                   modalDescription="Escoge el tamaño que se aplicará al proyecto."
                 />
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintOrientationBadge}
+                  SelectorComponent={OrientationSelector}
+                  badgeProps={{
+                    orientation: project.print_orientation_type ?? null,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_orientation_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar orientación de impresión"
+                  modalDescription="Elige la orientación que se aplicará al proyecto."
+                />    
               </div>
               <p>Efecto: [Select Effect]</p>
-              <p>Orientación: [Select Orientation]</p>
 
               <button className="w-full mt-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-purple-700 transition">
                 Guardar Cambios
