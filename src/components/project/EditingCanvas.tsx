@@ -95,6 +95,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFrameFullScreen, setIsFrameFullScreen] = useState(false)
+  const [paintError, setPaintError] = useState<boolean>(false) // 👈 NUEVO ESTADO
   const playTimerRef = useRef<number | null>(null)
 
   // Compat single-clip
@@ -243,34 +244,55 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: boolean) {
   const video = videoRef.current
   const canvas = bigCanvasRef.current
-  if (!video || !canvas) return
+  
+  setPaintError(false) // 👈 Resetear el error al intentar pintar
+
+  if (!video || !canvas) {
+      setPaintError(true)
+      return
+  }
 
   if (video.src !== src) {
-    await setVideoSrcAndWait(video, src)
+    try {
+      await setVideoSrcAndWait(video, src)
+    } catch {
+      setPaintError(true) // Error al cargar la fuente
+      return
+    }
   }
+  
   try {
-    await seekVideo(video, tLocalMs / 1000) // 👈 Aquí la primera búsqueda puede fallar
-      const w = video.videoWidth || 1280
-      const h = video.videoHeight || 720
-      if (w <= 0 || h <= 0) return
-      const wrapper = bigCanvasWrapperRef.current
-      const maxW = wrapper?.clientWidth ?? w
-      const maxH = wrapper?.clientHeight ?? h
-      const ratioBase = fillViewer ? Math.max(maxW / w, maxH / h) : Math.min(maxW / w, maxH / h)
-      const ratio = Number.isFinite(ratioBase) && ratioBase > 0 ? ratioBase : 1
-      const displayW = Math.max(1, Math.round(w * ratio))
-      const displayH = Math.max(1, Math.round(h * ratio))
+    await seekVideo(video, tLocalMs / 1000)
+    const w = video.videoWidth || 1280
+    const h = video.videoHeight || 720
+    if (w <= 0 || h <= 0) {
+        setPaintError(true) // No hay dimensiones válidas
+        return
+    }
+    const wrapper = bigCanvasWrapperRef.current
+    const maxW = wrapper?.clientWidth ?? w
+    const maxH = wrapper?.clientHeight ?? h
+    const ratioBase = fillViewer ? Math.max(maxW / w, maxH / h) : Math.min(maxW / w, maxH / h)
+    const ratio = Number.isFinite(ratioBase) && ratioBase > 0 ? ratioBase : 1
+    const displayW = Math.max(1, Math.round(w * ratio))
+    const displayH = Math.max(1, Math.round(h * ratio))
 
-      canvas.width = w
-      canvas.height = h
-      canvas.style.width = `${displayW}px`
-      canvas.style.height = `${displayH}px`
-      const ctx = canvas.getContext('2d')
-      if (!ctx) return
-      ctx.clearRect(0, 0, w, h)
-      ctx.drawImage(video, 0, 0, w, h)
-    } catch { /* noop */ }
+    canvas.width = w
+    canvas.height = h
+    canvas.style.width = `${displayW}px`
+    canvas.style.height = `${displayH}px`
+    const ctx = canvas.getContext('2d')
+    if (!ctx) {
+        setPaintError(true) // No se puede obtener el contexto
+        return
+    }
+    ctx.clearRect(0, 0, w, h)
+    ctx.drawImage(video, 0, 0, w, h)
+    // Éxito: setPaintError(false) ya se hizo al principio
+  } catch {
+    setPaintError(true) // 👈 Activar el error si falla el seek o drawImage
   }
+}
 
   /* --------- reproducción --------- */
 
@@ -390,9 +412,19 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
           </div>
         )}
 
-        <video ref={videoRef} preload="metadata" muted playsInline className="hidden" />
+<video ref={videoRef} preload="metadata" muted playsInline crossOrigin="anonymous" className="hidden" />        
+        {/* Bloque para mostrar el mensaje de error */}
+        {paintError && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center text-center">
+            <p className="text-white text-base bg-black/70 p-4 rounded-lg">
+              Fallo al abrir el fotograma, pero no afectará a la impresión.
+            </p>
+          </div>
+        )}
+
         <div ref={bigCanvasWrapperRef} className="flex h-full w-full items-center justify-center max-h-full max-w-full overflow-hidden">
-          <canvas ref={bigCanvasRef} className={canvasClassName} />
+          {/* El canvas solo se pinta si NO hay un error de pintura para evitar superposición visual */}
+          <canvas ref={bigCanvasRef} className={canvasClassName} style={{ display: paintError ? 'none' : 'block' }} />
         </div>
 
         <div className="absolute bottom-2 left-2 flex items-center gap-2">
@@ -581,6 +613,7 @@ function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h: number
   return `${url.origin}${outPath}`
 }
 
+// En el Helper 'setVideoSrcAndWait'
 async function setVideoSrcAndWait(video: HTMLVideoElement, src: string) {
   return new Promise<void>((resolve, reject) => {
     const cleanup = () => {
@@ -589,8 +622,14 @@ async function setVideoSrcAndWait(video: HTMLVideoElement, src: string) {
     }
     const onLoaded = () => { cleanup(); resolve() }
     const onError = () => { cleanup(); reject(new Error('Error cargando video')) }
+    
     video.addEventListener('loadedmetadata', onLoaded, { once: true })
     video.addEventListener('error', onError, { once: true })
+    
+    // 💡 NUEVAS LÍNEAS: Asegurar el estado ideal para Chrome
+    video.preload = 'auto' // Forzar precarga para que Chrome trabaje más
+    video.muted = true     // Silenciar por si Chrome lo necesita
+    
     video.src = src
   })
 }
@@ -640,21 +679,21 @@ function nearestIndex(arr: number[], target: number) {
   return bestIdx
 }
 
-// En lugar de la versión actual de 'seekVideo'
 function seekVideo(video: HTMLVideoElement, timeSec: number) {
   return new Promise<void>((resolve, reject) => {
-    let resolved = false
+    let hasResolved = false
+
     const cleanup = () => {
-      video.removeEventListener('seeked', onSeeked)
-      video.removeEventListener('loadeddata', onLoadedData)
+      video.removeEventListener('seeked', onStateChange)
+      video.removeEventListener('loadeddata', onStateChange)
       video.removeEventListener('error', onError)
     }
 
     const checkAndResolve = () => {
-      // Garantiza que la búsqueda se ha completado Y que el video tiene datos actuales.
-      if (resolved || video.readyState >= video.HAVE_CURRENT_DATA) {
-        if (!resolved) {
-          resolved = true
+      // Garantiza que tenemos datos para el frame actual.
+      if (video.readyState >= video.HAVE_CURRENT_DATA) {
+        if (!hasResolved) {
+          hasResolved = true
           cleanup()
           resolve()
         }
@@ -663,35 +702,46 @@ function seekVideo(video: HTMLVideoElement, timeSec: number) {
       return false
     }
 
-    const onSeeked = () => {
-      // Después de buscar, damos un pequeño respiro (timeout 0) para que
-      // el navegador actualice el readyState si no lo hizo inmediatamente.
-      // O simplemente confiamos en el chequeo de estado.
-      checkAndResolve()
+    const onStateChange = () => checkAndResolve()
+    const onError = () => {
+      if (!hasResolved) {
+        hasResolved = true
+        cleanup()
+        reject(new Error('Seek or loading error'))
+      }
     }
-    const onLoadedData = () => checkAndResolve()
-    const onError = () => { cleanup(); reject(new Error('Seek error')) }
 
-    // Si ya estamos cerca del tiempo y hay datos suficientes, resolvemos inmediatamente.
-    if (Math.abs(video.currentTime - timeSec) < 0.05 && video.readyState >= video.HAVE_CURRENT_DATA) {
-      resolve()
+    if (Math.abs(video.currentTime - timeSec) < 0.05 && checkAndResolve()) {
       return
     }
 
-    // Si todavía no se ha resuelto, adjuntamos listeners y buscamos.
-    video.addEventListener('seeked', onSeeked, { once: true })
-    video.addEventListener('loadeddata', onLoadedData, { once: true }) // Por si acaso
+    video.addEventListener('seeked', onStateChange, { once: true })
+    video.addEventListener('loadeddata', onStateChange, { once: true })
     video.addEventListener('error', onError, { once: true })
 
     try {
+      // 💡 CLAVE PARA IOS:
+      // Forzamos al pipeline de media a estar activo.
+      // En iOS, a veces se requiere un ciclo play/pause para asegurar
+      // que el frame se decodifique y esté disponible para el canvas.
       video.currentTime = timeSec
-      // En caso de que la búsqueda se complete tan rápido que el 'seeked' no se active
-      // o el estado se actualice justo después de añadir los listeners.
-      // Comprobación final después de disparar la búsqueda.
-      if (checkAndResolve()) return
+      video.play().catch(() => {}) // El catch es para ignorar errores de 'play' no permitidos
+      video.pause()
+      
     } catch (e) {
-      cleanup()
-      reject(e as Error)
+      onError()
+      return
+    }
+
+    checkAndResolve()
+
+    if (!hasResolved) {
+      // El timeout es la última defensa contra las condiciones de carrera de Chrome/Safari.
+      setTimeout(() => {
+        if (!hasResolved) {
+          checkAndResolve()
+        }
+      }, 50) 
     }
   })
 }
