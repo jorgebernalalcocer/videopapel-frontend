@@ -244,32 +244,36 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: boolean) {
   const video = videoRef.current
   const canvas = bigCanvasRef.current
-  
+  const wrapper = bigCanvasWrapperRef.current
+
   setPaintError(false) // 👈 Resetear el error al intentar pintar
 
   if (!video || !canvas) {
-      setPaintError(true)
-      return
+    setPaintError(true)
+    return
   }
 
-  if (video.src !== src) {
+  const targetHeight = Math.max(240, Math.min(wrapper?.clientHeight ?? 720, 1080))
+  const previewSrc = cloudinaryPreviewVideoUrl(src, targetHeight)
+
+  if (video.dataset.previewSrc !== previewSrc || video.src !== previewSrc) {
     try {
-      await setVideoSrcAndWait(video, src)
+      video.dataset.previewSrc = previewSrc
+      await setVideoSrcAndWait(video, previewSrc)
     } catch {
       setPaintError(true) // Error al cargar la fuente
       return
     }
   }
-  
+
   try {
     await seekVideo(video, tLocalMs / 1000)
     const w = video.videoWidth || 1280
     const h = video.videoHeight || 720
     if (w <= 0 || h <= 0) {
-        setPaintError(true) // No hay dimensiones válidas
-        return
+      setPaintError(true) // No hay dimensiones válidas
+      return
     }
-    const wrapper = bigCanvasWrapperRef.current
     const maxW = wrapper?.clientWidth ?? w
     const maxH = wrapper?.clientHeight ?? h
     const ratioBase = fillViewer ? Math.max(maxW / w, maxH / h) : Math.min(maxW / w, maxH / h)
@@ -283,8 +287,8 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
     canvas.style.height = `${displayH}px`
     const ctx = canvas.getContext('2d')
     if (!ctx) {
-        setPaintError(true) // No se puede obtener el contexto
-        return
+      setPaintError(true) // No se puede obtener el contexto
+      return
     }
     ctx.clearRect(0, 0, w, h)
     ctx.drawImage(video, 0, 0, w, h)
@@ -574,6 +578,37 @@ function saveThumbsToCache(projectId: string, clipId: number | string, sig: stri
     }
     localStorage.setItem(LS_KEY(projectId, clipId), JSON.stringify(payload))
   } catch { /* ignore */ }
+}
+
+function cloudinaryPreviewVideoUrl(videoUrl: string, maxHeight: number): string {
+  try {
+    const url = new URL(videoUrl)
+    const parts = url.pathname.split('/').filter(Boolean)
+    const uploadIdx = parts.findIndex((p, i, arr) => p === 'upload' && arr[i - 1] === 'video')
+    if (uploadIdx === -1) return videoUrl
+
+    let version = ''
+    let afterUpload = parts.slice(uploadIdx + 1)
+    if (afterUpload[0] && /^v\d+$/i.test(afterUpload[0])) {
+      version = afterUpload.shift()!
+    } else {
+      const vIdx = afterUpload.findIndex(p => /^v\d+$/i.test(p))
+      if (vIdx >= 0) {
+        version = afterUpload[vIdx]
+        afterUpload = afterUpload.slice(vIdx + 1)
+      }
+    }
+
+    const publicIdWithExt = afterUpload.join('/')
+    const safeH = Math.max(240, Math.min(Math.round(maxHeight), 1080))
+    const trans = `q_auto:eco,c_scale,h_${safeH},f_mp4`
+    const base = '/' + parts.slice(0, uploadIdx + 1).join('/')
+    const ver = version ? `/${version}` : ''
+    const outPath = `${base}/${trans}${ver}/${publicIdWithExt}`
+    return `${url.origin}${outPath}`
+  } catch {
+    return videoUrl
+  }
 }
 
 // URL Cloudinary de frame para previsualización/tienda de thumbs
