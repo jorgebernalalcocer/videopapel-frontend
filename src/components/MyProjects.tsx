@@ -4,6 +4,7 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/store/auth'
+import DeleteProjectButton from '@/components/DeleteProjectButton'
 
 type Project = {
   id: string
@@ -147,6 +148,13 @@ export default function MyProjects() {
                   {duplicatingId === p.id ? 'Duplicando…' : 'Duplicar'}
                 </button>
               </div>
+              <DeleteProjectButton
+                projectId={p.id}
+                projectName={p.name}
+                onDeleted={() => {
+                  setProjects((prev) => prev.filter((proj) => proj.id !== p.id))
+                }}
+              />
             </div>
           </li>
         ))}
