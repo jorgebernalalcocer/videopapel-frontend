@@ -47,6 +47,18 @@ export default function UploadVideo() {
       return;
     }
 
+    const MAX_BYTES = 100 * 1024 * 1024; // 100 MB
+    if (file.size > MAX_BYTES) {
+      toast.error("El límite del archivo no puede superar los 100 MB.", {
+        icon: <XCircle className="text-red-500" />,
+        duration: 5000,
+      });
+      if (inputRef.current) {
+        inputRef.current.value = "";
+      }
+      return;
+    }
+
     setFileName(file.name);
     setProgress(0);
     setUploading(true);
@@ -170,7 +182,7 @@ export default function UploadVideo() {
       <UploadCloud className="h-12 w-12 text-gray-500 mb-3" />
       <p className="text-gray-700 font-medium">Arrastra tu video aquí</p>
       <p className="text-gray-500 text-sm mb-4">
-        o haz clic para seleccionar un archivo
+        o haz clic para seleccionar un archivo. Máximo 100 Mb.
       </p>
 
       <label htmlFor="video-upload" className="cursor-pointer">
