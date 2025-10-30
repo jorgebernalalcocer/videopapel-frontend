@@ -442,7 +442,10 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
             {isFrameFullScreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             Visualización
           </button>
-        </div>
+{/* ✅ CORRECCIÓN APLICADA AQUÍ */}
+          <p className="text-white font-bold" style={{ fontSize: '0.8rem' }}>
+            {combinedThumbs.length} fotogramas
+          </p>     </div>
 
         <div className="absolute bottom-2 right-2 flex items-center gap-2">
           <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
