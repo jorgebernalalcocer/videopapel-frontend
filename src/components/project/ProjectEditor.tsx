@@ -12,6 +12,8 @@ import PrintSizeBadge from '@/components/project/PrintSizeBadge'
 import SelectableBadgeWrapper from '@/components/ui/SelectableBadgeWrapper'
 import PrintOrientationBadge from '@/components/project/PrintOrientationBadge'
 import OrientationSelector from '@/components/project/OrientationSelector'
+import PrintEffectBadge from '@/components/project/PrintEffectBadge'
+import EffectSelector from '@/components/project/EffectSelector'
 
 /* =========================
    Tipos
@@ -352,8 +354,27 @@ async function handleExportPdf() {
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
                 />    
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintEffectBadge}
+                  SelectorComponent={EffectSelector}
+                  badgeProps={{
+                    name: project.print_effect_label,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_effect_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar efecto de impresión"
+                  modalDescription="Elige el efecto que se aplicará al proyecto."
+                />
               </div>
-              <p>Efecto: [Select Effect]</p>
 
               <button className="w-full mt-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-purple-700 transition">
                 Guardar Cambios
