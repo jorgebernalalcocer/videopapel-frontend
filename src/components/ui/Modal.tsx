@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from 'react'
 
-type ModalSize = 'sm' | 'md' | 'lg'
+// 1. ⭐️ Añadir 'full' como opción de tamaño
+type ModalSize = 'sm' | 'md' | 'lg' | 'full' 
 
 export type ModalProps = {
   open: boolean
@@ -30,7 +31,8 @@ export type ModalProps = {
 const sizeClasses: Record<ModalSize, string> = {
   sm: 'max-w-sm',
   md: 'max-w-md',
-  lg: 'max-w-2xl',
+  lg: 'max-w-4xl', // Lo he incrementado a 4xl, ya que 2xl no es muy grande.
+  full: 'max-w-full w-11/12 mx-auto sm:w-full', // 2. ⭐️ Clases para ancho casi completo y centrado
 }
 
 /**
@@ -110,7 +112,8 @@ export function Modal({
 
   const dialogClasses = useMemo(() => {
     const classes = [
-      'w-full',
+      // 3. ⭐️ Usar w-full siempre para ocupar el 100% del contenedor padre
+      'w-full', 
       sizeClasses[size],
       'rounded-2xl',
       'bg-white',
@@ -128,6 +131,7 @@ export function Modal({
   return createPortal(
     <div
       ref={overlayRef}
+      // Contenedor de centrado (ya está correcto)
       className={['fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4', className]
         .filter(Boolean)
         .join(' ')}

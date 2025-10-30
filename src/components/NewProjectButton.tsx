@@ -5,6 +5,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
 import { Modal } from '@/components/ui/Modal'
+// 1. ⭐️ Importar el componente de subida
+import UploadVideo from './UploadVideo' 
 
 type Video = {
   id: number
@@ -16,6 +18,15 @@ type Video = {
   file?: string | null
 }
 
+// **Función auxiliar (sin cambios)**
+function formatMs(ms: number) {
+  const s = Math.floor(ms / 1000)
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  return [h, m, sec].map((n, i) => (i === 0 && n === 0 ? null : String(n).padStart(2, '0'))).filter(Boolean).join(':') || '00:00'
+}
+
 export default function NewProjectButton() {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
@@ -25,6 +36,9 @@ export default function NewProjectButton() {
   const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  
+  // 2. ⭐️ Nuevo estado para el modal de subida de video
+  const [showUploadModal, setShowUploadModal] = useState(false) 
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
@@ -40,6 +54,7 @@ export default function NewProjectButton() {
     setOpen(true)
   }
 
+  // Carga de videos (inalterada)
   const fetchVideos = useCallback(async () => {
     if (!accessToken) return
     setLoadingVideos(true)
@@ -51,17 +66,43 @@ export default function NewProjectButton() {
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
       const data = await res.json()
-      setVideos(Array.isArray(data) ? data : data.results ?? [])
+      const newVideos = Array.isArray(data) ? data : data.results ?? []
+      setVideos(newVideos)
+      
+      // Mantener la selección si el video aún existe, o resetear
+      if (selectedVideoId && !newVideos.some(v => v.id === selectedVideoId)) {
+         setSelectedVideoId(null)
+      }
     } catch (e: any) {
       setError(e.message || 'No se pudieron cargar los videos')
     } finally {
       setLoadingVideos(false)
     }
-  }, [API_BASE, accessToken])
+  }, [API_BASE, accessToken, selectedVideoId]) // Incluir selectedVideoId en dependencias
 
   useEffect(() => {
     if (open && step === 2) fetchVideos()
   }, [open, step, fetchVideos])
+
+  // 3. ⭐️ Escuchador del evento de subida
+  useEffect(() => {
+    if (!open) return // Solo escuchar cuando el modal principal está abierto
+
+    const handleVideoUploaded = () => {
+      // 🚀 Video subido con éxito, refrescamos la lista
+      console.log("Evento 'videopapel:uploaded' recibido. Refrescando videos.")
+      setShowUploadModal(false) // Cerrar modal de subida
+      setError(null) // Limpiar cualquier error anterior
+      fetchVideos() 
+    }
+
+    window.addEventListener('videopapel:uploaded', handleVideoUploaded)
+
+    return () => {
+      window.removeEventListener('videopapel:uploaded', handleVideoUploaded)
+    }
+  }, [open, fetchVideos])
+
 
   const handleNext = () => {
     setError(null)
@@ -123,6 +164,7 @@ export default function NewProjectButton() {
         Nuevo proyecto
       </button>
 
+      {/* Modal Principal (New Project Wizard) */}
       <Modal
         open={open}
         onClose={() => !submitting && setOpen(false)}
@@ -144,7 +186,7 @@ export default function NewProjectButton() {
                 <button
                   type="button"
                   onClick={handleBack}
-                  disabled={submitting}
+                  disabled={submitting || showUploadModal} // Deshabilitar si se está subiendo (para evitar inconsistencias)
                   className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50"
                 >
                   Atrás
@@ -153,7 +195,7 @@ export default function NewProjectButton() {
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                disabled={submitting}
+                disabled={submitting || showUploadModal}
                 className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50"
               >
                 Cancelar
@@ -170,7 +212,7 @@ export default function NewProjectButton() {
                 <button
                   type="button"
                   onClick={handleCreate}
-                  disabled={!selectedVideoId || submitting}
+                  disabled={!selectedVideoId || submitting || loadingVideos || showUploadModal}
                   className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
                 >
                   {submitting ? 'Creando…' : 'Crear proyecto'}
@@ -199,10 +241,27 @@ export default function NewProjectButton() {
           </div>
         ) : (
           <div className="space-y-3">
+            {/* 4. ⭐️ Botón que abre el modal de subida */}
+            <button
+              onClick={() => setShowUploadModal(true)}
+              disabled={loadingVideos || submitting || showUploadModal}
+              className="inline-flex items-center gap-1 rounded-xl bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+            >
+              <svg 
+                xmlns="http://www.w3.org/2000/svg" 
+                viewBox="0 0 20 20" 
+                fill="currentColor" 
+                className="w-5 h-5"
+              >
+                <path d="M9.25 13.064l-2.09-2.09a.75.75 0 00-1.06 1.06l3.352 3.353a.75.75 0 001.06 0l4.582-4.581a.75.75 0 10-1.06-1.06l-3.29 3.29V5.75a.75.75 0 00-1.5 0v7.314zM4.75 16.25a.75.75 0 000 1.5h10.5a.75.75 0 000-1.5H4.75z" />
+              </svg>
+              Subir un nuevo video
+            </button>
+            
             {loadingVideos ? (
               <p className="text-gray-500 text-sm">Cargando videos…</p>
             ) : videos.length === 0 ? (
-              <p className="text-gray-500 text-sm">No tienes videos todavía.</p>
+              <p className="text-gray-500 text-sm">No tienes videos todavía. ¡Sube uno!</p>
             ) : (
               <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-auto pr-1">
                 {videos.map((v) => {
@@ -241,14 +300,18 @@ export default function NewProjectButton() {
           </div>
         )}
       </Modal>
+
+      {/* 5. ⭐️ Modal para la subida de video */}
+      <Modal
+        open={showUploadModal}
+        onClose={() => setShowUploadModal(false)} // Cierra el modal de subida
+        title="Subir nuevo video"
+        size="lg"
+        contentClassName="max-w-xl" // Ajusta el ancho del contenido sin afectar al overlay
+      >
+        {/* 6. Renderizar el componente de subida */}
+        <UploadVideo />
+      </Modal>
     </>
   )
-}
-
-function formatMs(ms: number) {
-  const s = Math.floor(ms / 1000)
-  const h = Math.floor(s / 3600)
-  const m = Math.floor((s % 3600) / 60)
-  const sec = s % 60
-  return [h, m, sec].map((n, i) => (i === 0 && n === 0 ? null : String(n).padStart(2, '0'))).filter(Boolean).join(':') || '00:00'
 }
