@@ -26,19 +26,20 @@ type PublicProjectResponse = {
 }
 
 type PageProps = {
-  params: { projectId: string }
+  params: Promise<{ projectId: string }>
 }
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const title = `Clips del proyecto ${params.projectId} · VideoPapel`
+  const { projectId } = await params
+  const title = `Clips del proyecto ${projectId} · VideoPapel`
   return {
     title,
     description:
       'Visualiza los clips asociados a este proyecto de VideoPapel y reproduce los vídeos vinculados desde cualquier dispositivo.',
     alternates: {
-      canonical: `/clips/${params.projectId}`,
+      canonical: `/clips/${projectId}`,
     },
   }
 }
@@ -68,9 +69,10 @@ function formatDuration(durationMs: number) {
 }
 
 export default async function PublicClipsPage({ params }: PageProps) {
+  const { projectId } = await params
   let data: PublicProjectResponse | null = null
   try {
-    data = await fetchProjectClips(params.projectId)
+    data = await fetchProjectClips(projectId)
   } catch (error: any) {
     const code = error?.message
     if (code === 'PROJECT_NOT_FOUND') {
@@ -92,7 +94,7 @@ export default async function PublicClipsPage({ params }: PageProps) {
     throw error
   }
 
-  const projectName = data.project.name || `Proyecto ${params.projectId}`
+  const projectName = data.project.name || `Proyecto ${projectId}`
 
   return (
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-10 px-6 py-14">
