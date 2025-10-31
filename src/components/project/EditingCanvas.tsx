@@ -83,6 +83,8 @@ type TextFrame = {
   position_y: number
 }
 
+const FRAME_TOLERANCE_MS = 66
+
 /* =========================
    Componente
 ========================= */
@@ -239,7 +241,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         tLocal <= tf.frame_end
       const inSpecific =
         Array.isArray(tf.specific_frames) &&
-        tf.specific_frames.includes(tLocal)
+        tf.specific_frames.some((value) => Math.abs(value - tLocal) <= FRAME_TOLERANCE_MS)
       return inRange || inSpecific
     })
   }, [textFramesByClip, currentThumb])
