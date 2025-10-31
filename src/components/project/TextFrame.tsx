@@ -1,7 +1,8 @@
 'use client'
 
-import { Pencil, Move } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { PropsWithChildren } from 'react'
+import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
 
 type Props = {
   typography?: string | null
@@ -17,12 +18,17 @@ export default function TextFrame({
   dragging = false,
   children,
 }: PropsWithChildren<Props>) {
+  const fontKey = (typography || '').trim().toLowerCase()
+  const isPacifico = fontKey === 'pacifico' || fontKey === 'pacifico-regular'
+  const fontFamily = isPacifico ? pacificoFontStack : (typography || undefined)
+  const extraClass = isPacifico ? pacifico.className : ''
+
   return (
     <div
       className={`px-4 py-2 rounded-xl bg-black/60 text-white text-center shadow-lg
-                  ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+                  ${dragging ? 'cursor-grabbing' : 'cursor-grab'} ${extraClass}`}
       style={{
-        fontFamily: typography || undefined,
+        fontFamily,
         userSelect: 'none',
         touchAction: 'none',
         // width auto por defecto; el max-width lo controla el contenedor exterior
