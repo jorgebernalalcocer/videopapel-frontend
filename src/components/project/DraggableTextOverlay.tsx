@@ -48,15 +48,40 @@ export default function DraggableTextOverlay({
   const saveTimerRef = useRef<number | null>(null)
   const inFlightRef = useRef<Record<number, AbortController | null>>({})
 
-  // Rectángulo "útil" del vídeo (canvas) dentro del wrapper
-  const videoRect = useMemo(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return null
-    const r = canvas.getBoundingClientRect()
-    if (r.width <= 0 || r.height <= 0) return null
-    return r
-  }, [canvasRef.current?.width, canvasRef.current?.height]) // rehacer cuando cambia tamaño del canvas
+  const [videoRect, setVideoRect] = useState<DOMRect | null>(null)
+  const [baseRect, setBaseRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
 
+  useEffect(() => {
+    const updateRects = () => {
+      if (!canvasRef.current || !wrapperRef.current) return
+      const canvasBox = canvasRef.current.getBoundingClientRect()
+      const wrapperBox = wrapperRef.current.getBoundingClientRect()
+      setVideoRect(canvasBox)
+      setBaseRect({
+        left: canvasBox.left - wrapperBox.left,
+        top: canvasBox.top - wrapperBox.top,
+        width: canvasBox.width,
+        height: canvasBox.height,
+      })
+    }
+
+    updateRects()
+
+    const resizeObs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateRects) : null
+    if (resizeObs && canvasRef.current) resizeObs.observe(canvasRef.current)
+    if (resizeObs && wrapperRef.current) resizeObs.observe(wrapperRef.current)
+
+    window.addEventListener('resize', updateRects)
+    window.addEventListener('scroll', updateRects, true)
+
+    return () => {
+      resizeObs?.disconnect()
+      window.removeEventListener('resize', updateRects)
+      window.removeEventListener('scroll', updateRects, true)
+    }
+  }, [canvasRef, wrapperRef])
+
+  // Rectángulo "útil" del vídeo (canvas) dentro del wrapper
   // Traduce (clientX, clientY) ⇒ coordenadas normalizadas (0..1) del VIDEO
   const pointToNormalized = useCallback(
     (clientX: number, clientY: number) => {
@@ -135,8 +160,8 @@ export default function DraggableTextOverlay({
       if (!startRef.current) return
       const s = startRef.current
       const pos = pointToNormalized(e.clientX, e.clientY)
-      const nx = clamp(s.origX + (pos.startX ?? pos.x) - s.startX, 0, 1) // robustez si pos.startX no existe
-      const ny = clamp(s.origY + (pos.startY ?? pos.y) - s.startY, 0, 1)
+      const nx = clamp(s.origX + (pos.x - s.startX), 0, 1)
+      const ny = clamp(s.origY + (pos.y - s.startY), 0, 1)
 
       if (rafRef.current) cancelAnimationFrame(rafRef.current)
       rafRef.current = requestAnimationFrame(() => {
@@ -170,19 +195,6 @@ export default function DraggableTextOverlay({
 
   // Render
   // Posicionamos respecto al rect del CANVAS, pero con CSS absoluto dentro del WRAPPER.
-  const baseRect = useMemo(() => {
-    const canvas = canvasRef.current
-    if (!canvas || !wrapperRef.current) return null
-    const vb = canvas.getBoundingClientRect()
-    const wb = wrapperRef.current.getBoundingClientRect()
-    return {
-      left: vb.left - wb.left,
-      top: vb.top - wb.top,
-      width: vb.width,
-      height: vb.height,
-    }
-  }, [wrapperRef.current, canvasRef.current, items.length])
-
   return (
     <>
       {items.map((it) => {
