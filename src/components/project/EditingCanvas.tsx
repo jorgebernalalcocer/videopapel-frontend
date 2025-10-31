@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
 import { Maximize2, Minimize2 } from 'lucide-react'
+import { Modal } from '@/components/ui/Modal'
+import { toast } from 'sonner'
 
 /* =========================
    Tipos
@@ -56,6 +58,19 @@ type CombinedThumb = {
 
 type Thumbnail = { t: number; url: string }
 
+type TextFormMode = 'range' | 'specific'
+
+type TextFormState = {
+  content: string
+  typography: string
+  mode: TextFormMode
+  frameStart: string
+  frameEnd: string
+  specificFrames: string
+  positionX: string
+  positionY: string
+}
+
 /* =========================
    Componente
 ========================= */
@@ -96,6 +111,19 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFrameFullScreen, setIsFrameFullScreen] = useState(false)
   const [paintError, setPaintError] = useState<boolean>(false) // 👈 NUEVO ESTADO
+  const [isTextModalOpen, setIsTextModalOpen] = useState(false)
+  const [isSubmittingTextFrame, setIsSubmittingTextFrame] = useState(false)
+  const [textFormError, setTextFormError] = useState<string | null>(null)
+  const [textForm, setTextForm] = useState<TextFormState>({
+    content: '',
+    typography: '',
+    mode: 'range',
+    frameStart: '0',
+    frameEnd: '0',
+    specificFrames: '',
+    positionX: '0.5',
+    positionY: '0.5',
+  })
   const playTimerRef = useRef<number | null>(null)
 
   // Compat single-clip
@@ -128,6 +156,14 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     () => Object.values(clipOffsets).reduce((sum, v) => sum + Math.max(0, v.end - v.start), 0),
     [clipOffsets]
   )
+  const currentThumb = useMemo(() => {
+    if (!combinedThumbs.length) return null
+    if (selectedId) {
+      const hit = combinedThumbs.find(t => t.id === selectedId)
+      if (hit) return hit
+    }
+    return nearestByGlobal(selectedGlobalMs, combinedThumbs)
+  }, [combinedThumbs, selectedId, selectedGlobalMs])
 
   // Cargar/generar thumbs por clip, aplicar ventana [start, end) y fusionar
   useEffect(() => {
@@ -337,6 +373,160 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, playbackFps, selectedGlobalMs, loop, combinedThumbs.length, selectedId])
 
+  function handleOpenTextModal() {
+    if (!combinedThumbs.length || !currentThumb) {
+      toast.warning('Necesitas tener un clip seleccionado para insertar texto.')
+      return
+    }
+    const clipInfo = clipOffsets[currentThumb.clipId]
+    const clipEnd = clipInfo ? clipInfo.end : currentThumb.tLocal
+    const defaultStart = currentThumb.tLocal
+    const defaultEnd = clipEnd !== undefined
+      ? Math.max(defaultStart, Math.min(defaultStart + 1000, clipEnd))
+      : defaultStart
+    setTextForm({
+      content: '',
+      typography: '',
+      mode: 'range',
+      frameStart: String(defaultStart),
+      frameEnd: String(defaultEnd),
+      specificFrames: '',
+      positionX: '0.5',
+      positionY: '0.5',
+    })
+    setTextFormError(null)
+    setIsTextModalOpen(true)
+  }
+
+  const handleSubmitTextFrame = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!currentThumb) {
+      setTextFormError('Selecciona un clip válido antes de insertar texto.')
+      return
+    }
+    setIsSubmittingTextFrame(true)
+    setTextFormError(null)
+    try {
+      const content = textForm.content.trim()
+      if (!content) {
+        throw new Error('El contenido del texto no puede estar vacío.')
+      }
+      const typography = textForm.typography.trim()
+
+      const clipInfo = clipOffsets[currentThumb.clipId]
+      const clipMin = clipInfo ? clipInfo.start : 0
+      const clipMax = clipInfo ? clipInfo.end : undefined
+
+      let frameStart: number | null = null
+      let frameEnd: number | null = null
+      let specificFrames: number[] = []
+
+      if (textForm.mode === 'range') {
+        const start = Number(textForm.frameStart)
+        const end = Number(textForm.frameEnd)
+        if (!Number.isFinite(start) || !Number.isFinite(end)) {
+          throw new Error('Introduce un rango de frames válido.')
+        }
+        if (start < 0 || end < 0) {
+          throw new Error('Los frames deben ser valores iguales o mayores que 0.')
+        }
+        if (end < start) {
+          throw new Error('frame_end debe ser mayor o igual que frame_start.')
+        }
+        if (start < clipMin) {
+          throw new Error(`frame_start debe ser igual o superior a ${clipMin}.`)
+        }
+        if (clipMax !== undefined && end > clipMax) {
+          throw new Error(`frame_end no puede superar ${clipMax}.`)
+        }
+        frameStart = Math.round(start)
+        frameEnd = Math.round(end)
+      } else {
+        if (!textForm.specificFrames.trim()) {
+          throw new Error('Introduce al menos un frame específico.')
+        }
+        const parsed = textForm.specificFrames
+          .split(/[,;\s]+/)
+          .map(token => token.trim())
+          .filter(Boolean)
+          .map(token => Number(token))
+        if (!parsed.length || parsed.some(n => !Number.isFinite(n) || n < 0)) {
+          throw new Error('Los frames específicos deben ser enteros mayores o iguales que 0.')
+        }
+        if (parsed.some(n => n < clipMin)) {
+          throw new Error(`Los frames específicos deben ser mayores o iguales que ${clipMin}.`)
+        }
+        if (clipMax !== undefined && parsed.some(n => n > clipMax)) {
+          throw new Error(`Los frames específicos no pueden superar ${clipMax}.`)
+        }
+        specificFrames = parsed.map(n => Math.round(n))
+      }
+
+      const positionX = Number(textForm.positionX)
+      const positionY = Number(textForm.positionY)
+      if (!Number.isFinite(positionX) || positionX < 0 || positionX > 1) {
+        throw new Error('La posición horizontal debe estar entre 0 y 1.')
+      }
+      if (!Number.isFinite(positionY) || positionY < 0 || positionY > 1) {
+        throw new Error('La posición vertical debe estar entre 0 y 1.')
+      }
+
+      const payload = {
+        clip_id: currentThumb.clipId,
+        content,
+        typography: typography || null,
+        frame_start: frameStart,
+        frame_end: frameEnd,
+        specific_frames: specificFrames,
+        position_x: Number(positionX.toFixed(4)),
+        position_y: Number(positionY.toFixed(4)),
+      }
+
+// Normaliza el body para el serializer del backend (usa `clip`, no `clip_id`)
+const body = {
+  clip: payload.clip_id,
+  content: payload.content,
+  typography: payload.typography,          // puede ser null o string
+  frame_start: payload.frame_start,        // null o number
+  frame_end: payload.frame_end,            // null o number
+  specific_frames: payload.specific_frames ?? [],
+  position_x: payload.position_x,
+  position_y: payload.position_y,
+}
+
+// Llamada real al backend
+const created = await createTextFrame({
+  apiBase,
+  accessToken,
+  body,
+})
+
+// Éxito UI
+toast.success('Texto guardado en el proyecto.')
+setIsTextModalOpen(false)
+
+// (Opcional) Si más adelante gestionas overlay de textos en el lienzo,
+// aquí podrías disparar una recarga o actualizar tu store con `created`.
+
+// Limpia el formulario para la siguiente inserción
+setTextForm({
+  content: '',
+  typography: '',
+  mode: 'range',
+  frameStart: '0',
+  frameEnd: '0',
+  specificFrames: '',
+  positionX: '0.5',
+  positionY: '0.5',
+})
+
+    } catch (err: any) {
+      setTextFormError(err.message || 'No se pudo preparar el texto.')
+    } finally {
+      setIsSubmittingTextFrame(false)
+    }
+  }
+
   /* --------- borrar / guardar --------- */
 
   function deleteSelectedFrame() {
@@ -364,6 +554,44 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
 
     setHasPendingChanges(true)
   }
+
+  async function createTextFrame({
+  apiBase,
+  accessToken,
+  body,
+}: {
+  apiBase: string
+  accessToken: string | null
+  body: any
+}) {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
+
+  const res = await fetch(`${apiBase}/text-frames/`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+  })
+
+  const maybeJson = await res
+    .json()
+    .catch(() => ({})) // por si el backend no devuelve JSON en errores inesperados
+
+  if (!res.ok) {
+    // Errores de validación de DRF (message_dict)
+    if (res.status === 400 && maybeJson && typeof maybeJson === 'object') {
+      const lines = Object.entries(maybeJson)
+        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`)
+        .join('\n')
+      throw new Error(lines || 'Solicitud inválida.')
+    }
+    // Otros errores
+    throw new Error(maybeJson?.detail || `Error ${res.status}`)
+  }
+
+  return maybeJson
+}
+
 
   async function handleSaveChanges() {
     if (!hasPendingChanges || !accessToken) return
@@ -533,8 +761,170 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
           canSave={Boolean(accessToken) && hasPendingChanges && !generating}
           isSaving={isSaving}
           onInsertVideo={onInsertVideo}
+          onInsertText={handleOpenTextModal}
         />
       </div>
+      <Modal
+        open={isTextModalOpen}
+        onClose={() => {
+          if (!isSubmittingTextFrame) setIsTextModalOpen(false)
+        }}
+        title="Insertar texto"
+        size="lg"
+      >
+        <form onSubmit={handleSubmitTextFrame} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Contenido del texto
+            </label>
+            <textarea
+              required
+              rows={4}
+              value={textForm.content}
+              onChange={(e) => setTextForm((prev) => ({ ...prev, content: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Escribe aquí el texto que aparecerá en el clip…"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Tipografía (opcional)
+            </label>
+            <input
+              type="text"
+              value={textForm.typography}
+              onChange={(e) => setTextForm((prev) => ({ ...prev, typography: e.target.value }))}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              placeholder="Ej. Open Sans Bold"
+            />
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-semibold text-gray-800">Aparición</legend>
+            <div className="flex flex-wrap gap-4 text-sm text-gray-700">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="text-frame-mode"
+                  value="range"
+                  checked={textForm.mode === 'range'}
+                  onChange={() => {
+                    setTextForm((prev) => ({ ...prev, mode: 'range' }))
+                    setTextFormError(null)
+                  }}
+                />
+                Rango continuo
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="text-frame-mode"
+                  value="specific"
+                  checked={textForm.mode === 'specific'}
+                  onChange={() => {
+                    setTextForm((prev) => ({ ...prev, mode: 'specific' }))
+                    setTextFormError(null)
+                  }}
+                />
+                Frames específicos
+              </label>
+            </div>
+          </fieldset>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-medium text-gray-700">
+              Frame inicial (ms)
+              <input
+                type="number"
+                min={0}
+                value={textForm.frameStart}
+                onChange={(e) => setTextForm((prev) => ({ ...prev, frameStart: e.target.value }))}
+                disabled={textForm.mode !== 'range'}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
+              />
+            </label>
+            <label className="text-sm font-medium text-gray-700">
+              Frame final (ms)
+              <input
+                type="number"
+                min={0}
+                value={textForm.frameEnd}
+                onChange={(e) => setTextForm((prev) => ({ ...prev, frameEnd: e.target.value }))}
+                disabled={textForm.mode !== 'range'}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
+              />
+            </label>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Frames específicos (ms)
+            </label>
+            <input
+              type="text"
+              value={textForm.specificFrames}
+              onChange={(e) => setTextForm((prev) => ({ ...prev, specificFrames: e.target.value }))}
+              disabled={textForm.mode !== 'specific'}
+              placeholder="Ej. 500, 1500, 2200"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
+            />
+            <p className="mt-1 text-xs text-gray-500">
+              Separa los valores con comas, espacios o punto y coma. Usa milisegundos respecto al clip.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-medium text-gray-700">
+              Posición horizontal (0 - 1)
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={textForm.positionX}
+                onChange={(e) => setTextForm((prev) => ({ ...prev, positionX: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </label>
+            <label className="text-sm font-medium text-gray-700">
+              Posición vertical (0 - 1)
+              <input
+                type="number"
+                min={0}
+                max={1}
+                step={0.01}
+                value={textForm.positionY}
+                onChange={(e) => setTextForm((prev) => ({ ...prev, positionY: e.target.value }))}
+                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </label>
+          </div>
+
+          {textFormError && (
+            <p className="text-sm text-red-600">{textFormError}</p>
+          )}
+
+          <div className="flex justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                if (!isSubmittingTextFrame) setIsTextModalOpen(false)
+              }}
+              className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmittingTextFrame}
+              className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
+            >
+              {isSubmittingTextFrame ? 'Preparando…' : 'Guardar texto'}
+            </button>
+          </div>
+        </form>
+      </Modal>
     </div>
   )
 }

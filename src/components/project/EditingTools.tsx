@@ -12,6 +12,7 @@ type EditingToolsProps = {
   canSave?: boolean
   isSaving?: boolean
   onInsertVideo?: () => void
+  onInsertText?: () => void
 }
 
 export default function EditingTools({
@@ -22,6 +23,7 @@ export default function EditingTools({
   canSave = false,
   isSaving = false,
   onInsertVideo,
+  onInsertText,
 }: EditingToolsProps) {
   // 🔁 Relación inversa: si se puede guardar => bloquear inserción
   const insertDisabled = canSave && !isSaving
@@ -34,6 +36,13 @@ export default function EditingTools({
     onInsertVideo?.()
   }
 
+  const handleInsertTextClick = () => {
+    if (insertDisabled) {
+      toast.warning("Debes de guardar cambios antes de insertar un nuevo texto")
+      return
+    }
+    onInsertText?.()
+  }
   return (
     <div
       className="mt-3 border rounded-lg bg-white flex items-center gap-2 px-2"
@@ -77,6 +86,20 @@ export default function EditingTools({
       >
         <Plus className="h-4 w-4" />
         Insertar imagen
+      </Button>
+
+                  <Button
+        type="button"
+        variant="outline"
+        onClick={handleInsertTextClick}
+        aria-disabled={insertDisabled}
+        className={`
+          inline-flex items-center gap-2
+          ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
+        `}
+      >
+        <Plus className="h-4 w-4" />
+        Insertar texto
       </Button>
 
       <Button
