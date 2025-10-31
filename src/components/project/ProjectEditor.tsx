@@ -14,6 +14,7 @@ import PrintOrientationBadge from '@/components/project/PrintOrientationBadge'
 import OrientationSelector from '@/components/project/OrientationSelector'
 import PrintEffectBadge from '@/components/project/PrintEffectBadge'
 import EffectSelector from '@/components/project/EffectSelector'
+import { text } from 'stream/consumers'
 
 /* =========================
    Tipos
@@ -266,8 +267,6 @@ async function handleExportPdf() {
               </div>
             )}
           </div>
-
-          {/* Timeline/Lista de clips (placeholder) */}
           <div className="mt-4 border-t pt-4">
             <h3 className="text-lg font-medium mb-2">Clips en el Proyecto</h3>
             <div className="bg-gray-100 p-3 rounded-md min-h-[100px]">

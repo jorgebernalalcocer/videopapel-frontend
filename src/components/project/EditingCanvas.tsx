@@ -225,39 +225,56 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
   }, [combinedThumbs, selectedId, selectedGlobalMs])
 
   useEffect(() => {
-    if (!accessToken || !clipIdsKey || clipIdsKey.length === 0) {
+    if (!accessToken || clipsOrdered.length === 0) {
       setTextFramesByClip({})
       return
     }
+
+    setTextFramesByClip({})
+
     let cancelled = false
     ;(async () => {
       try {
-        const entries = await Promise.all(
-          clipsOrdered.map(async (clip) => {
-            const res = await fetch(`${apiBase}/text-frames/?clip=${clip.clipId}`, {
-              headers: {
-                Authorization: `Bearer ${accessToken}`,
-              },
-              credentials: 'include',
-            })
-            if (!res.ok) {
-              throw new Error(`TextFrames ${res.status}`)
-            }
-            const data = (await res.json()) as TextFrame[] | { results: TextFrame[] }
-            const listRaw = Array.isArray(data) ? data : data.results ?? []
-            const list = listRaw.map((item) => ({
-              ...item,
-              specific_frames: Array.isArray(item.specific_frames)
-                ? item.specific_frames.map(Number)
-                : [],
-              position_x: typeof item.position_x === 'number' ? item.position_x : Number(item.position_x ?? 0.5),
-              position_y: typeof item.position_y === 'number' ? item.position_y : Number(item.position_y ?? 0.5),
-            }))
-            return [clip.clipId, list] as const
+        const res = await fetch(`${apiBase}/text-frames/?project=${projectId}`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          throw new Error(`TextFrames ${res.status}`)
+        }
+        const data = (await res.json()) as TextFrame[] | { results: TextFrame[] }
+        const listRaw = Array.isArray(data) ? data : data.results ?? []
+
+        const allowedClipIds = new Set(clipsOrdered.map((clip) => clip.clipId))
+        const map: Record<number, TextFrame[]> = {}
+        for (const item of listRaw) {
+          if (!allowedClipIds.has(item.clip)) continue
+          const normalized: TextFrame = {
+            ...item,
+            specific_frames: Array.isArray(item.specific_frames)
+              ? item.specific_frames.map(Number)
+              : [],
+            position_x: typeof item.position_x === 'number' ? item.position_x : Number(item.position_x ?? 0.5),
+            position_y: typeof item.position_y === 'number' ? item.position_y : Number(item.position_y ?? 0.5),
+          }
+          if (!map[normalized.clip]) {
+            map[normalized.clip] = []
+          }
+          map[normalized.clip].push(normalized)
+        }
+
+        for (const list of Object.values(map)) {
+          list.sort((a, b) => {
+            const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+            const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+            return aStart - bStart
           })
-        )
+        }
+
         if (!cancelled) {
-          setTextFramesByClip(Object.fromEntries(entries))
+          setTextFramesByClip(map)
         }
       } catch (err) {
         console.error('Error cargando text frames', err)
@@ -266,10 +283,11 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
         }
       }
     })()
+
     return () => {
       cancelled = true
     }
-  }, [apiBase, accessToken, clipIdsKey, clipsOrdered])
+  }, [apiBase, accessToken, projectId, clipIdsKey, clipsOrdered])
 
   const activeTextFrames = useMemo(() => {
     if (!currentThumb) return []
