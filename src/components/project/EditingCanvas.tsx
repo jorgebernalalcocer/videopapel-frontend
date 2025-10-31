@@ -703,8 +703,8 @@ function handleEditorSaved(tf: TextFrameModel) {
           frame_start: frameStart,
           frame_end: frameEnd,
           specific_frames: specificFrames,
-          position_x: Number(positionX.toFixed(4)),
-          position_y: Number(positionY.toFixed(4)),
+          position_x: Number(positionX.toFixed(6)),
+          position_y: Number(positionY.toFixed(6)),
         }),
       })
       if (!res.ok) {

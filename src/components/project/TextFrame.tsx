@@ -1,6 +1,6 @@
 'use client'
 
-import { Pencil } from 'lucide-react'
+import { Pencil, Move } from 'lucide-react'
 import { PropsWithChildren } from 'react'
 
 type Props = {
@@ -39,7 +39,9 @@ export default function TextFrame({
           title="Editar"
         >
           <Pencil className="h-4 w-4" />
+
         </button>
+        
       )}
     </div>
   )

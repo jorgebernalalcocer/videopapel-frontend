@@ -94,8 +94,8 @@ export default function TextFrameEditorModal({
       const contentVal = content.trim()
       if (!contentVal) throw new Error('El contenido del texto no puede estar vacío.')
 
-      const px = Number(positionX)
-      const py = Number(positionY)
+      const px = Number(positionX.trim())
+      const py = Number(positionY.trim())
       if (!Number.isFinite(px) || px < 0 || px > 1) throw new Error('La posición horizontal debe estar entre 0 y 1.')
       if (!Number.isFinite(py) || py < 0 || py > 1) throw new Error('La posición vertical debe estar entre 0 y 1.')
 
@@ -140,8 +140,8 @@ export default function TextFrameEditorModal({
         frame_start,
         frame_end,
         specific_frames,
-        position_x: Number(px.toFixed(4)),
-        position_y: Number(py.toFixed(4)),
+        position_x: Number(px.toFixed(6)),
+        position_y: Number(py.toFixed(6)),
       }
 
       const url =
@@ -270,24 +270,20 @@ export default function TextFrameEditorModal({
           <label className="text-sm font-medium text-gray-700">
             Posición horizontal (0 - 1)
             <input
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
+              type="text"
+              inputMode="decimal"
               value={positionX}
-              onChange={(e) => setPositionX(e.target.value)}
+              onChange={(e) => setPositionX(e.target.value.replace(',', '.'))}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </label>
           <label className="text-sm font-medium text-gray-700">
             Posición vertical (0 - 1)
             <input
-              type="number"
-              min={0}
-              max={1}
-              step={0.01}
+              type="text"
+              inputMode="decimal"
               value={positionY}
-              onChange={(e) => setPositionY(e.target.value)}
+              onChange={(e) => setPositionY(e.target.value.replace(',', '.'))}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </label>

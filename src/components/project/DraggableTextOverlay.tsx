@@ -135,8 +135,8 @@ export default function DraggableTextOverlay({
             Authorization: `Bearer ${accessToken}`,
           },
           body: JSON.stringify({
-            position_x: Number(payload.x.toFixed(4)),
-            position_y: Number(payload.y.toFixed(4)),
+            position_x: Number(payload.x.toFixed(6)),
+            position_y: Number(payload.y.toFixed(6)),
           }),
           signal: ctl.signal,
           credentials: 'include',
