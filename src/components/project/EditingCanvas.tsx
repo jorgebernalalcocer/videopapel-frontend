@@ -7,6 +7,9 @@ import DeleteFrameButton from '@/components/project/DeleteFrameButton'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
+import DraggableTextOverlay from '@/components/project/DraggableTextOverlay'
+
+function clamp01(n: number) { return Math.min(1, Math.max(0, n)) }
 
 /* =========================
    Tipos
@@ -140,7 +143,32 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     positionY: '0.5',
   })
   const [textFramesByClip, setTextFramesByClip] = useState<Record<number, TextFrame[]>>({})
+
   const playTimerRef = useRef<number | null>(null)
+
+  // Dentro de EditingCanvas (antes del return)
+const updateTextFrameLocal = (id: number, x: number, y: number) => {
+  setTextFramesByClip((prev) => {
+    const next: typeof prev = {}
+    for (const [clipIdStr, list] of Object.entries(prev)) {
+      const clipId = Number(clipIdStr)
+      const idx = list.findIndex((t) => t.id === id)
+      if (idx === -1) {
+        next[clipId] = list
+        continue
+      }
+      const clone = list.slice()
+      clone[idx] = {
+        ...clone[idx],
+        position_x: Number(x),
+        position_y: Number(y),
+      }
+      next[clipId] = clone
+    }
+    return next
+  })
+}
+
 
   // Compat single-clip
   const baseClip: ClipState | null = useMemo(() => {
@@ -749,24 +777,25 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
           <canvas ref={bigCanvasRef} className={canvasClassName} style={{ display: paintError ? 'none' : 'block' }} />
         </div>
 
-        {!paintError && activeTextFrames.map((tf) => {
-          const left = Math.min(1, Math.max(0, tf.position_x ?? 0.5)) * 100
-          const top = Math.min(1, Math.max(0, tf.position_y ?? 0.5)) * 100
-          return (
-            <div
-              key={tf.id}
-              className="pointer-events-none absolute max-w-[70%] rounded-xl bg-black/60 px-4 py-2 text-center text-white shadow-lg"
-              style={{
-                left: `${left}%`,
-                top: `${top}%`,
-                transform: 'translate(-50%, -50%)',
-                fontFamily: tf.typography || undefined,
-              }}
-            >
-              {tf.content}
-            </div>
-          )
-        })}
+{/* Overlay de textos arrastrables */}
+{!paintError && (
+  <DraggableTextOverlay
+    wrapperRef={bigCanvasWrapperRef}
+    canvasRef={bigCanvasRef}
+    items={(activeTextFrames ?? []).map((tf) => ({
+      id: tf.id,
+      content: tf.content,
+      typography: tf.typography,
+      x: clamp01(Number(tf.position_x ?? 0.5)),
+      y: clamp01(Number(tf.position_y ?? 0.5)),
+    }))}
+    onLocalPositionChange={updateTextFrameLocal}
+    apiBase={apiBase}
+    accessToken={accessToken}
+    disabled={generating || !isCacheLoaded}
+  />
+)}
+
 
         <div className="absolute bottom-2 left-2 flex items-center gap-2">
           <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
