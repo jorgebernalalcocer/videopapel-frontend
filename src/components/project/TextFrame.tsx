@@ -3,6 +3,14 @@
 import { Pencil } from 'lucide-react'
 import { PropsWithChildren } from 'react'
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
+import { borel, borelFontStack } from '@/fonts/borel'
+
+const FONT_CLASS_MAP: Record<string, { className: string; stack: string }> = {
+  pacifico: { className: pacifico.className, stack: pacificoFontStack },
+  'pacifico-regular': { className: pacifico.className, stack: pacificoFontStack },
+  borel: { className: borel.className, stack: borelFontStack },
+  'borel-regular': { className: borel.className, stack: borelFontStack },
+}
 
 type Props = {
   typography?: string | null
@@ -19,9 +27,11 @@ export default function TextFrame({
   children,
 }: PropsWithChildren<Props>) {
   const fontKey = (typography || '').trim().toLowerCase()
-  const isPacifico = fontKey === 'pacifico' || fontKey === 'pacifico-regular'
-  const fontFamily = isPacifico ? pacificoFontStack : (typography || undefined)
-  const extraClass = isPacifico ? pacifico.className : ''
+  const fontInfo = FONT_CLASS_MAP[fontKey]
+  const fontFamily = fontInfo?.stack || (typography || undefined)
+  const extraClass = fontInfo?.className ?? ''
+
+  
 
   return (
     <div
