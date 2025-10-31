@@ -1,11 +1,9 @@
 'use client'
 
 import { Pencil } from 'lucide-react'
-import { CSSProperties, PropsWithChildren } from 'react'
+import { PropsWithChildren } from 'react'
 
 type Props = {
-  left: number  // px absolutos ya calculados contra el wrapper
-  top: number   // px absolutos ya calculados contra el wrapper
   typography?: string | null
   editable?: boolean
   onEdit?: () => void
@@ -13,28 +11,22 @@ type Props = {
 }
 
 export default function TextFrame({
-  left,
-  top,
   typography,
   editable = true,
   onEdit,
   dragging = false,
   children,
 }: PropsWithChildren<Props>) {
-  const style: CSSProperties = {
-    left,
-    top,
-    transform: 'translate(-50%, -50%)',
-    fontFamily: typography || undefined,
-    touchAction: 'none',
-    userSelect: 'none',
-  }
-
   return (
     <div
-      className={`absolute max-w-[70%] rounded-xl px-4 py-2 text-center text-white shadow-lg bg-black/60
+      className={`px-4 py-2 rounded-xl bg-black/60 text-white text-center shadow-lg
                   ${dragging ? 'cursor-grabbing' : 'cursor-grab'}`}
-      style={style}
+      style={{
+        fontFamily: typography || undefined,
+        userSelect: 'none',
+        touchAction: 'none',
+        // width auto por defecto; el max-width lo controla el contenedor exterior
+      }}
     >
       {children}
       {editable && onEdit && (
