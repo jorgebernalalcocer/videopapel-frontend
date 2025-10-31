@@ -206,34 +206,34 @@ export default function DraggableTextOverlay({
   // Render
   // Posicionamos respecto al rect del CANVAS, pero con CSS absoluto dentro del WRAPPER.
   return (
-    <>
-      {items.map((it) => {
-        const rect = baseRect
-        const left = rect ? rect.left + it.x * rect.width : it.x * 100
-        const top  = rect ? rect.top  + it.y * rect.height : it.y * 100
+  <>
+    {items.map((it) => {
+      const rect = baseRect
+      const left = rect ? rect.left + it.x * rect.width : it.x * 100
+      const top  = rect ? rect.top  + it.y * rect.height : it.y * 100
 
-        return (
-          <div
-            key={it.id}
-            onPointerDown={(e) => onPointerDown(e as any, it)}
-            className="absolute"
-            style={{ left, top, transform: 'translate(-50%, -50%)' }}
+      return (
+        <div
+          key={it.id}
+          onPointerDown={(e) => onPointerDown(e as any, it)}
+          // único elemento posicionado
+          className="absolute max-w-[70%]"
+          style={{ left, top, transform: 'translate(-50%, -50%)' }}
+        >
+          <TextFrame
+            typography={it.typography}
+            editable={!!onEdit}
+            onEdit={onEdit ? () => onEdit(it.id) : undefined}
+            dragging={draggingId === it.id}
           >
-            <TextFrame
-              left={0}
-              top={0}
-              typography={it.typography}
-              editable={!!onEdit}
-              onEdit={onEdit ? () => onEdit(it.id) : undefined}
-              dragging={draggingId === it.id}
-            >
-              {it.content}
-            </TextFrame>
-          </div>
-        )
-      })}
-    </>
-  )
+            {it.content}
+          </TextFrame>
+        </div>
+      )
+    })}
+  </>
+)
+
 }
 
 /* Utils */
