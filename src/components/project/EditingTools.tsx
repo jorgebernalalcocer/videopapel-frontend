@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Plus } from 'lucide-react'
+import { Play, Plus, Video, Film, Camera, Type } from 'lucide-react'
 import { toast } from 'sonner'
 
 type EditingToolsProps = {
@@ -70,7 +70,7 @@ export default function EditingTools({
           ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
       >
-        <Plus className="h-4 w-4" />
+        <Film className="h-4 w-4" />
         Insertar video
       </Button>
 
@@ -84,7 +84,7 @@ export default function EditingTools({
           ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
       >
-        <Plus className="h-4 w-4" />
+        <Camera className="h-4 w-4" />
         Insertar imagen
       </Button>
 
@@ -98,7 +98,7 @@ export default function EditingTools({
           ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
       >
-        <Plus className="h-4 w-4" />
+        <Type className="h-4 w-4" />
         Insertar texto
       </Button>
 

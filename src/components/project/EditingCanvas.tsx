@@ -71,6 +71,18 @@ type TextFormState = {
   positionY: string
 }
 
+type TextFrame = {
+  id: number
+  clip: number
+  content: string
+  typography: string | null
+  frame_start: number | null
+  frame_end: number | null
+  specific_frames: number[]
+  position_x: number
+  position_y: number
+}
+
 /* =========================
    Componente
 ========================= */
@@ -124,6 +136,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     positionX: '0.5',
     positionY: '0.5',
   })
+  const [textFramesByClip, setTextFramesByClip] = useState<Record<number, TextFrame[]>>({})
   const playTimerRef = useRef<number | null>(null)
 
   // Compat single-clip
@@ -137,6 +150,8 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     if (isMulti) return clips!.slice()
     return baseClip ? [baseClip] : []
   }, [isMulti, clips, baseClip])
+
+  const clipIdsKey = useMemo(() => clipsOrdered.map(c => c.clipId).join(','), [clipsOrdered])
 
   const clipOffsets = useMemo(() => {
     const out: Record<number, { offset: number; start: number; end: number }> = {}
@@ -164,6 +179,70 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     }
     return nearestByGlobal(selectedGlobalMs, combinedThumbs)
   }, [combinedThumbs, selectedId, selectedGlobalMs])
+
+  useEffect(() => {
+    if (!accessToken || !clipIdsKey || clipIdsKey.length === 0) {
+      setTextFramesByClip({})
+      return
+    }
+    let cancelled = false
+    ;(async () => {
+      try {
+        const entries = await Promise.all(
+          clipsOrdered.map(async (clip) => {
+            const res = await fetch(`${apiBase}/text-frames/?clip=${clip.clipId}`, {
+              headers: {
+                Authorization: `Bearer ${accessToken}`,
+              },
+              credentials: 'include',
+            })
+            if (!res.ok) {
+              throw new Error(`TextFrames ${res.status}`)
+            }
+            const data = (await res.json()) as TextFrame[] | { results: TextFrame[] }
+            const listRaw = Array.isArray(data) ? data : data.results ?? []
+            const list = listRaw.map((item) => ({
+              ...item,
+              specific_frames: Array.isArray(item.specific_frames)
+                ? item.specific_frames.map(Number)
+                : [],
+              position_x: item.position_x ?? 0.5,
+              position_y: item.position_y ?? 0.5,
+            }))
+            return [clip.clipId, list] as const
+          })
+        )
+        if (!cancelled) {
+          setTextFramesByClip(Object.fromEntries(entries))
+        }
+      } catch (err) {
+        console.error('Error cargando text frames', err)
+        if (!cancelled) {
+          toast.error('No se pudieron cargar los textos del proyecto.')
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [apiBase, accessToken, clipIdsKey, clipsOrdered])
+
+  const activeTextFrames = useMemo(() => {
+    if (!currentThumb) return []
+    const framesForClip = textFramesByClip[currentThumb.clipId] ?? []
+    const tLocal = currentThumb.tLocal
+    return framesForClip.filter((tf) => {
+      const inRange =
+        tf.frame_start != null &&
+        tf.frame_end != null &&
+        tf.frame_start <= tLocal &&
+        tLocal <= tf.frame_end
+      const inSpecific =
+        Array.isArray(tf.specific_frames) &&
+        tf.specific_frames.includes(tLocal)
+      return inRange || inSpecific
+    })
+  }, [textFramesByClip, currentThumb])
 
   // Cargar/generar thumbs por clip, aplicar ventana [start, end) y fusionar
   useEffect(() => {
@@ -471,55 +550,66 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
         throw new Error('La posición vertical debe estar entre 0 y 1.')
       }
 
-      const payload = {
-        clip_id: currentThumb.clipId,
-        content,
-        typography: typography || null,
-        frame_start: frameStart,
-        frame_end: frameEnd,
-        specific_frames: specificFrames,
-        position_x: Number(positionX.toFixed(4)),
-        position_y: Number(positionY.toFixed(4)),
+      if (!accessToken) {
+        throw new Error('Inicia sesión para insertar textos en el proyecto.')
       }
 
-// Normaliza el body para el serializer del backend (usa `clip`, no `clip_id`)
-const body = {
-  clip: payload.clip_id,
-  content: payload.content,
-  typography: payload.typography,          // puede ser null o string
-  frame_start: payload.frame_start,        // null o number
-  frame_end: payload.frame_end,            // null o number
-  specific_frames: payload.specific_frames ?? [],
-  position_x: payload.position_x,
-  position_y: payload.position_y,
-}
+      const res = await fetch(`${apiBase}/text-frames/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          clip: currentThumb.clipId,
+          content,
+          typography: typography || null,
+          frame_start: frameStart,
+          frame_end: frameEnd,
+          specific_frames: specificFrames,
+          position_x: Number(positionX.toFixed(4)),
+          position_y: Number(positionY.toFixed(4)),
+        }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status} creando el texto.`)
+      }
+      const createdRaw = (await res.json()) as TextFrame
+      const created: TextFrame = {
+        ...createdRaw,
+        specific_frames: Array.isArray(createdRaw.specific_frames)
+          ? createdRaw.specific_frames.map(Number)
+          : [],
+        position_x: createdRaw.position_x ?? 0.5,
+        position_y: createdRaw.position_y ?? 0.5,
+      }
+      setTextFramesByClip((prev) => {
+        const list = prev[created.clip] ?? []
+        const nextList = [...list, created].sort((a, b) => {
+          const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+          const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+          return aStart - bStart
+        })
+        return {
+          ...prev,
+          [created.clip]: nextList,
+        }
+      })
 
-// Llamada real al backend
-const created = await createTextFrame({
-  apiBase,
-  accessToken,
-  body,
-})
-
-// Éxito UI
-toast.success('Texto guardado en el proyecto.')
-setIsTextModalOpen(false)
-
-// (Opcional) Si más adelante gestionas overlay de textos en el lienzo,
-// aquí podrías disparar una recarga o actualizar tu store con `created`.
-
-// Limpia el formulario para la siguiente inserción
-setTextForm({
-  content: '',
-  typography: '',
-  mode: 'range',
-  frameStart: '0',
-  frameEnd: '0',
-  specificFrames: '',
-  positionX: '0.5',
-  positionY: '0.5',
-})
-
+      toast.success('Texto guardado en el proyecto.')
+      setIsTextModalOpen(false)
+      setTextForm({
+        content: '',
+        typography: '',
+        mode: 'range',
+        frameStart: '0',
+        frameEnd: '0',
+        specificFrames: '',
+        positionX: '0.5',
+        positionY: '0.5',
+      })
     } catch (err: any) {
       setTextFormError(err.message || 'No se pudo preparar el texto.')
     } finally {
@@ -554,44 +644,6 @@ setTextForm({
 
     setHasPendingChanges(true)
   }
-
-  async function createTextFrame({
-  apiBase,
-  accessToken,
-  body,
-}: {
-  apiBase: string
-  accessToken: string | null
-  body: any
-}) {
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`
-
-  const res = await fetch(`${apiBase}/text-frames/`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(body),
-  })
-
-  const maybeJson = await res
-    .json()
-    .catch(() => ({})) // por si el backend no devuelve JSON en errores inesperados
-
-  if (!res.ok) {
-    // Errores de validación de DRF (message_dict)
-    if (res.status === 400 && maybeJson && typeof maybeJson === 'object') {
-      const lines = Object.entries(maybeJson)
-        .map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(', ') : String(v)}`)
-        .join('\n')
-      throw new Error(lines || 'Solicitud inválida.')
-    }
-    // Otros errores
-    throw new Error(maybeJson?.detail || `Error ${res.status}`)
-  }
-
-  return maybeJson
-}
-
 
   async function handleSaveChanges() {
     if (!hasPendingChanges || !accessToken) return
@@ -644,8 +696,7 @@ setTextForm({
           </div>
         )}
 
-<video ref={videoRef} preload="metadata" muted playsInline crossOrigin="anonymous" className="hidden" />        
-        {/* Bloque para mostrar el mensaje de error */}
+        <video ref={videoRef} preload="metadata" muted playsInline crossOrigin="anonymous" className="hidden" />
         {paintError && (
           <div className="absolute inset-0 z-20 flex items-center justify-center text-center">
             <p className="text-white text-base bg-black/70 p-4 rounded-lg">
@@ -659,6 +710,25 @@ setTextForm({
           <canvas ref={bigCanvasRef} className={canvasClassName} style={{ display: paintError ? 'none' : 'block' }} />
         </div>
 
+        {!paintError && activeTextFrames.map((tf) => {
+          const left = Math.min(1, Math.max(0, tf.position_x ?? 0.5)) * 100
+          const top = Math.min(1, Math.max(0, tf.position_y ?? 0.5)) * 100
+          return (
+            <div
+              key={tf.id}
+              className="pointer-events-none absolute max-w-[70%] rounded-xl bg-black/60 px-4 py-2 text-center text-white shadow-lg"
+              style={{
+                left: `${left}%`,
+                top: `${top}%`,
+                transform: 'translate(-50%, -50%)',
+                fontFamily: tf.typography || undefined,
+              }}
+            >
+              {tf.content}
+            </div>
+          )
+        })}
+
         <div className="absolute bottom-2 left-2 flex items-center gap-2">
           <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
           <button
@@ -670,10 +740,10 @@ setTextForm({
             {isFrameFullScreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
             Visualización
           </button>
-{/* ✅ CORRECCIÓN APLICADA AQUÍ */}
           <p className="text-white font-bold" style={{ fontSize: '0.8rem' }}>
             {combinedThumbs.length} fotogramas
-          </p>     </div>
+          </p>
+        </div>
 
         <div className="absolute bottom-2 right-2 flex items-center gap-2">
           <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
