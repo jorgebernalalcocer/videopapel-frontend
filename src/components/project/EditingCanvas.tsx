@@ -84,6 +84,7 @@ type TextFrame = {
 }
 
 const FRAME_TOLERANCE_MS = 66
+const FRAME_INDEX_THRESHOLD = 500
 
 /* =========================
    Componente
@@ -173,6 +174,19 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     () => Object.values(clipOffsets).reduce((sum, v) => sum + Math.max(0, v.end - v.start), 0),
     [clipOffsets]
   )
+  const clipThumbsById = useMemo(() => {
+    const map: Record<number, CombinedThumb[]> = {}
+    for (const thumb of combinedThumbs) {
+      if (!map[thumb.clipId]) {
+        map[thumb.clipId] = []
+      }
+      map[thumb.clipId].push(thumb)
+    }
+    for (const list of Object.values(map)) {
+      list.sort((a, b) => a.tLocal - b.tLocal)
+    }
+    return map
+  }, [combinedThumbs])
   const currentThumb = useMemo(() => {
     if (!combinedThumbs.length) return null
     if (selectedId) {
@@ -208,8 +222,8 @@ export default function EditingCanvas(props: EditingCanvasProps) {
               specific_frames: Array.isArray(item.specific_frames)
                 ? item.specific_frames.map(Number)
                 : [],
-              position_x: item.position_x ?? 0.5,
-              position_y: item.position_y ?? 0.5,
+              position_x: typeof item.position_x === 'number' ? item.position_x : Number(item.position_x ?? 0.5),
+              position_y: typeof item.position_y === 'number' ? item.position_y : Number(item.position_y ?? 0.5),
             }))
             return [clip.clipId, list] as const
           })
@@ -232,19 +246,42 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const activeTextFrames = useMemo(() => {
     if (!currentThumb) return []
     const framesForClip = textFramesByClip[currentThumb.clipId] ?? []
+    const clipThumbs = clipThumbsById[currentThumb.clipId] ?? []
+    const clipTimes = clipThumbs.map((thumb) => thumb.tLocal)
     const tLocal = currentThumb.tLocal
+
+    const resolveValue = (value: number | null) => {
+      if (value == null) return null
+      if (!clipTimes.length) return value
+      if (
+        Number.isInteger(value) &&
+        value >= 1 &&
+        value <= clipTimes.length &&
+        (value <= FRAME_INDEX_THRESHOLD || clipTimes.length <= FRAME_INDEX_THRESHOLD)
+      ) {
+        return clipTimes[value - 1]
+      }
+      return value
+    }
+
     return framesForClip.filter((tf) => {
+      const startMs = resolveValue(tf.frame_start)
+      const endMs = resolveValue(tf.frame_end)
       const inRange =
-        tf.frame_start != null &&
-        tf.frame_end != null &&
-        tf.frame_start <= tLocal &&
-        tLocal <= tf.frame_end
+        startMs != null &&
+        endMs != null &&
+        startMs <= tLocal &&
+        tLocal <= endMs
       const inSpecific =
         Array.isArray(tf.specific_frames) &&
-        tf.specific_frames.some((value) => Math.abs(value - tLocal) <= FRAME_TOLERANCE_MS)
+        tf.specific_frames.some((value) => {
+          const target = resolveValue(value)
+          if (target == null) return false
+          return Math.abs(target - tLocal) <= FRAME_TOLERANCE_MS
+        })
       return inRange || inSpecific
     })
-  }, [textFramesByClip, currentThumb])
+  }, [textFramesByClip, currentThumb, clipThumbsById])
 
   // Cargar/generar thumbs por clip, aplicar ventana [start, end) y fusionar
   useEffect(() => {
@@ -584,8 +621,8 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
         specific_frames: Array.isArray(createdRaw.specific_frames)
           ? createdRaw.specific_frames.map(Number)
           : [],
-        position_x: createdRaw.position_x ?? 0.5,
-        position_y: createdRaw.position_y ?? 0.5,
+        position_x: typeof createdRaw.position_x === 'number' ? createdRaw.position_x : Number(createdRaw.position_x ?? 0.5),
+        position_y: typeof createdRaw.position_y === 'number' ? createdRaw.position_y : Number(createdRaw.position_y ?? 0.5),
       }
       setTextFramesByClip((prev) => {
         const list = prev[created.clip] ?? []
