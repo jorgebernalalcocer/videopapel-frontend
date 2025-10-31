@@ -8,6 +8,7 @@ import { Maximize2, Minimize2 } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
 import DraggableTextOverlay from '@/components/project/DraggableTextOverlay'
+import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextFrameEditorModal'
 
 function clamp01(n: number) { return Math.min(1, Math.max(0, n)) }
 
@@ -145,6 +146,13 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [textFramesByClip, setTextFramesByClip] = useState<Record<number, TextFrame[]>>({})
 
   const playTimerRef = useRef<number | null>(null)
+
+  const [editorOpen, setEditorOpen] = useState(false)
+const [editorMode, setEditorMode] = useState<'create'|'edit'>('create')
+const [editorInitial, setEditorInitial] = useState<Partial<TextFrameModel> | undefined>(undefined)
+const [editorClipId, setEditorClipId] = useState<number | undefined>(undefined)
+const [editorBounds, setEditorBounds] = useState<{min?: number; max?: number}>({})
+
 
   // Dentro de EditingCanvas (antes del return)
 const updateTextFrameLocal = (id: number, x: number, y: number) => {
@@ -537,31 +545,73 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPlaying, playbackFps, selectedGlobalMs, loop, combinedThumbs.length, selectedId])
 
-  function handleOpenTextModal() {
-    if (!combinedThumbs.length || !currentThumb) {
-      toast.warning('Necesitas tener un clip seleccionado para insertar texto.')
-      return
-    }
-    const clipInfo = clipOffsets[currentThumb.clipId]
-    const clipEnd = clipInfo ? clipInfo.end : currentThumb.tLocal
-    const defaultStart = currentThumb.tLocal
-    const defaultEnd = clipEnd !== undefined
-      ? Math.max(defaultStart, Math.min(defaultStart + 1000, clipEnd))
-      : defaultStart
-    setTextForm({
-      content: '',
-      typography: '',
-      mode: 'range',
-      frameStart: String(defaultStart),
-      frameEnd: String(defaultEnd),
-      specificFrames: '',
-      positionX: '0.5',
-      positionY: '0.5',
-    })
-    setTextFormError(null)
-    setIsTextModalOpen(true)
+function openCreateTextEditor() {
+  if (!combinedThumbs.length || !currentThumb) {
+    toast.warning('Necesitas tener un clip seleccionado para insertar texto.')
+    return
   }
+  const clipInfo = clipOffsets[currentThumb.clipId]
+  const clipEnd = clipInfo ? clipInfo.end : currentThumb.tLocal
+  const defaultStart = currentThumb.tLocal
+  const defaultEnd = clipEnd !== undefined
+    ? Math.max(defaultStart, Math.min(defaultStart + 1000, clipEnd))
+    : defaultStart
 
+  setEditorMode('create')
+  setEditorClipId(currentThumb.clipId)
+  setEditorBounds({ min: clipInfo?.start ?? 0, max: clipInfo?.end })
+  setEditorInitial({
+    frame_start: defaultStart,
+    frame_end: defaultEnd,
+    specific_frames: [],
+    position_x: 0.5,
+    position_y: 0.5,
+    content: '',
+    typography: '',
+  })
+  setEditorOpen(true)
+}
+
+// NUEVO: abrir en modo edición desde overlay:
+function openEditTextEditor(id: number) {
+  // Busca el TextFrame en todos los clips cargados:
+  let found: TextFrame | undefined
+  let foundClip: number | undefined
+  for (const [clipIdStr, list] of Object.entries(textFramesByClip)) {
+    const f = list.find(t => t.id === id)
+    if (f) { found = f; foundClip = Number(clipIdStr); break }
+  }
+  if (!found || foundClip == null) {
+    toast.error('No se encontró el texto a editar.')
+    return
+  }
+  const clipInfo = clipOffsets[foundClip]
+  setEditorMode('edit')
+  setEditorClipId(foundClip)
+  setEditorBounds({ min: clipInfo?.start ?? 0, max: clipInfo?.end })
+  setEditorInitial(found)
+  setEditorOpen(true)
+}
+
+// Nuevo onSaved (create/edit):
+function handleEditorSaved(tf: TextFrameModel) {
+  setTextFramesByClip((prev) => {
+    const list = prev[tf.clip] ?? []
+    const idx = list.findIndex(x => x.id === tf.id)
+    let nextList: TextFrame[]
+    if (idx === -1) {
+      nextList = [...list, tf].sort((a, b) => {
+        const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+        const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+        return aStart - bStart
+      })
+    } else {
+      nextList = list.slice()
+      nextList[idx] = tf
+    }
+    return { ...prev, [tf.clip]: nextList }
+  })
+}
   const handleSubmitTextFrame = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     if (!currentThumb) {
@@ -797,21 +847,22 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
 
 {/* Overlay de textos arrastrables */}
 {!paintError && (
-  <DraggableTextOverlay
-    wrapperRef={bigCanvasWrapperRef}
-    canvasRef={bigCanvasRef}
-    items={(activeTextFrames ?? []).map((tf) => ({
-      id: tf.id,
-      content: tf.content,
-      typography: tf.typography,
-      x: clamp01(Number(tf.position_x ?? 0.5)),
-      y: clamp01(Number(tf.position_y ?? 0.5)),
-    }))}
-    onLocalPositionChange={updateTextFrameLocal}
-    apiBase={apiBase}
-    accessToken={accessToken}
-    disabled={generating || !isCacheLoaded}
-  />
+<DraggableTextOverlay
+  wrapperRef={bigCanvasWrapperRef}
+  canvasRef={bigCanvasRef}
+  items={(activeTextFrames ?? []).map((tf) => ({
+    id: tf.id,
+    content: tf.content,
+    typography: tf.typography,
+    x: clamp01(Number(tf.position_x ?? 0.5)),
+    y: clamp01(Number(tf.position_y ?? 0.5)),
+  }))}
+  onLocalPositionChange={updateTextFrameLocal}
+  apiBase={apiBase}
+  accessToken={accessToken}
+  disabled={generating || !isCacheLoaded}
+  onEdit={openEditTextEditor}
+/>
 )}
 
 
@@ -909,178 +960,31 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
       </div>
 
       <div className="flex-none">
-        <EditingTools
-          heightPx={thumbnailHeight}
-          isPlaying={isPlaying}
-          onTogglePlay={togglePlay}
-          onSave={handleSaveChanges}
-          canSave={Boolean(accessToken) && hasPendingChanges && !generating}
-          isSaving={isSaving}
-          onInsertVideo={onInsertVideo}
-          onInsertText={handleOpenTextModal}
-        />
+<EditingTools
+  heightPx={thumbnailHeight}
+  isPlaying={isPlaying}
+  onTogglePlay={togglePlay}
+  onSave={handleSaveChanges}
+  canSave={Boolean(accessToken) && hasPendingChanges && !generating}
+  isSaving={isSaving}
+  onInsertVideo={onInsertVideo}
+  onInsertText={openCreateTextEditor}
+/>
       </div>
-      <Modal
-        open={isTextModalOpen}
-        onClose={() => {
-          if (!isSubmittingTextFrame) setIsTextModalOpen(false)
-        }}
-        title="Insertar texto"
-        size="lg"
-      >
-        <form onSubmit={handleSubmitTextFrame} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Contenido del texto
-            </label>
-            <textarea
-              required
-              rows={4}
-              value={textForm.content}
-              onChange={(e) => setTextForm((prev) => ({ ...prev, content: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="Escribe aquí el texto que aparecerá en el clip…"
-            />
-          </div>
+<TextFrameEditorModal
+  open={editorOpen}
+  mode={editorMode}
+  apiBase={apiBase}
+  accessToken={accessToken}
+  projectId={projectId}
+  clipId={editorClipId}
+  initial={editorInitial}
+  clipMinMs={editorBounds.min}
+  clipMaxMs={editorBounds.max}
+  onClose={()=>setEditorOpen(false)}
+  onSaved={handleEditorSaved}
+/>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tipografía (opcional)
-            </label>
-            <input
-              type="text"
-              value={textForm.typography}
-              onChange={(e) => setTextForm((prev) => ({ ...prev, typography: e.target.value }))}
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              placeholder="Ej. Open Sans Bold"
-            />
-          </div>
-
-          <fieldset className="space-y-2">
-            <legend className="text-sm font-semibold text-gray-800">Aparición</legend>
-            <div className="flex flex-wrap gap-4 text-sm text-gray-700">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="text-frame-mode"
-                  value="range"
-                  checked={textForm.mode === 'range'}
-                  onChange={() => {
-                    setTextForm((prev) => ({ ...prev, mode: 'range' }))
-                    setTextFormError(null)
-                  }}
-                />
-                Rango continuo
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="text-frame-mode"
-                  value="specific"
-                  checked={textForm.mode === 'specific'}
-                  onChange={() => {
-                    setTextForm((prev) => ({ ...prev, mode: 'specific' }))
-                    setTextFormError(null)
-                  }}
-                />
-                Frames específicos
-              </label>
-            </div>
-          </fieldset>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm font-medium text-gray-700">
-              Frame inicial (ms)
-              <input
-                type="number"
-                min={0}
-                value={textForm.frameStart}
-                onChange={(e) => setTextForm((prev) => ({ ...prev, frameStart: e.target.value }))}
-                disabled={textForm.mode !== 'range'}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
-              />
-            </label>
-            <label className="text-sm font-medium text-gray-700">
-              Frame final (ms)
-              <input
-                type="number"
-                min={0}
-                value={textForm.frameEnd}
-                onChange={(e) => setTextForm((prev) => ({ ...prev, frameEnd: e.target.value }))}
-                disabled={textForm.mode !== 'range'}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
-              />
-            </label>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Frames específicos (ms)
-            </label>
-            <input
-              type="text"
-              value={textForm.specificFrames}
-              onChange={(e) => setTextForm((prev) => ({ ...prev, specificFrames: e.target.value }))}
-              disabled={textForm.mode !== 'specific'}
-              placeholder="Ej. 500, 1500, 2200"
-              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
-            />
-            <p className="mt-1 text-xs text-gray-500">
-              Separa los valores con comas, espacios o punto y coma. Usa milisegundos respecto al clip.
-            </p>
-          </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            <label className="text-sm font-medium text-gray-700">
-              Posición horizontal (0 - 1)
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.01}
-                value={textForm.positionX}
-                onChange={(e) => setTextForm((prev) => ({ ...prev, positionX: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </label>
-            <label className="text-sm font-medium text-gray-700">
-              Posición vertical (0 - 1)
-              <input
-                type="number"
-                min={0}
-                max={1}
-                step={0.01}
-                value={textForm.positionY}
-                onChange={(e) => setTextForm((prev) => ({ ...prev, positionY: e.target.value }))}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </label>
-          </div>
-
-          {textFormError && (
-            <p className="text-sm text-red-600">{textFormError}</p>
-          )}
-
-          <div className="flex justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => {
-                if (!isSubmittingTextFrame) setIsTextModalOpen(false)
-              }}
-              className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="submit"
-              disabled={isSubmittingTextFrame}
-              className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
-            >
-              {isSubmittingTextFrame ? 'Preparando…' : 'Guardar texto'}
-            </button>
-          </div>
-        </form>
-      </Modal>
     </div>
   )
 }

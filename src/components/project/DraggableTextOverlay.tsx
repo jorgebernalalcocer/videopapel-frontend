@@ -1,7 +1,15 @@
 'use client'
 
-import { RefObject, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type RefObject,
+  type MutableRefObject,
+} from 'react'
 import { toast } from 'sonner'
+import TextFrame from '@/components/project/TextFrame'
 
 export type DraggableTextItem = {
   id: number
@@ -12,11 +20,14 @@ export type DraggableTextItem = {
   y: number
 }
 
+/** Acepta tanto RefObject como MutableRefObject y siempre como nullable */
+type AnyRef<T> = RefObject<T | null> | MutableRefObject<T | null>
+
 type Props = {
   /** Ref del wrapper que ya tienes (absolute/relative contenedor del canvas y overlays) */
-  wrapperRef: RefObject<HTMLDivElement>
+  wrapperRef: AnyRef<HTMLDivElement>
   /** Ref del canvas donde pintas el frame (para medir zona útil del vídeo) */
-  canvasRef: RefObject<HTMLCanvasElement>
+  canvasRef: AnyRef<HTMLCanvasElement>
   /** Lista de textos a mostrar (ya filtrados como “activos”) */
   items: DraggableTextItem[]
   /** Se invoca en cada movimiento para actualización local optimista */
@@ -26,6 +37,8 @@ type Props = {
   accessToken: string | null
   /** Si quieres desactivar drag temporalmente */
   disabled?: boolean
+  /** Abrir editor para el item */
+  onEdit?: (id: number) => void
 }
 
 /**
@@ -40,6 +53,7 @@ export default function DraggableTextOverlay({
   apiBase,
   accessToken,
   disabled = false,
+  onEdit, // 👈 ahora sí viene de props
 }: Props) {
   const [draggingId, setDraggingId] = useState<number | null>(null)
   const startRef = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null)
@@ -53,9 +67,11 @@ export default function DraggableTextOverlay({
 
   useEffect(() => {
     const updateRects = () => {
-      if (!canvasRef.current || !wrapperRef.current) return
-      const canvasBox = canvasRef.current.getBoundingClientRect()
-      const wrapperBox = wrapperRef.current.getBoundingClientRect()
+      const canvasEl = canvasRef.current
+      const wrapperEl = wrapperRef.current
+      if (!canvasEl || !wrapperEl) return
+      const canvasBox = canvasEl.getBoundingClientRect()
+      const wrapperBox = wrapperEl.getBoundingClientRect()
       setVideoRect(canvasBox)
       setBaseRect({
         left: canvasBox.left - wrapperBox.left,
@@ -67,21 +83,22 @@ export default function DraggableTextOverlay({
 
     updateRects()
 
-    const resizeObs = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateRects) : null
-    if (resizeObs && canvasRef.current) resizeObs.observe(canvasRef.current)
-    if (resizeObs && wrapperRef.current) resizeObs.observe(wrapperRef.current)
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(updateRects) : null
+    const canvasEl = canvasRef.current
+    const wrapperEl = wrapperRef.current
+    if (ro && canvasEl) ro.observe(canvasEl)
+    if (ro && wrapperEl) ro.observe(wrapperEl)
 
     window.addEventListener('resize', updateRects)
     window.addEventListener('scroll', updateRects, true)
 
     return () => {
-      resizeObs?.disconnect()
+      ro?.disconnect()
       window.removeEventListener('resize', updateRects)
       window.removeEventListener('scroll', updateRects, true)
     }
   }, [canvasRef, wrapperRef])
 
-  // Rectángulo "útil" del vídeo (canvas) dentro del wrapper
   // Traduce (clientX, clientY) ⇒ coordenadas normalizadas (0..1) del VIDEO
   const pointToNormalized = useCallback(
     (clientX: number, clientY: number) => {
@@ -89,18 +106,15 @@ export default function DraggableTextOverlay({
       if (!rect) return { x: 0.5, y: 0.5 }
       const relX = (clientX - rect.left) / rect.width
       const relY = (clientY - rect.top) / rect.height
-      return {
-        x: clamp(relX, 0, 1),
-        y: clamp(relY, 0, 1),
-      }
+      return { x: clamp(relX, 0, 1), y: clamp(relY, 0, 1) }
     },
     [videoRect, canvasRef]
   )
 
   const scheduleSave = useCallback((id: number, x: number, y: number) => {
+    if (disabled) return
     pendingSaveRef.current = { id, x, y }
     if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current)
-    // debounce corto para no saturar el backend
     saveTimerRef.current = window.setTimeout(async () => {
       const payload = pendingSaveRef.current
       if (!payload) return
@@ -110,7 +124,6 @@ export default function DraggableTextOverlay({
         return
       }
       try {
-        // Cancela petición anterior en vuelo para este id, si existe
         inFlightRef.current[payload.id]?.abort()
         const ctl = new AbortController()
         inFlightRef.current[payload.id] = ctl
@@ -132,22 +145,19 @@ export default function DraggableTextOverlay({
           const msg = await safeText(res)
           throw new Error(msg || `Error ${res.status} guardando posición.`)
         }
-        // ok silencioso
       } catch (err: any) {
         if (err?.name === 'AbortError') return
-        // No revertimos la posición local; mostramos aviso
         toast.error(err?.message || 'No se pudo guardar la nueva posición.')
       } finally {
         inFlightRef.current[payload.id] = null
       }
     }, 300)
-  }, [apiBase, accessToken])
+  }, [apiBase, accessToken, disabled])
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>, item: DraggableTextItem) => {
       if (disabled) return
-      const target = e.currentTarget
-      target.setPointerCapture?.(e.pointerId)
+      e.currentTarget.setPointerCapture?.(e.pointerId)
       const { x, y } = pointToNormalized(e.clientX, e.clientY)
       startRef.current = { id: item.id, startX: x, startY: y, origX: item.x, origY: item.y }
       setDraggingId(item.id)
@@ -205,22 +215,20 @@ export default function DraggableTextOverlay({
         return (
           <div
             key={it.id}
-            role="button"
-            aria-label={`Mover texto ${it.id}`}
             onPointerDown={(e) => onPointerDown(e as any, it)}
-            className={`absolute max-w-[70%] rounded-xl px-4 py-2 text-center text-white shadow-lg
-                        ${disabled ? 'pointer-events-none bg-black/60' : 'cursor-grab active:cursor-grabbing bg-black/60'}
-                        select-none`}
-            style={{
-              left,
-              top,
-              transform: 'translate(-50%, -50%)',
-              fontFamily: it.typography || undefined,
-              touchAction: 'none',
-              userSelect: 'none',
-            }}
+            className="absolute"
+            style={{ left, top, transform: 'translate(-50%, -50%)' }}
           >
-            {it.content}
+            <TextFrame
+              left={0}
+              top={0}
+              typography={it.typography}
+              editable={!!onEdit}
+              onEdit={onEdit ? () => onEdit(it.id) : undefined}
+              dragging={draggingId === it.id}
+            >
+              {it.content}
+            </TextFrame>
           </div>
         )
       })}
