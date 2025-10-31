@@ -5,6 +5,8 @@ import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import DeleteProjectButton from '@/components/DeleteProjectButton'
+import { toast } from "sonner";
+import { CheckCircle2, XCircle } from "lucide-react";
 
 type Project = {
   id: string
@@ -73,6 +75,10 @@ export default function MyProjects() {
         credentials: 'include',
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
+      toast.success("¡Proyecto duplicado con éxito!", {
+        icon: <CheckCircle2 className="text-green-500" />,
+        duration: 5000, // ⏱ duración en ms (configurable)
+      });
       const clone: Project = await res.json()
 
       // Opción A: refrescar toda la lista
@@ -85,6 +91,10 @@ export default function MyProjects() {
       window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
     } catch (e: any) {
       setError(e.message || 'No se pudo duplicar el proyecto')
+      toast.error("Error. No se pudo duplicar el proyecto", {
+        icon: <XCircle className="text-red-500" />,
+        duration: 5000, // ⏱ también configurable
+      });
     } finally {
       setDuplicatingId(null)
     }

@@ -421,7 +421,7 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
         {paintError && (
           <div className="absolute inset-0 z-20 flex items-center justify-center text-center">
             <p className="text-white text-base bg-black/70 p-4 rounded-lg">
-              Fallo al abrir el fotograma, pero no afectará a la impresión.
+              Fallo al abrir el fotograma. Recomendamos borrar este proyecto y el video problemático y volver a subirlo de nuevo.
             </p>
           </div>
         )}

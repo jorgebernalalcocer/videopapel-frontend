@@ -68,17 +68,15 @@ export default function NewProjectButton() {
       const data = await res.json()
       const newVideos = Array.isArray(data) ? data : data.results ?? []
       setVideos(newVideos)
-      
+
       // Mantener la selección si el video aún existe, o resetear
-      if (selectedVideoId && !newVideos.some(v => v.id === selectedVideoId)) {
-         setSelectedVideoId(null)
-      }
+      setSelectedVideoId(prev => (prev && newVideos.some(v => v.id === prev) ? prev : null))
     } catch (e: any) {
       setError(e.message || 'No se pudieron cargar los videos')
     } finally {
       setLoadingVideos(false)
     }
-  }, [API_BASE, accessToken, selectedVideoId]) // Incluir selectedVideoId en dependencias
+  }, [API_BASE, accessToken])
 
   useEffect(() => {
     if (open && step === 2) fetchVideos()
