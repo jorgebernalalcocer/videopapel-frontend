@@ -78,6 +78,8 @@ type TextFormState = {
 type TextFrame = {
   id: number
   clip: number
+  text_id?: number
+  project_id?: string
   content: string
   typography: string | null
   frame_start: number | null
@@ -259,8 +261,11 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
         const map: Record<number, TextFrame[]> = {}
         for (const item of listRaw) {
           if (!allowedClipIds.has(item.clip)) continue
+          const raw = item as any
           const normalized: TextFrame = {
             ...item,
+            text_id: typeof raw.text_id === 'number' ? raw.text_id : raw.text_id ? Number(raw.text_id) : undefined,
+            project_id: typeof raw.project_id === 'string' ? raw.project_id : raw.project_id ? String(raw.project_id) : undefined,
             specific_frames: Array.isArray(item.specific_frames)
               ? item.specific_frames.map(Number)
               : [],
@@ -336,6 +341,23 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
       return inRange || inSpecific
     })
   }, [textFramesByClip, currentThumb, clipThumbsById])
+
+  const existingTexts = useMemo(() => {
+    const map = new Map<number, { id: number; content: string; typography: string | null }>()
+    for (const list of Object.values(textFramesByClip)) {
+      for (const item of list) {
+        if (item.text_id == null) continue
+        if (!map.has(item.text_id)) {
+          map.set(item.text_id, {
+            id: item.text_id,
+            content: item.content,
+            typography: item.typography ?? null,
+          })
+        }
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.id - b.id)
+  }, [textFramesByClip])
 
   // Cargar/generar thumbs por clip, aplicar ventana [start, end) y fusionar
   useEffect(() => {
@@ -595,21 +617,44 @@ function openEditTextEditor(id: number) {
 
 // Nuevo onSaved (create/edit):
 function handleEditorSaved(tf: TextFrameModel) {
+  const normalized: TextFrame = {
+    ...tf,
+    specific_frames: Array.isArray(tf.specific_frames) ? tf.specific_frames.map(Number) : [],
+    position_x: typeof tf.position_x === 'number' ? tf.position_x : Number(tf.position_x ?? 0.5),
+    position_y: typeof tf.position_y === 'number' ? tf.position_y : Number(tf.position_y ?? 0.5),
+  }
+
   setTextFramesByClip((prev) => {
-    const list = prev[tf.clip] ?? []
-    const idx = list.findIndex(x => x.id === tf.id)
-    let nextList: TextFrame[]
-    if (idx === -1) {
-      nextList = [...list, tf].sort((a, b) => {
+    const next: typeof prev = { ...prev }
+    const currentList = next[normalized.clip] ?? []
+    const currentIdx = currentList.findIndex((item) => item.id === normalized.id)
+    let updatedClipList: TextFrame[]
+    if (currentIdx === -1) {
+      updatedClipList = [...currentList, normalized].sort((a, b) => {
         const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
         const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
         return aStart - bStart
       })
     } else {
-      nextList = list.slice()
-      nextList[idx] = tf
+      updatedClipList = currentList.slice()
+      updatedClipList[currentIdx] = normalized
     }
-    return { ...prev, [tf.clip]: nextList }
+    next[normalized.clip] = updatedClipList
+
+    if (normalized.text_id) {
+      for (const [clipKey, list] of Object.entries(next)) {
+        const updatedList = list.map((item) =>
+          item.text_id === normalized.text_id
+            ? { ...item, content: normalized.content, typography: normalized.typography }
+            : item
+        )
+        if (updatedList !== list) {
+          next[Number(clipKey)] = updatedList
+        }
+      }
+    }
+
+    return next
   })
 }
   const handleSubmitTextFrame = async (event: FormEvent<HTMLFormElement>) => {
@@ -712,8 +757,11 @@ function handleEditorSaved(tf: TextFrameModel) {
         throw new Error(text || `Error ${res.status} creando el texto.`)
       }
       const createdRaw = (await res.json()) as TextFrame
+      const createdRawAny = createdRaw as any
       const created: TextFrame = {
         ...createdRaw,
+        text_id: typeof createdRawAny.text_id === 'number' ? createdRawAny.text_id : createdRawAny.text_id ? Number(createdRawAny.text_id) : undefined,
+        project_id: typeof createdRawAny.project_id === 'string' ? createdRawAny.project_id : createdRawAny.project_id ? String(createdRawAny.project_id) : undefined,
         specific_frames: Array.isArray(createdRaw.specific_frames)
           ? createdRaw.specific_frames.map(Number)
           : [],
@@ -721,16 +769,29 @@ function handleEditorSaved(tf: TextFrameModel) {
         position_y: typeof createdRaw.position_y === 'number' ? createdRaw.position_y : Number(createdRaw.position_y ?? 0.5),
       }
       setTextFramesByClip((prev) => {
-        const list = prev[created.clip] ?? []
+        const next: typeof prev = { ...prev }
+        const list = next[created.clip] ?? []
         const nextList = [...list, created].sort((a, b) => {
           const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
           const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
           return aStart - bStart
         })
-        return {
-          ...prev,
-          [created.clip]: nextList,
+        next[created.clip] = nextList
+
+        if (created.text_id) {
+          for (const [clipKey, frames] of Object.entries(next)) {
+            const updatedFrames = frames.map((item) =>
+              item.text_id === created.text_id
+                ? { ...item, content: created.content, typography: created.typography }
+                : item
+            )
+            if (updatedFrames !== frames) {
+              next[Number(clipKey)] = updatedFrames
+            }
+          }
         }
+
+        return next
       })
 
       toast.success('Texto guardado en el proyecto.')
@@ -983,6 +1044,7 @@ function handleEditorSaved(tf: TextFrameModel) {
   clipMaxMs={editorBounds.max}
   onClose={()=>setEditorOpen(false)}
   onSaved={handleEditorSaved}
+  existingTexts={existingTexts}
 />
 
     </div>

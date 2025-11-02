@@ -7,6 +7,8 @@ import { toast } from 'sonner'
 export type TextFrameModel = {
   id: number
   clip: number
+  text_id?: number
+  project_id?: string
   content: string
   typography: string | null
   frame_start: number | null
@@ -37,6 +39,8 @@ type Props = {
   onClose: () => void
   /** Callback al guardar con éxito: devuelve el TextFrame ya normalizado */
   onSaved: (tf: TextFrameModel) => void
+  /** Textos existentes para reutilizar en modo creación */
+  existingTexts: { id: number; content: string; typography: string | null }[]
 }
 
 export default function TextFrameEditorModal({
@@ -51,6 +55,7 @@ export default function TextFrameEditorModal({
   clipMaxMs,
   onClose,
   onSaved,
+  existingTexts,
 }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -67,6 +72,8 @@ export default function TextFrameEditorModal({
   )
   const [positionX, setPositionX] = useState(String(initial?.position_x ?? 0.5))
   const [positionY, setPositionY] = useState(String(initial?.position_y ?? 0.5))
+  const [reuseExisting, setReuseExisting] = useState(false)
+  const [reuseTextId, setReuseTextId] = useState<string>('')
 
   useEffect(() => {
     if (!open) return
@@ -75,16 +82,58 @@ export default function TextFrameEditorModal({
     setTypography(initial?.typography ?? '')
     setModeValue(initial?.specific_frames?.length ? 'specific' : 'range')
     setFrameStart(String(initial?.frame_start ?? clipMinMs ?? 0))
-    setFrameEnd(String(initial?.frame_end ?? Math.max(Number(initial?.frame_start ?? clipMinMs ?? 0), (clipMinMs??0))))
+    setFrameEnd(String(initial?.frame_end ?? Math.max(Number(initial?.frame_start ?? clipMinMs ?? 0), clipMinMs ?? 0)))
     setSpecificFrames((initial?.specific_frames ?? []).join(', '))
     setPositionX(String(initial?.position_x ?? 0.5))
     setPositionY(String(initial?.position_y ?? 0.5))
-  }, [open, initial, clipMinMs])
+
+    if (mode === 'create' && existingTexts.length > 0) {
+      const initialReuseId = initial?.text_id
+      if (initialReuseId) {
+        setReuseExisting(true)
+        setReuseTextId(String(initialReuseId))
+      } else {
+        setReuseExisting(false)
+        setReuseTextId('')
+      }
+    } else {
+      setReuseExisting(false)
+      setReuseTextId('')
+    }
+  }, [open, initial, clipMinMs, mode, existingTexts])
 
   const title = useMemo(
     () => (mode === 'create' ? 'Insertar texto' : 'Editar texto'),
     [mode]
   )
+
+  const handleToggleReuse = (checked: boolean) => {
+    if (!existingTexts.length) return
+    setReuseExisting(checked)
+    if (checked) {
+      const fallbackId =
+        reuseTextId ||
+        (initial?.text_id ? String(initial.text_id) : existingTexts[0] ? String(existingTexts[0].id) : '')
+      const selected =
+        existingTexts.find((txt) => String(txt.id) === fallbackId) ?? existingTexts[0] ?? null
+      if (selected) {
+        setReuseTextId(String(selected.id))
+        setContent(selected.content)
+        setTypography(selected.typography ?? '')
+      }
+    } else {
+      setReuseTextId('')
+    }
+  }
+
+  const handleReuseSelection = (value: string) => {
+    setReuseTextId(value)
+    const selected = existingTexts.find((txt) => String(txt.id) === value)
+    if (selected) {
+      setContent(selected.content)
+      setTypography(selected.typography ?? '')
+    }
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -133,15 +182,23 @@ export default function TextFrameEditorModal({
 
       if (!accessToken) throw new Error('Inicia sesión para continuar.')
 
-      const body = {
+      const typographyVal = typography.trim() || null
+      const body: Record<string, any> = {
         clip: (mode === 'create' ? clipId : initial?.clip) as number,
         content: contentVal,
-        typography: typography.trim() || null,
+        typography: typographyVal,
         frame_start,
         frame_end,
         specific_frames,
         position_x: Number(px.toFixed(6)),
         position_y: Number(py.toFixed(6)),
+      }
+
+      if (mode === 'create' && reuseExisting) {
+        if (!reuseTextId) {
+          throw new Error('Selecciona un texto existente para reutilizar.')
+        }
+        body.reuse_text = Number(reuseTextId)
       }
 
       const url =
@@ -166,6 +223,8 @@ export default function TextFrameEditorModal({
       // normaliza por si vienen strings:
       const normalized: TextFrameModel = {
         ...saved,
+        text_id: typeof saved.text_id === 'number' ? saved.text_id : saved.text_id ? Number(saved.text_id) : initial?.text_id,
+        project_id: typeof saved.project_id === 'string' ? saved.project_id : saved.project_id ? String(saved.project_id) : initial?.project_id,
         specific_frames: Array.isArray(saved.specific_frames) ? saved.specific_frames.map(Number) : [],
         position_x: typeof saved.position_x === 'number' ? saved.position_x : Number(saved.position_x ?? 0.5),
         position_y: typeof saved.position_y === 'number' ? saved.position_y : Number(saved.position_y ?? 0.5),
@@ -211,6 +270,44 @@ export default function TextFrameEditorModal({
             placeholder="Ej. Open Sans Bold"
           />
         </div>
+
+        {mode === 'create' && existingTexts.length > 0 && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm text-gray-700">
+              <input
+                type="checkbox"
+                checked={reuseExisting}
+                onChange={(e) => handleToggleReuse(e.target.checked)}
+              />
+              Reutilizar un texto existente del proyecto
+            </label>
+            {reuseExisting && (
+              <>
+                <select
+                  value={reuseTextId}
+                  onChange={(e) => handleReuseSelection(e.target.value)}
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Selecciona un texto…</option>
+                  {existingTexts.map((txt) => (
+                    <option key={txt.id} value={txt.id}>
+                      {txt.content.slice(0, 60)}{txt.content.length > 60 ? '…' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500">
+                  Las modificaciones de contenido o tipografía afectan a todas las apariciones de este texto.
+                </p>
+              </>
+            )}
+          </div>
+        )}
+
+        {mode === 'edit' && initial?.text_id && (
+          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            Los cambios de contenido o tipografía se aplicarán a todas las apariciones del texto #{initial.text_id}.
+          </div>
+        )}
 
         <fieldset className="space-y-2">
           <legend className="text-sm font-semibold text-gray-800">Aparición</legend>
