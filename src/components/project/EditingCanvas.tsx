@@ -73,6 +73,9 @@ type TextFrame = {
   specific_frames: number[]
   position_x: number
   position_y: number
+  frame_start_global?: number | null
+  frame_end_global?: number | null
+  specific_frames_global?: number[]
 }
 
 type ProjectTextOverlayApi = {
@@ -296,6 +299,17 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     const byClip: Record<number, TextFrame[]> = {}
     const overlayMap: Record<number, number> = {}
 
+    const normalizeGlobalSpecific = (values: number[] | null | undefined) => {
+      if (!Array.isArray(values)) return []
+      const unique = new Set<number>()
+      for (const raw of values) {
+        const num = Number(raw)
+        if (!Number.isFinite(num)) continue
+        unique.add(Math.round(num))
+      }
+      return Array.from(unique).sort((a, b) => a - b)
+    }
+
     for (const item of items) {
       for (const overlay of item.overlays ?? []) {
         if (!allowedClipIds.has(overlay.clip)) continue
@@ -303,6 +317,8 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
         const clipMeta = clipOffsets[overlay.clip]
         const offset = clipMeta?.offset ?? 0
         const clipDuration = clipMeta ? Math.max(0, clipMeta.end - clipMeta.start) : Number.POSITIVE_INFINITY
+
+        const globalSpecific = normalizeGlobalSpecific(overlay.specific_frames)
 
         const toLocal = (value: number | null | undefined) => {
           if (value == null) return null
@@ -350,6 +366,9 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
           specific_frames: normalizeSpecific(overlay.specific_frames),
           position_x: overlay.position_x,
           position_y: overlay.position_y,
+          frame_start_global: overlay.frame_start ?? null,
+          frame_end_global: overlay.frame_end ?? null,
+          specific_frames_global: globalSpecific,
         }
         if (!byClip[normalized.clip]) {
           byClip[normalized.clip] = []
@@ -426,8 +445,26 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     if (!currentThumb) return []
     const framesForClip = textFramesByClip[currentThumb.clipId] ?? []
     const tLocal = currentThumb.tLocal
+    const tGlobal = currentThumb.tGlobal
 
     return framesForClip.filter((tf) => {
+      const globalStart = tf.frame_start_global
+      const globalEnd = tf.frame_end_global
+      const globalSpecific = tf.specific_frames_global ?? []
+
+      const inGlobalRange =
+        globalStart != null &&
+        globalEnd != null &&
+        globalStart <= tGlobal &&
+        tGlobal < globalEnd
+      const inGlobalSpecific =
+        Array.isArray(globalSpecific) &&
+        globalSpecific.includes(Math.round(tGlobal))
+
+      if (inGlobalRange || inGlobalSpecific) {
+        return true
+      }
+
       const startMs = tf.frame_start
       const endMs = tf.frame_end
 const inRange =
