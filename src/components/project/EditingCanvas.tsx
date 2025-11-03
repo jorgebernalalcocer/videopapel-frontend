@@ -96,7 +96,6 @@ type ProjectTextApiModel = {
   overlays: ProjectTextOverlayApi[]
 }
 
-const FRAME_TOLERANCE_MS = 66
 /* =========================
    Componente
 ========================= */
@@ -430,14 +429,13 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     return framesForClip.filter((tf) => {
       const startMs = tf.frame_start
       const endMs = tf.frame_end
-      const inRange =
-        startMs != null &&
-        endMs != null &&
-        startMs <= tLocal &&
-        tLocal <= endMs
-      const inSpecific =
-        Array.isArray(tf.specific_frames) &&
-        tf.specific_frames.some((value) => Math.abs(value - tLocal) <= FRAME_TOLERANCE_MS)
+const inRange =
+  startMs != null && endMs != null &&
+  startMs <= tLocal && tLocal < endMs 
+const inSpecific =
+  Array.isArray(tf.specific_frames) &&
+  tf.specific_frames.includes(Math.round(tLocal))   // sin tolerancia
+
       return inRange || inSpecific
     })
   }, [textFramesByClip, currentThumb])
@@ -554,6 +552,7 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     })()
   }, [selectedId, selectedGlobalMs, combinedThumbs, isFrameFullScreen])
 
+  
 async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: boolean) {
   const video = videoRef.current
   const canvas = bigCanvasRef.current
