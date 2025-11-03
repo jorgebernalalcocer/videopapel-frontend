@@ -97,8 +97,6 @@ type ProjectTextApiModel = {
 }
 
 const FRAME_TOLERANCE_MS = 66
-const FRAME_INDEX_THRESHOLD = 500
-
 /* =========================
    Componente
 ========================= */
@@ -211,42 +209,66 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     [clipOffsets]
   )
 
-  const frameIndexMs = useMemo(() => {
-    const framesGlobal: number[] = []
+  const globalFrames = useMemo(() => {
+    const frames: { index: number; clipId: number; localMs: number; globalMs: number }[] = []
+    let runningIndex = 1
     for (const clip of clipsOrdered) {
       const meta = clipOffsets[clip.clipId]
       if (!meta) continue
       const offset = meta.offset
-      const localFrames = Array.isArray(clip.frames) && clip.frames.length > 0
+      const baseFrames = Array.isArray(clip.frames) && clip.frames.length > 0
         ? clip.frames
-        : [meta.start, meta.end]
+        : [0]
+      const localFrames = Array.from(new Set([0, ...baseFrames])).sort((a, b) => a - b)
       for (const value of localFrames) {
-        const normalized = offset + Math.max(0, value)
-        if (framesGlobal.length === 0 || normalized >= framesGlobal[framesGlobal.length - 1]) {
-          framesGlobal.push(normalized)
-        }
+        const localMs = Math.max(0, value)
+        const globalMs = offset + localMs
+        frames.push({
+          index: runningIndex,
+          clipId: clip.clipId,
+          localMs,
+          globalMs,
+        })
+        runningIndex += 1
       }
     }
-    return framesGlobal
+    return frames
   }, [clipsOrdered, clipOffsets])
 
-  const totalFrameCount = useMemo(() => Math.max(0, frameIndexMs.length), [frameIndexMs])
+  const frameIndexMs = useMemo(() => globalFrames.map((frame) => frame.globalMs), [globalFrames])
+  const totalFrameCount = useMemo(() => Math.max(0, globalFrames.length), [globalFrames])
 
   const indexToStartMs = useCallback((index: number) => {
-    if (!frameIndexMs.length) return 0
-    const clamped = Math.min(Math.max(Math.round(index), 1), frameIndexMs.length)
-    const idx = clamped - 1
-    return frameIndexMs[idx] ?? 0
-  }, [frameIndexMs])
+    if (!globalFrames.length) return 0
+    const clamped = Math.min(Math.max(Math.round(index), 1), globalFrames.length)
+    return globalFrames[clamped - 1]?.globalMs ?? 0
+  }, [globalFrames])
 
   const indexToEndMs = useCallback((index: number) => {
-    if (!frameIndexMs.length) return projectTotalMs
-    const clamped = Math.min(Math.max(Math.round(index), 1), frameIndexMs.length)
-    if (clamped >= frameIndexMs.length) {
+    if (!globalFrames.length) return projectTotalMs
+    const clamped = Math.min(Math.max(Math.round(index), 1), globalFrames.length)
+    if (clamped >= globalFrames.length) {
       return projectTotalMs
     }
-    return frameIndexMs[clamped] ?? projectTotalMs
-  }, [frameIndexMs, projectTotalMs])
+    return globalFrames[clamped]?.globalMs ?? projectTotalMs
+  }, [globalFrames, projectTotalMs])
+
+  const globalFrameLookupByClip = useMemo(() => {
+    const map = new Map<number, Map<number, number>>()
+    for (const frame of globalFrames) {
+      if (!map.has(frame.clipId)) {
+        map.set(frame.clipId, new Map())
+      }
+      map.get(frame.clipId)!.set(Math.round(frame.globalMs), frame.localMs)
+    }
+    return map
+  }, [globalFrames])
+
+  const currentFrameIndex = useMemo(() => {
+    if (!frameIndexMs.length) return null
+    const idx = nearestIndex(frameIndexMs, selectedGlobalMs)
+    return idx >= 0 ? idx + 1 : null
+  }, [frameIndexMs, selectedGlobalMs])
   const clipThumbsById = useMemo(() => {
     const map: Record<number, CombinedThumb[]> = {}
     for (const thumb of combinedThumbs) {
@@ -280,19 +302,42 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
         overlayMap[overlay.id] = item.id
         const clipMeta = clipOffsets[overlay.clip]
         const offset = clipMeta?.offset ?? 0
-        const clipStart = clipMeta?.start ?? 0
-        const clipEnd = clipMeta?.end ?? clipStart
+        const clipDuration = clipMeta ? Math.max(0, clipMeta.end - clipMeta.start) : Number.POSITIVE_INFINITY
 
         const toLocal = (value: number | null | undefined) => {
           if (value == null) return null
-          return value - offset + clipStart
+          return Math.max(0, value - offset)
         }
 
         const normalizeSpecific = (values: number[] | null | undefined) => {
           if (!Array.isArray(values)) return []
-          return values.map((v) => v - offset + clipStart).filter((v) => v >= clipStart && v <= clipEnd)
+          const lookup = globalFrameLookupByClip.get(overlay.clip)
+          return values
+            .map((v) => {
+              if (lookup && lookup.size) {
+                const rounded = Math.round(v)
+                if (lookup.has(rounded)) {
+                  return lookup.get(rounded)!
+                }
+                let bestLocal = v - offset
+                let bestDiff = Number.POSITIVE_INFINITY
+                lookup.forEach((localMs, globalMs) => {
+                  const diff = Math.abs(globalMs - v)
+                  if (diff < bestDiff) {
+                    bestDiff = diff
+                    bestLocal = localMs
+                  }
+                })
+                return bestLocal
+              }
+              return v - offset
+            })
+            .filter((v) => v >= 0 && v <= clipDuration)
+            .map((v) => Math.round(v))
         }
 
+        const localStart = toLocal(overlay.frame_start)
+        const localEnd = toLocal(overlay.frame_end)
         const normalized: TextFrame = {
           id: overlay.id,
           clip: overlay.clip,
@@ -300,8 +345,8 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
           project_id: item.project,
           content: item.content,
           typography: item.typography,
-          frame_start: toLocal(overlay.frame_start),
-          frame_end: toLocal(overlay.frame_end),
+          frame_start: localStart == null ? null : Math.max(0, Math.min(localStart, clipDuration)),
+          frame_end: localEnd == null ? null : Math.max(0, Math.min(localEnd, clipDuration)),
           specific_frames: normalizeSpecific(overlay.specific_frames),
           position_x: overlay.position_x,
           position_y: overlay.position_y,
@@ -323,7 +368,7 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
 
     setOverlayToTextId(overlayMap)
     setTextFramesByClip(byClip)
-  }, [clipsOrdered, clipOffsets])
+  }, [clipsOrdered, clipOffsets, globalFrameLookupByClip])
 
   useEffect(() => {
     if (!accessToken || !projectId || !clipsOrdered.length) {
@@ -366,7 +411,7 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     return () => {
       cancelled = true
     }
-  }, [apiBase, accessToken, projectId, clipSignature, textsVersion, clipsOrdered.length, rebuildTextFrames])
+  }, [apiBase, accessToken, projectId, clipSignature, textsVersion, clipsOrdered.length])
 
   useEffect(() => {
     if (!projectTexts.length) {
@@ -380,27 +425,11 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
   const activeTextFrames = useMemo(() => {
     if (!currentThumb) return []
     const framesForClip = textFramesByClip[currentThumb.clipId] ?? []
-    const clipThumbs = clipThumbsById[currentThumb.clipId] ?? []
-    const clipTimes = clipThumbs.map((thumb) => thumb.tLocal)
     const tLocal = currentThumb.tLocal
 
-    const resolveValue = (value: number | null) => {
-      if (value == null) return null
-      if (!clipTimes.length) return value
-      if (
-        Number.isInteger(value) &&
-        value >= 1 &&
-        value <= clipTimes.length &&
-        (value <= FRAME_INDEX_THRESHOLD || clipTimes.length <= FRAME_INDEX_THRESHOLD)
-      ) {
-        return clipTimes[value - 1]
-      }
-      return value
-    }
-
     return framesForClip.filter((tf) => {
-      const startMs = resolveValue(tf.frame_start)
-      const endMs = resolveValue(tf.frame_end)
+      const startMs = tf.frame_start
+      const endMs = tf.frame_end
       const inRange =
         startMs != null &&
         endMs != null &&
@@ -408,14 +437,10 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
         tLocal <= endMs
       const inSpecific =
         Array.isArray(tf.specific_frames) &&
-        tf.specific_frames.some((value) => {
-          const target = resolveValue(value)
-          if (target == null) return false
-          return Math.abs(target - tLocal) <= FRAME_TOLERANCE_MS
-        })
+        tf.specific_frames.some((value) => Math.abs(value - tLocal) <= FRAME_TOLERANCE_MS)
       return inRange || inSpecific
     })
-  }, [textFramesByClip, currentThumb, clipThumbsById])
+  }, [textFramesByClip, currentThumb])
 
   // Cargar/generar thumbs por clip, aplicar ventana [start, end) y fusionar
   useEffect(() => {
@@ -805,8 +830,11 @@ function handleEditorSaved() {
         </div>
 
         <div className="absolute bottom-2 right-2 flex items-center gap-2">
-          <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
-                      {formatTime(selectedGlobalMs)} / {formatTime(projectTotalMs)}
+          <div className="text-xs bg-black/60 text-white px-2 py-1 rounded flex items-center gap-2">
+            <span>{formatTime(selectedGlobalMs)} / {formatTime(projectTotalMs)}</span>
+            {currentFrameIndex != null && totalFrameCount > 0 && (
+              <span>Frame {currentFrameIndex} / {totalFrameCount}</span>
+            )}
           </div>
           <PlayButton onClick={stepForward} />
         </div>

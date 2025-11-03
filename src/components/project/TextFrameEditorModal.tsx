@@ -192,6 +192,11 @@ export default function TextFrameEditorModal({
             return mapped == null ? null : Math.round(mapped)
           })
           .filter((value): value is number => value !== null)
+        specific_frames = Array.from(new Set(specific_frames)).sort((a, b) => a - b)
+      }
+
+      if (frame_start !== null && frame_end !== null && frame_start >= frame_end) {
+        throw new Error('El frame final debe ser mayor que el inicial.')
       }
 
       if (!accessToken) throw new Error('Inicia sesión para continuar.')
@@ -262,6 +267,8 @@ export default function TextFrameEditorModal({
           />
         </div>
 
+        <p className="text-xs text-gray-500">Total de frames: {frameCount}. El primero es 1.</p>
+
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Tipografía (opcional)</label>
           <input
@@ -299,6 +306,7 @@ export default function TextFrameEditorModal({
             <input
               type="number"
               min={1}
+              max={frameCount}
               value={frameStart}
               onChange={(e) => setFrameStart(e.target.value)}
               disabled={modeValue!=='range'}
@@ -310,6 +318,7 @@ export default function TextFrameEditorModal({
             <input
               type="number"
               min={1}
+              max={frameCount}
               value={frameEnd}
               onChange={(e) => setFrameEnd(e.target.value)}
               disabled={modeValue!=='range'}
@@ -329,7 +338,7 @@ export default function TextFrameEditorModal({
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Separa con comas/espacios/punto y coma. Usa índices consecutivos de frame del proyecto.
+            Separa con comas/espacios/punto y coma. Usa índices de 1 a {frameCount} según el proyecto.
           </p>
         </div>
 
