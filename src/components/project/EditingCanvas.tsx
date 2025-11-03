@@ -111,7 +111,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     durationMs,
     initialFrames,
     initialTimeMs = 0,
-    thumbnailsCount = 40,
+    thumbnailsCount,
     thumbnailHeight = 68,
     onChange,
     disableAutoThumbnails = false,
@@ -450,66 +450,71 @@ const inSpecific =
 
         const perClipThumbs: CombinedThumb[][] = []
 
-        for (const c of clipsOrdered) {
-          const { offset, start, end } = clipOffsets[c.clipId]
+      for (const c of clipsOrdered) {
+  const { offset, start, end } = clipOffsets[c.clipId]
 
-          // firma & caché por clip
-          const sig = buildSig({
-            clipId: c.clipId,
-            videoSrc: c.videoSrc,
-            durationMs: c.durationMs,
-            thumbnailsCount,
-            thumbnailHeight,
-            framesVersion: c.frames?.join(',') ?? null,
-          })
+  // calcula una vez por iteración
+  const targetCount = framesCountFor(c.durationMs, thumbnailsCount)
 
-          let items = loadThumbsFromCache(projectId, c.clipId, sig)
+  const sig = buildSig({
+    clipId: c.clipId,
+    videoSrc: c.videoSrc,
+    durationMs: c.durationMs,
+    targetCount, // 👈 ya calculado
+    thumbnailHeight,
+    framesVersion: c.frames?.join(',') ?? null,
+  })
 
-          if (!items || items.length === 0) {
-            const seeds: Thumbnail[] =
-              (c.frames?.length
-                ? c.frames
-                : generateTimesFromDuration(c.durationMs, thumbnailsCount)
-              ).map((t) => ({ t, url: '' }))
-            items = seeds
-          }
+  let items = loadThumbsFromCache(projectId, c.clipId, sig)
 
-          // 👇 Ventana semiabierta: [start, end)
-          items = items.filter((it) => it.t >= start && it.t < end)
+  // Detecta frames “legacy” (39) o vacíos y REGENERA si procede
+  const legacy39 = Array.isArray(c.frames) && c.frames.length === 39 && (thumbnailsCount == null)
+  const tooFew  = !Array.isArray(c.frames) || c.frames.length < 2
 
-          // Construir URLs Cloudinary si falta url
-          if (items.some((it) => !it.url) && !disableAutoThumbnails) {
-            items = items.map((it) => ({
-              t: it.t,
-              url: cloudinaryFrameUrlFromVideoUrl(c.videoSrc, it.t, thumbnailHeight),
-            }))
-            saveThumbsToCache(projectId, c.clipId, sig, items)
+  if (!items || items.length === 0 || legacy39 || tooFew) {
+    // ❌ NO declares otro "const targetCount" aquí
+    const seedsTimes = generateTimesFromDuration(c.durationMs, targetCount)
+    items = seedsTimes.map((t) => ({ t, url: '' }))
+  }
 
-            // Persistir frames en backend (silencioso)
-            if (accessToken) {
-              try {
-                await fetch(`${apiBase}/projects/${projectId}/clips/${c.clipId}/frames/`, {
-                  method: 'PUT',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`,
-                  },
-                  body: JSON.stringify({ frames: items.map((i) => i.t) }),
-                })
-              } catch { /* noop */ }
-            }
-          }
+  // Ventana semiabierta: [start, end)
+  items = items.filter((it) => it.t >= start && it.t < end)
 
-          const merged: CombinedThumb[] = items.map(({ t, url }) => ({
-            id: `${c.clipId}:${t}`,
-            clipId: c.clipId,
-            tLocal: t,
-            tGlobal: (t - start) + offset,
-            videoSrc: c.videoSrc,
-            url,
-          }))
-          perClipThumbs.push(merged)
-        }
+  // Construir URLs si falta url y cachear
+  if (items.some((it) => !it.url) && !disableAutoThumbnails) {
+    items = items.map((it) => ({
+      t: it.t,
+      url: cloudinaryFrameUrlFromVideoUrl(c.videoSrc, it.t, thumbnailHeight),
+    }))
+    saveThumbsToCache(projectId, c.clipId, sig, items)
+
+    // Persistir frames en backend (silencioso)
+    if (accessToken) {
+      try {
+        await fetch(`${apiBase}/projects/${projectId}/clips/${c.clipId}/frames/`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ frames: items.map((i) => i.t) }),
+        })
+      } catch { /* noop */ }
+    }
+  }
+
+  const merged: CombinedThumb[] = items.map(({ t, url }) => ({
+    id: `${c.clipId}:${t}`,
+    clipId: c.clipId,
+    tLocal: t,
+    tGlobal: (t - start) + offset,
+    videoSrc: c.videoSrc,
+    url,
+  }))
+
+  perClipThumbs.push(merged)
+}
+
 
         if (!canceled) {
           const all = perClipThumbs.flat().sort((a, b) => a.tGlobal - b.tGlobal)
@@ -613,6 +618,16 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
   /* --------- reproducción --------- */
 
   const togglePlay = () => setIsPlaying((p) => !p)
+
+  // ====== NUEVO: decide cuántos frames generar según duración ======
+function framesCountFor(durationMs: number, suggestedCount?: number) {
+  // Si te pasan thumbnailsCount explícito, lo respetas
+  if (suggestedCount && suggestedCount > 1) return suggestedCount
+
+  // Regla por defecto: ~1 por segundo + 1 para incluir el final
+  const perSec = 1
+  return Math.max(2, Math.round(durationMs / 1000 * perSec) + 1)
+}
 
   function stepForward() {
     if (!combinedThumbs.length) return
@@ -949,13 +964,14 @@ function buildSig(args: {
   clipId: number
   videoSrc: string
   durationMs: number
-  thumbnailsCount: number
+  targetCount: number   // 👈 en vez de thumbnailsCount
   thumbnailHeight: number
   framesVersion?: string | null
 }) {
-  const { clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, framesVersion } = args
-  return JSON.stringify({ v: 3, clipId, videoSrc, durationMs, thumbnailsCount, thumbnailHeight, framesVersion })
+  const { clipId, videoSrc, durationMs, targetCount, thumbnailHeight, framesVersion } = args
+  return JSON.stringify({ v: 4, clipId, videoSrc, durationMs, targetCount, thumbnailHeight, framesVersion })
 }
+
 
 function loadThumbsFromCache(projectId: string, clipId: number | string, sig: string): Thumbnail[] | null {
   try {
