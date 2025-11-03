@@ -240,7 +240,8 @@ async function handleExportPdf() {
           <div className="aspect-video bg-black rounded-lg mb-4 p-2">
             {clips.length ? (
               <EditingCanvas
-                thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
+              thumbsPerSecond={10}
+                // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
                 // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
                 projectId={project.id}
                 clips={clips.map((c) => ({

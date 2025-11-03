@@ -38,7 +38,7 @@ type EditingCanvasProps = {
   durationMs?: number
   initialFrames?: number[]
   initialTimeMs?: number
-
+  thumbsPerSecond?: number  // 👈 NUEVO (ej. 2 = ~cada 0.5s)
   thumbnailsCount?: number
   thumbnailHeight?: number
   onChange?: (timeMs: number) => void
@@ -112,6 +112,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     initialFrames,
     initialTimeMs = 0,
     thumbnailsCount,
+    thumbsPerSecond,           
     thumbnailHeight = 68,
     onChange,
     disableAutoThumbnails = false,
@@ -454,8 +455,7 @@ const inSpecific =
   const { offset, start, end } = clipOffsets[c.clipId]
 
   // calcula una vez por iteración
-  const targetCount = framesCountFor(c.durationMs, thumbnailsCount)
-
+const targetCount = framesCountFor(c.durationMs, thumbnailsCount, thumbsPerSecond)
   const sig = buildSig({
     clipId: c.clipId,
     videoSrc: c.videoSrc,
@@ -619,15 +619,25 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
 
   const togglePlay = () => setIsPlaying((p) => !p)
 
-  // ====== NUEVO: decide cuántos frames generar según duración ======
-function framesCountFor(durationMs: number, suggestedCount?: number) {
-  // Si te pasan thumbnailsCount explícito, lo respetas
+function framesCountFor(
+  durationMs: number,
+  suggestedCount?: number,
+  pps?: number,                 // 👈 nuevo parámetro
+) {
+  // 1) Si te pasan un número absoluto de miniaturas, lo respetas:
   if (suggestedCount && suggestedCount > 1) return suggestedCount
 
-  // Regla por defecto: ~1 por segundo + 1 para incluir el final
+  // 2) Si te pasan densidad por segundo, úsala:
+  if (pps && pps > 0) {
+    const count = Math.round((durationMs / 1000) * pps) + 1 // +1 para incluir final
+    return Math.max(2, count)
+  }
+
+  // 3) Por defecto: ~1 por segundo
   const perSec = 1
   return Math.max(2, Math.round(durationMs / 1000 * perSec) + 1)
 }
+
 
   function stepForward() {
     if (!combinedThumbs.length) return
