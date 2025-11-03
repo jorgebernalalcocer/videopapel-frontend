@@ -1,11 +1,10 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
 import { Maximize2, Minimize2 } from 'lucide-react'
-import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
 import DraggableTextOverlay from '@/components/project/DraggableTextOverlay'
 import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextFrameEditorModal'
@@ -62,19 +61,6 @@ type CombinedThumb = {
 
 type Thumbnail = { t: number; url: string }
 
-type TextFormMode = 'range' | 'specific'
-
-type TextFormState = {
-  content: string
-  typography: string
-  mode: TextFormMode
-  frameStart: string
-  frameEnd: string
-  specificFrames: string
-  positionX: string
-  positionY: string
-}
-
 type TextFrame = {
   id: number
   clip: number
@@ -87,6 +73,27 @@ type TextFrame = {
   specific_frames: number[]
   position_x: number
   position_y: number
+}
+
+type ProjectTextOverlayApi = {
+  id: number
+  clip: number
+  frame_start: number | null
+  frame_end: number | null
+  specific_frames: number[]
+  position_x: number
+  position_y: number
+}
+
+type ProjectTextApiModel = {
+  id: number
+  project: string
+  content: string
+  typography: string | null
+  frame_start: number | null
+  frame_end: number | null
+  specific_frames: number[]
+  overlays: ProjectTextOverlayApi[]
 }
 
 const FRAME_TOLERANCE_MS = 66
@@ -132,28 +139,16 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [isFrameFullScreen, setIsFrameFullScreen] = useState(false)
   const [paintError, setPaintError] = useState<boolean>(false) // 👈 NUEVO ESTADO
-  const [isTextModalOpen, setIsTextModalOpen] = useState(false)
-  const [isSubmittingTextFrame, setIsSubmittingTextFrame] = useState(false)
-  const [textFormError, setTextFormError] = useState<string | null>(null)
-  const [textForm, setTextForm] = useState<TextFormState>({
-    content: '',
-    typography: '',
-    mode: 'range',
-    frameStart: '0',
-    frameEnd: '0',
-    specificFrames: '',
-    positionX: '0.5',
-    positionY: '0.5',
-  })
   const [textFramesByClip, setTextFramesByClip] = useState<Record<number, TextFrame[]>>({})
+  const [projectTexts, setProjectTexts] = useState<ProjectTextApiModel[]>([])
+  const [textsVersion, setTextsVersion] = useState(0)
+  const [overlayToTextId, setOverlayToTextId] = useState<Record<number, number>>({})
 
   const playTimerRef = useRef<number | null>(null)
 
   const [editorOpen, setEditorOpen] = useState(false)
 const [editorMode, setEditorMode] = useState<'create'|'edit'>('create')
 const [editorInitial, setEditorInitial] = useState<Partial<TextFrameModel> | undefined>(undefined)
-const [editorClipId, setEditorClipId] = useState<number | undefined>(undefined)
-const [editorBounds, setEditorBounds] = useState<{min?: number; max?: number}>({})
 
 
   // Dentro de EditingCanvas (antes del return)
@@ -192,7 +187,10 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     return baseClip ? [baseClip] : []
   }, [isMulti, clips, baseClip])
 
-  const clipIdsKey = useMemo(() => clipsOrdered.map(c => c.clipId).join(','), [clipsOrdered])
+  const clipSignature = useMemo(
+    () => clipsOrdered.map(c => `${c.clipId}-${c.timeStartMs ?? 0}-${c.timeEndMs ?? c.durationMs}`).join(','),
+    [clipsOrdered]
+  )
 
   const clipOffsets = useMemo(() => {
     const out: Record<number, { offset: number; start: number; end: number }> = {}
@@ -208,7 +206,7 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
   }, [clipsOrdered])
 
   const [combinedThumbs, setCombinedThumbs] = useState<CombinedThumb[]>([])
-  const totalDurationMs = useMemo(
+  const projectTotalFrames = useMemo(
     () => Object.values(clipOffsets).reduce((sum, v) => sum + Math.max(0, v.end - v.start), 0),
     [clipOffsets]
   )
@@ -234,73 +232,113 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
     return nearestByGlobal(selectedGlobalMs, combinedThumbs)
   }, [combinedThumbs, selectedId, selectedGlobalMs])
 
+  const rebuildTextFrames = useCallback((items: ProjectTextApiModel[]) => {
+    const allowedClipIds = new Set(clipsOrdered.map((clip) => clip.clipId))
+    const byClip: Record<number, TextFrame[]> = {}
+    const overlayMap: Record<number, number> = {}
+
+    for (const item of items) {
+      for (const overlay of item.overlays ?? []) {
+        if (!allowedClipIds.has(overlay.clip)) continue
+        overlayMap[overlay.id] = item.id
+        const clipMeta = clipOffsets[overlay.clip]
+        const offset = clipMeta?.offset ?? 0
+        const clipStart = clipMeta?.start ?? 0
+        const clipEnd = clipMeta?.end ?? clipStart
+
+        const toLocal = (value: number | null | undefined) => {
+          if (value == null) return null
+          return value - offset + clipStart
+        }
+
+        const normalizeSpecific = (values: number[] | null | undefined) => {
+          if (!Array.isArray(values)) return []
+          return values.map((v) => v - offset + clipStart).filter((v) => v >= clipStart && v <= clipEnd)
+        }
+
+        const normalized: TextFrame = {
+          id: overlay.id,
+          clip: overlay.clip,
+          text_id: item.id,
+          project_id: item.project,
+          content: item.content,
+          typography: item.typography,
+          frame_start: toLocal(overlay.frame_start),
+          frame_end: toLocal(overlay.frame_end),
+          specific_frames: normalizeSpecific(overlay.specific_frames),
+          position_x: overlay.position_x,
+          position_y: overlay.position_y,
+        }
+        if (!byClip[normalized.clip]) {
+          byClip[normalized.clip] = []
+        }
+        byClip[normalized.clip].push(normalized)
+      }
+    }
+
+    for (const list of Object.values(byClip)) {
+      list.sort((a, b) => {
+        const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+        const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
+        return aStart - bStart
+      })
+    }
+
+    setOverlayToTextId(overlayMap)
+    setTextFramesByClip(byClip)
+  }, [clipsOrdered])
+
   useEffect(() => {
-    if (!accessToken || clipsOrdered.length === 0) {
+    if (!accessToken || !projectId || !clipsOrdered.length) {
+      setProjectTexts([])
       setTextFramesByClip({})
+      setOverlayToTextId({})
       return
     }
 
-    setTextFramesByClip({})
-
     let cancelled = false
-    ;(async () => {
+
+    const loadTexts = async () => {
       try {
-        const res = await fetch(`${apiBase}/text-frames/?project=${projectId}`, {
+        const res = await fetch(`${apiBase}/project-texts/?project=${projectId}`, {
           headers: {
             Authorization: `Bearer ${accessToken}`,
           },
           credentials: 'include',
         })
         if (!res.ok) {
-          throw new Error(`TextFrames ${res.status}`)
+          throw new Error(`ProjectTexts ${res.status}`)
         }
-        const data = (await res.json()) as TextFrame[] | { results: TextFrame[] }
-        const listRaw = Array.isArray(data) ? data : data.results ?? []
-
-        const allowedClipIds = new Set(clipsOrdered.map((clip) => clip.clipId))
-        const map: Record<number, TextFrame[]> = {}
-        for (const item of listRaw) {
-          if (!allowedClipIds.has(item.clip)) continue
-          const raw = item as any
-          const normalized: TextFrame = {
-            ...item,
-            text_id: typeof raw.text_id === 'number' ? raw.text_id : raw.text_id ? Number(raw.text_id) : undefined,
-            project_id: typeof raw.project_id === 'string' ? raw.project_id : raw.project_id ? String(raw.project_id) : undefined,
-            specific_frames: Array.isArray(item.specific_frames)
-              ? item.specific_frames.map(Number)
-              : [],
-            position_x: typeof item.position_x === 'number' ? item.position_x : Number(item.position_x ?? 0.5),
-            position_y: typeof item.position_y === 'number' ? item.position_y : Number(item.position_y ?? 0.5),
-          }
-          if (!map[normalized.clip]) {
-            map[normalized.clip] = []
-          }
-          map[normalized.clip].push(normalized)
-        }
-
-        for (const list of Object.values(map)) {
-          list.sort((a, b) => {
-            const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
-            const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
-            return aStart - bStart
-          })
-        }
-
-        if (!cancelled) {
-          setTextFramesByClip(map)
-        }
+        const payload = await res.json()
+        if (cancelled) return
+        const list: ProjectTextApiModel[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.results)
+            ? payload.results
+            : []
+        setProjectTexts(list)
       } catch (err) {
-        console.error('Error cargando text frames', err)
-        if (!cancelled) {
-          toast.error('No se pudieron cargar los textos del proyecto.')
-        }
+        if (cancelled) return
+        console.error('Error cargando textos del proyecto', err)
+        toast.error('No se pudieron cargar los textos del proyecto.')
       }
-    })()
+    }
+
+    loadTexts()
 
     return () => {
       cancelled = true
     }
-  }, [apiBase, accessToken, projectId, clipIdsKey, clipsOrdered])
+  }, [apiBase, accessToken, projectId, clipSignature, textsVersion, clipsOrdered.length, rebuildTextFrames])
+
+  useEffect(() => {
+    if (!projectTexts.length) {
+      setTextFramesByClip({})
+      setOverlayToTextId({})
+      return
+    }
+    rebuildTextFrames(projectTexts)
+  }, [projectTexts, clipSignature, rebuildTextFrames])
 
   const activeTextFrames = useMemo(() => {
     if (!currentThumb) return []
@@ -341,23 +379,6 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
       return inRange || inSpecific
     })
   }, [textFramesByClip, currentThumb, clipThumbsById])
-
-  const existingTexts = useMemo(() => {
-    const map = new Map<number, { id: number; content: string; typography: string | null }>()
-    for (const list of Object.values(textFramesByClip)) {
-      for (const item of list) {
-        if (item.text_id == null) continue
-        if (!map.has(item.text_id)) {
-          map.set(item.text_id, {
-            id: item.text_id,
-            content: item.content,
-            typography: item.typography ?? null,
-          })
-        }
-      }
-    }
-    return Array.from(map.values()).sort((a, b) => a.id - b.id)
-  }, [textFramesByClip])
 
   // Cargar/generar thumbs por clip, aplicar ventana [start, end) y fusionar
   useEffect(() => {
@@ -568,250 +589,47 @@ async function paintBigFrameForSrc(src: string, tLocalMs: number, fillViewer: bo
   }, [isPlaying, playbackFps, selectedGlobalMs, loop, combinedThumbs.length, selectedId])
 
 function openCreateTextEditor() {
-  if (!combinedThumbs.length || !currentThumb) {
-    toast.warning('Necesitas tener un clip seleccionado para insertar texto.')
+  if (!clipsOrdered.length) {
+    toast.warning('Necesitas añadir al menos un clip al proyecto para insertar texto.')
     return
   }
-  const clipInfo = clipOffsets[currentThumb.clipId]
-  const clipEnd = clipInfo ? clipInfo.end : currentThumb.tLocal
-  const defaultStart = currentThumb.tLocal
-  const defaultEnd = clipEnd !== undefined
-    ? Math.max(defaultStart, Math.min(defaultStart + 1000, clipEnd))
-    : defaultStart
-
   setEditorMode('create')
-  setEditorClipId(currentThumb.clipId)
-  setEditorBounds({ min: clipInfo?.start ?? 0, max: clipInfo?.end })
   setEditorInitial({
-    frame_start: defaultStart,
-    frame_end: defaultEnd,
+    frame_start: 1,
+    frame_end: projectTotalFrames || 1,
     specific_frames: [],
-    position_x: 0.5,
-    position_y: 0.5,
     content: '',
     typography: '',
   })
   setEditorOpen(true)
 }
 
-// NUEVO: abrir en modo edición desde overlay:
-function openEditTextEditor(id: number) {
-  // Busca el TextFrame en todos los clips cargados:
-  let found: TextFrame | undefined
-  let foundClip: number | undefined
-  for (const [clipIdStr, list] of Object.entries(textFramesByClip)) {
-    const f = list.find(t => t.id === id)
-    if (f) { found = f; foundClip = Number(clipIdStr); break }
-  }
-  if (!found || foundClip == null) {
+function openEditTextEditor(overlayId: number) {
+  const textId = overlayToTextId[overlayId]
+  const aggregate = projectTexts.find((item) => item.id === textId)
+  if (!aggregate) {
     toast.error('No se encontró el texto a editar.')
     return
   }
-  const clipInfo = clipOffsets[foundClip]
   setEditorMode('edit')
-  setEditorClipId(foundClip)
-  setEditorBounds({ min: clipInfo?.start ?? 0, max: clipInfo?.end })
-  setEditorInitial(found)
+  const fallbackSpecific = aggregate.specific_frames ?? []
+  const fallbackStart = aggregate.frame_start ?? (fallbackSpecific[0] ?? 1)
+  const fallbackEnd = aggregate.frame_end ?? (fallbackSpecific[fallbackSpecific.length - 1] ?? projectTotalFrames || 1)
+  setEditorInitial({
+    text_id: aggregate.id,
+    content: aggregate.content,
+    typography: aggregate.typography ?? '',
+    frame_start: fallbackStart,
+    frame_end: fallbackEnd,
+    specific_frames: fallbackSpecific,
+  })
   setEditorOpen(true)
 }
 
 // Nuevo onSaved (create/edit):
-function handleEditorSaved(tf: TextFrameModel) {
-  const normalized: TextFrame = {
-    ...tf,
-    specific_frames: Array.isArray(tf.specific_frames) ? tf.specific_frames.map(Number) : [],
-    position_x: typeof tf.position_x === 'number' ? tf.position_x : Number(tf.position_x ?? 0.5),
-    position_y: typeof tf.position_y === 'number' ? tf.position_y : Number(tf.position_y ?? 0.5),
-  }
-
-  setTextFramesByClip((prev) => {
-    const next: typeof prev = { ...prev }
-    const currentList = next[normalized.clip] ?? []
-    const currentIdx = currentList.findIndex((item) => item.id === normalized.id)
-    let updatedClipList: TextFrame[]
-    if (currentIdx === -1) {
-      updatedClipList = [...currentList, normalized].sort((a, b) => {
-        const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
-        const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
-        return aStart - bStart
-      })
-    } else {
-      updatedClipList = currentList.slice()
-      updatedClipList[currentIdx] = normalized
-    }
-    next[normalized.clip] = updatedClipList
-
-    if (normalized.text_id) {
-      for (const [clipKey, list] of Object.entries(next)) {
-        const updatedList = list.map((item) =>
-          item.text_id === normalized.text_id
-            ? { ...item, content: normalized.content, typography: normalized.typography }
-            : item
-        )
-        if (updatedList !== list) {
-          next[Number(clipKey)] = updatedList
-        }
-      }
-    }
-
-    return next
-  })
+function handleEditorSaved() {
+  setTextsVersion((prev) => prev + 1)
 }
-  const handleSubmitTextFrame = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault()
-    if (!currentThumb) {
-      setTextFormError('Selecciona un clip válido antes de insertar texto.')
-      return
-    }
-    setIsSubmittingTextFrame(true)
-    setTextFormError(null)
-    try {
-      const content = textForm.content.trim()
-      if (!content) {
-        throw new Error('El contenido del texto no puede estar vacío.')
-      }
-      const typography = textForm.typography.trim()
-
-      const clipInfo = clipOffsets[currentThumb.clipId]
-      const clipMin = clipInfo ? clipInfo.start : 0
-      const clipMax = clipInfo ? clipInfo.end : undefined
-
-      let frameStart: number | null = null
-      let frameEnd: number | null = null
-      let specificFrames: number[] = []
-
-      if (textForm.mode === 'range') {
-        const start = Number(textForm.frameStart)
-        const end = Number(textForm.frameEnd)
-        if (!Number.isFinite(start) || !Number.isFinite(end)) {
-          throw new Error('Introduce un rango de frames válido.')
-        }
-        if (start < 0 || end < 0) {
-          throw new Error('Los frames deben ser valores iguales o mayores que 0.')
-        }
-        if (end < start) {
-          throw new Error('frame_end debe ser mayor o igual que frame_start.')
-        }
-        if (start < clipMin) {
-          throw new Error(`frame_start debe ser igual o superior a ${clipMin}.`)
-        }
-        if (clipMax !== undefined && end > clipMax) {
-          throw new Error(`frame_end no puede superar ${clipMax}.`)
-        }
-        frameStart = Math.round(start)
-        frameEnd = Math.round(end)
-      } else {
-        if (!textForm.specificFrames.trim()) {
-          throw new Error('Introduce al menos un frame específico.')
-        }
-        const parsed = textForm.specificFrames
-          .split(/[,;\s]+/)
-          .map(token => token.trim())
-          .filter(Boolean)
-          .map(token => Number(token))
-        if (!parsed.length || parsed.some(n => !Number.isFinite(n) || n < 0)) {
-          throw new Error('Los frames específicos deben ser enteros mayores o iguales que 0.')
-        }
-        if (parsed.some(n => n < clipMin)) {
-          throw new Error(`Los frames específicos deben ser mayores o iguales que ${clipMin}.`)
-        }
-        if (clipMax !== undefined && parsed.some(n => n > clipMax)) {
-          throw new Error(`Los frames específicos no pueden superar ${clipMax}.`)
-        }
-        specificFrames = parsed.map(n => Math.round(n))
-      }
-
-      const positionX = Number(textForm.positionX)
-      const positionY = Number(textForm.positionY)
-      if (!Number.isFinite(positionX) || positionX < 0 || positionX > 1) {
-        throw new Error('La posición horizontal debe estar entre 0 y 1.')
-      }
-      if (!Number.isFinite(positionY) || positionY < 0 || positionY > 1) {
-        throw new Error('La posición vertical debe estar entre 0 y 1.')
-      }
-
-      if (!accessToken) {
-        throw new Error('Inicia sesión para insertar textos en el proyecto.')
-      }
-
-      const res = await fetch(`${apiBase}/text-frames/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          clip: currentThumb.clipId,
-          content,
-          typography: typography || null,
-          frame_start: frameStart,
-          frame_end: frameEnd,
-          specific_frames: specificFrames,
-          position_x: Number(positionX.toFixed(6)),
-          position_y: Number(positionY.toFixed(6)),
-        }),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Error ${res.status} creando el texto.`)
-      }
-      const createdRaw = (await res.json()) as TextFrame
-      const createdRawAny = createdRaw as any
-      const created: TextFrame = {
-        ...createdRaw,
-        text_id: typeof createdRawAny.text_id === 'number' ? createdRawAny.text_id : createdRawAny.text_id ? Number(createdRawAny.text_id) : undefined,
-        project_id: typeof createdRawAny.project_id === 'string' ? createdRawAny.project_id : createdRawAny.project_id ? String(createdRawAny.project_id) : undefined,
-        specific_frames: Array.isArray(createdRaw.specific_frames)
-          ? createdRaw.specific_frames.map(Number)
-          : [],
-        position_x: typeof createdRaw.position_x === 'number' ? createdRaw.position_x : Number(createdRaw.position_x ?? 0.5),
-        position_y: typeof createdRaw.position_y === 'number' ? createdRaw.position_y : Number(createdRaw.position_y ?? 0.5),
-      }
-      setTextFramesByClip((prev) => {
-        const next: typeof prev = { ...prev }
-        const list = next[created.clip] ?? []
-        const nextList = [...list, created].sort((a, b) => {
-          const aStart = a.frame_start ?? (a.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
-          const bStart = b.frame_start ?? (b.specific_frames[0] ?? Number.MAX_SAFE_INTEGER)
-          return aStart - bStart
-        })
-        next[created.clip] = nextList
-
-        if (created.text_id) {
-          for (const [clipKey, frames] of Object.entries(next)) {
-            const updatedFrames = frames.map((item) =>
-              item.text_id === created.text_id
-                ? { ...item, content: created.content, typography: created.typography }
-                : item
-            )
-            if (updatedFrames !== frames) {
-              next[Number(clipKey)] = updatedFrames
-            }
-          }
-        }
-
-        return next
-      })
-
-      toast.success('Texto guardado en el proyecto.')
-      setIsTextModalOpen(false)
-      setTextForm({
-        content: '',
-        typography: '',
-        mode: 'range',
-        frameStart: '0',
-        frameEnd: '0',
-        specificFrames: '',
-        positionX: '0.5',
-        positionY: '0.5',
-      })
-    } catch (err: any) {
-      setTextFormError(err.message || 'No se pudo preparar el texto.')
-    } finally {
-      setIsSubmittingTextFrame(false)
-    }
-  }
 
   /* --------- borrar / guardar --------- */
 
@@ -945,7 +763,7 @@ function handleEditorSaved(tf: TextFrameModel) {
 
         <div className="absolute bottom-2 right-2 flex items-center gap-2">
           <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
-            {formatTime(selectedGlobalMs)} / {formatTime(totalDurationMs)}
+                      {formatTime(selectedGlobalMs)} / {formatTime(projectTotalFrames)}
           </div>
           <PlayButton onClick={stepForward} />
         </div>
@@ -1038,13 +856,10 @@ function handleEditorSaved(tf: TextFrameModel) {
   apiBase={apiBase}
   accessToken={accessToken}
   projectId={projectId}
-  clipId={editorClipId}
+  totalFrames={projectTotalFrames || 1}
   initial={editorInitial}
-  clipMinMs={editorBounds.min}
-  clipMaxMs={editorBounds.max}
   onClose={()=>setEditorOpen(false)}
   onSaved={handleEditorSaved}
-  existingTexts={existingTexts}
 />
 
     </div>
