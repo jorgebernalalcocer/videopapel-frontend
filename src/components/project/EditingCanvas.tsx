@@ -206,10 +206,47 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
   }, [clipsOrdered])
 
   const [combinedThumbs, setCombinedThumbs] = useState<CombinedThumb[]>([])
-  const projectTotalFrames = useMemo(
+  const projectTotalMs = useMemo(
     () => Object.values(clipOffsets).reduce((sum, v) => sum + Math.max(0, v.end - v.start), 0),
     [clipOffsets]
   )
+
+  const frameIndexMs = useMemo(() => {
+    const framesGlobal: number[] = []
+    for (const clip of clipsOrdered) {
+      const meta = clipOffsets[clip.clipId]
+      if (!meta) continue
+      const offset = meta.offset
+      const localFrames = Array.isArray(clip.frames) && clip.frames.length > 0
+        ? clip.frames
+        : [meta.start, meta.end]
+      for (const value of localFrames) {
+        const normalized = offset + Math.max(0, value)
+        if (framesGlobal.length === 0 || normalized >= framesGlobal[framesGlobal.length - 1]) {
+          framesGlobal.push(normalized)
+        }
+      }
+    }
+    return framesGlobal
+  }, [clipsOrdered, clipOffsets])
+
+  const totalFrameCount = useMemo(() => Math.max(0, frameIndexMs.length), [frameIndexMs])
+
+  const indexToStartMs = useCallback((index: number) => {
+    if (!frameIndexMs.length) return 0
+    const clamped = Math.min(Math.max(Math.round(index), 1), frameIndexMs.length)
+    const idx = clamped - 1
+    return frameIndexMs[idx] ?? 0
+  }, [frameIndexMs])
+
+  const indexToEndMs = useCallback((index: number) => {
+    if (!frameIndexMs.length) return projectTotalMs
+    const clamped = Math.min(Math.max(Math.round(index), 1), frameIndexMs.length)
+    if (clamped >= frameIndexMs.length) {
+      return projectTotalMs
+    }
+    return frameIndexMs[clamped] ?? projectTotalMs
+  }, [frameIndexMs, projectTotalMs])
   const clipThumbsById = useMemo(() => {
     const map: Record<number, CombinedThumb[]> = {}
     for (const thumb of combinedThumbs) {
@@ -286,7 +323,7 @@ const updateTextFrameLocal = (id: number, x: number, y: number) => {
 
     setOverlayToTextId(overlayMap)
     setTextFramesByClip(byClip)
-  }, [clipsOrdered])
+  }, [clipsOrdered, clipOffsets])
 
   useEffect(() => {
     if (!accessToken || !projectId || !clipsOrdered.length) {
@@ -593,10 +630,16 @@ function openCreateTextEditor() {
     toast.warning('Necesitas añadir al menos un clip al proyecto para insertar texto.')
     return
   }
+  if (!totalFrameCount) {
+    toast.error('No hay frames disponibles en el proyecto.')
+    return
+  }
+  const defaultStartMs = indexToStartMs(1)
+  const defaultEndMs = indexToEndMs(totalFrameCount || 1)
   setEditorMode('create')
   setEditorInitial({
-    frame_start: 1,
-    frame_end: projectTotalFrames || 1,
+    frame_start: defaultStartMs,
+    frame_end: defaultEndMs,
     specific_frames: [],
     content: '',
     typography: '',
@@ -613,8 +656,8 @@ function openEditTextEditor(overlayId: number) {
   }
   setEditorMode('edit')
   const fallbackSpecific = aggregate.specific_frames ?? []
-  const fallbackStart = aggregate.frame_start ?? (fallbackSpecific[0] ?? 1)
-  const fallbackEnd = aggregate.frame_end ?? (fallbackSpecific[fallbackSpecific.length - 1] ?? projectTotalFrames || 1)
+  const fallbackStart = aggregate.frame_start ?? indexToStartMs(1)
+  const fallbackEnd = aggregate.frame_end ?? indexToEndMs(totalFrameCount || 1)
   setEditorInitial({
     text_id: aggregate.id,
     content: aggregate.content,
@@ -763,7 +806,7 @@ function handleEditorSaved() {
 
         <div className="absolute bottom-2 right-2 flex items-center gap-2">
           <div className="text-xs bg-black/60 text-white px-2 py-1 rounded">
-                      {formatTime(selectedGlobalMs)} / {formatTime(projectTotalFrames)}
+                      {formatTime(selectedGlobalMs)} / {formatTime(projectTotalMs)}
           </div>
           <PlayButton onClick={stepForward} />
         </div>
@@ -856,7 +899,9 @@ function handleEditorSaved() {
   apiBase={apiBase}
   accessToken={accessToken}
   projectId={projectId}
-  totalFrames={projectTotalFrames || 1}
+  frameCount={Math.max(totalFrameCount, 1)}
+  frameIndexMs={frameIndexMs}
+  projectTotalMs={projectTotalMs}
   initial={editorInitial}
   onClose={()=>setEditorOpen(false)}
   onSaved={handleEditorSaved}

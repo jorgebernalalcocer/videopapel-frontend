@@ -28,7 +28,9 @@ type Props = {
   apiBase: string
   accessToken: string | null
   projectId: string
-  totalFrames: number
+  frameCount: number
+  frameIndexMs: number[]
+  projectTotalMs: number
   /** Valores iniciales en modo edición */
   initial?: Partial<TextFrameModel>
   /** Callback al cerrar sin guardar */
@@ -44,7 +46,9 @@ export default function TextFrameEditorModal({
   accessToken,
   projectId,
   initial,
-  totalFrames,
+  frameCount,
+  frameIndexMs,
+  projectTotalMs,
   onClose,
   onSaved,
 }: Props) {
@@ -56,14 +60,77 @@ export default function TextFrameEditorModal({
   const [modeValue, setModeValue] = useState<'range' | 'specific'>(
     initial?.specific_frames?.length ? 'specific' : 'range'
   )
-  const [frameStart, setFrameStart] = useState(
-    String(initial?.frame_start ?? 1)
-  )
-  const [frameEnd, setFrameEnd] = useState(
-    String(initial?.frame_end ?? (totalFrames || 1))
-  )
+  const safeFrameCount = Math.max(frameCount, 1)
+
+  const clampIndex = (index: number) => {
+    if (!Number.isFinite(index)) return 1
+    return Math.min(Math.max(Math.round(index), 1), safeFrameCount)
+  }
+
+  const msToStartIndex = (ms: number | null | undefined) => {
+    if (ms == null) return 1
+    for (let i = 0; i < frameIndexMs.length; i += 1) {
+      if (ms <= frameIndexMs[i]) {
+        return clampIndex(i + 1)
+      }
+    }
+    return safeFrameCount
+  }
+
+  const msToEndIndex = (ms: number | null | undefined) => {
+    if (ms == null) return safeFrameCount
+    for (let i = 0; i < frameIndexMs.length; i += 1) {
+      if (ms <= frameIndexMs[i]) {
+        return clampIndex(i)
+      }
+    }
+    return safeFrameCount
+  }
+
+  const msToSpecificIndex = (ms: number) => {
+    if (!frameIndexMs.length) return 1
+    let bestIndex = 1
+    let bestDiff = Number.POSITIVE_INFINITY
+    frameIndexMs.forEach((value, idx) => {
+      const diff = Math.abs(value - ms)
+      if (diff < bestDiff) {
+        bestDiff = diff
+        bestIndex = idx + 1
+      }
+    })
+    return clampIndex(bestIndex)
+  }
+
+  const indexToStartMs = (index: number) => {
+    if (!frameIndexMs.length) return 0
+    const target = clampIndex(index)
+    const idx = Math.max(0, Math.min(frameIndexMs.length - 1, target - 1))
+    return frameIndexMs[idx] ?? 0
+  }
+
+  const indexToEndMs = (index: number) => {
+    if (!frameIndexMs.length) return projectTotalMs
+    const target = clampIndex(index)
+    if (target >= frameIndexMs.length) {
+      return projectTotalMs
+    }
+    const boundary = frameIndexMs[target]
+    return Math.max(boundary, frameIndexMs[target - 1] ?? 0)
+  }
+
+  const indexToSpecificMs = (index: number) => {
+    const target = clampIndex(index)
+    return frameIndexMs[target - 1] ?? null
+  }
+
+  const initialStartIndex = msToStartIndex(initial?.frame_start ?? null)
+  const initialEndIndex = msToEndIndex(initial?.frame_end ?? null)
+  const initialSpecificIndexes = (initial?.specific_frames ?? []).map(msToSpecificIndex)
+
+  const [frameStart, setFrameStart] = useState(String(initialStartIndex))
+  const [frameEnd, setFrameEnd] = useState(String(initialEndIndex))
   const [specificFrames, setSpecificFrames] = useState(
-    (initial?.specific_frames ?? []).join(', ')
+    initialSpecificIndexes.join(', ')
   )
 
   useEffect(() => {
@@ -72,10 +139,13 @@ export default function TextFrameEditorModal({
     setContent(initial?.content ?? '')
     setTypography(initial?.typography ?? '')
     setModeValue(initial?.specific_frames?.length ? 'specific' : 'range')
-    setFrameStart(String(initial?.frame_start ?? 1))
-    setFrameEnd(String(initial?.frame_end ?? (totalFrames || 1)))
-    setSpecificFrames((initial?.specific_frames ?? []).join(', '))
-  }, [open, initial, totalFrames])
+    const startIndex = msToStartIndex(initial?.frame_start ?? null)
+    const endIndex = msToEndIndex(initial?.frame_end ?? null)
+    const specificIdx = (initial?.specific_frames ?? []).map(msToSpecificIndex)
+    setFrameStart(String(startIndex))
+    setFrameEnd(String(endIndex))
+    setSpecificFrames(specificIdx.join(', '))
+  }, [open, initial, frameIndexMs])
 
   const title = useMemo(
     () => (mode === 'create' ? 'Insertar texto' : 'Editar texto'),
@@ -100,10 +170,10 @@ export default function TextFrameEditorModal({
         if (!Number.isFinite(start) || !Number.isFinite(end)) throw new Error('Introduce un rango de frames válido.')
         if (start < 1 || end < 1) throw new Error('Los frames deben ser ≥ 1.')
         if (end < start) throw new Error('frame_end debe ser mayor o igual que frame_start.')
-        if (end > totalFrames) throw new Error(`frame_end no puede superar ${totalFrames}.`)
-        if (start > totalFrames) throw new Error(`frame_start no puede superar ${totalFrames}.`)
-        frame_start = Math.round(start)
-        frame_end = Math.round(end)
+        if (end > safeFrameCount) throw new Error(`frame_end no puede superar ${safeFrameCount}.`)
+        if (start > safeFrameCount) throw new Error(`frame_start no puede superar ${safeFrameCount}.`)
+        frame_start = Math.round(indexToStartMs(start))
+        frame_end = Math.round(indexToEndMs(end))
       } else {
         const parsed = specificFrames
           .split(/[,;\s]+/)
@@ -113,10 +183,15 @@ export default function TextFrameEditorModal({
         if (!parsed.length || parsed.some(n => !Number.isFinite(n) || n < 1)) {
           throw new Error('Los frames específicos deben ser enteros ≥ 1.')
         }
-        if (parsed.some(n => n > totalFrames)) {
-          throw new Error(`Los frames específicos no pueden superar ${totalFrames}.`)
+        if (parsed.some(n => n > safeFrameCount)) {
+          throw new Error(`Los frames específicos no pueden superar ${safeFrameCount}.`)
         }
-        specific_frames = parsed.map(n => Math.round(n))
+        specific_frames = parsed
+          .map((value) => {
+            const mapped = indexToSpecificMs(value)
+            return mapped == null ? null : Math.round(mapped)
+          })
+          .filter((value): value is number => value !== null)
       }
 
       if (!accessToken) throw new Error('Inicia sesión para continuar.')
@@ -129,6 +204,13 @@ export default function TextFrameEditorModal({
         frame_start,
         frame_end,
         specific_frames,
+      }
+
+      if (body.frame_start === null) {
+        delete body.frame_start
+      }
+      if (body.frame_end === null) {
+        delete body.frame_end
       }
 
       const url =
@@ -213,7 +295,7 @@ export default function TextFrameEditorModal({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm font-medium text-gray-700">
-            Frame inicial (global)
+            Frame inicial (#)
             <input
               type="number"
               min={1}
@@ -224,7 +306,7 @@ export default function TextFrameEditorModal({
             />
           </label>
           <label className="text-sm font-medium text-gray-700">
-            Frame final (global)
+            Frame final (#)
             <input
               type="number"
               min={1}
@@ -237,17 +319,17 @@ export default function TextFrameEditorModal({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Frames específicos (global)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Frames específicos (#)</label>
           <input
             type="text"
             value={specificFrames}
             onChange={(e) => setSpecificFrames(e.target.value)}
             disabled={modeValue!=='specific'}
-            placeholder="Ej. 500, 1500, 2200"
+            placeholder="Ej. 2, 5, 17"
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:bg-gray-100"
           />
           <p className="mt-1 text-xs text-gray-500">
-            Separa con comas/espacios/punto y coma. Usa frames globales del proyecto.
+            Separa con comas/espacios/punto y coma. Usa índices consecutivos de frame del proyecto.
           </p>
         </div>
 
