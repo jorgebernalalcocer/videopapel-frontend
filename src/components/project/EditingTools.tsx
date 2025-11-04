@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Plus, Video, Film, Camera, Type } from 'lucide-react'
+import { Play, Plus, Video, Film, Camera, Type, Save } from 'lucide-react'
 import { toast } from 'sonner'
 
 type EditingToolsProps = {
@@ -65,13 +65,14 @@ export default function EditingTools({
         variant="outline"
         onClick={handleInsertClick}
         aria-disabled={insertDisabled}
+        aria-label="Insertar video"
         className={`
           inline-flex items-center gap-2
           ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
       >
         <Film className="h-4 w-4" />
-        Insertar video
+        <span className="hidden sm:inline">Insertar video</span>
       </Button>
 
             <Button
@@ -79,13 +80,14 @@ export default function EditingTools({
         variant="outline"
         onClick={handleInsertClick}
         aria-disabled={insertDisabled}
+        aria-label="Insertar imagen"
         className={`
           inline-flex items-center gap-2
           ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
       >
         <Camera className="h-4 w-4" />
-        Insertar imagen
+        <span className="hidden sm:inline">Insertar imagen</span>
       </Button>
 
                   <Button
@@ -93,13 +95,14 @@ export default function EditingTools({
         variant="outline"
         onClick={handleInsertTextClick}
         aria-disabled={insertDisabled}
+        aria-label="Insertar texto"
         className={`
           inline-flex items-center gap-2
           ${insertDisabled ? 'opacity-60 cursor-not-allowed' : ''}
         `}
       >
         <Type className="h-4 w-4" />
-        Insertar texto
+        <span className="hidden sm:inline">Insertar texto</span>
       </Button>
 
       <Button
@@ -107,9 +110,11 @@ export default function EditingTools({
         variant="outline"
         onClick={onSave}
         disabled={!canSave || isSaving}
-        className="ml-auto"
+        aria-label="Guardar cambios"
+        className="ml-auto inline-flex items-center gap-2"
       >
-        {isSaving ? 'Guardando…' : 'Guardar cambios'}
+        <Save className="h-4 w-4" />
+        <span className="hidden sm:inline">{isSaving ? 'Guardando…' : 'Guardar cambios'}</span>
       </Button>
     </div>
   )
