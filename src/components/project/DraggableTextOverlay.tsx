@@ -15,6 +15,7 @@ export type DraggableTextItem = {
   id: number
   content: string
   typography?: string | null
+  textId?: number
   /** 0..1 normalizado respecto al VIDEO (no el wrapper) */
   x: number
   y: number
@@ -41,6 +42,8 @@ type Props = {
   onEdit?: (id: number) => void
   /** Devuelve otros overlays vinculados (mismo texto) para replicar guardado */
   getLinkedOverlayIds?: (id: number) => number[]
+  /** Callback tras borrar un texto completo */
+  onDeleteText?: (textId: number) => void
 }
 
 /**
@@ -57,6 +60,7 @@ export default function DraggableTextOverlay({
   disabled = false,
   onEdit, // 👈 ahora sí viene de props
   getLinkedOverlayIds,
+  onDeleteText,
 }: Props) {
   const [draggingId, setDraggingId] = useState<number | null>(null)
   const startRef = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null)
@@ -233,9 +237,20 @@ export default function DraggableTextOverlay({
         >
           <TextFrame
             typography={it.typography}
-            editable={!!onEdit}
+            editable={Boolean(onEdit || onDeleteText)}
             onEdit={onEdit ? () => onEdit(it.id) : undefined}
             dragging={draggingId === it.id}
+            deleteConfig={
+              it.textId != null
+                ? {
+                    textId: it.textId,
+                    apiBase,
+                    accessToken,
+                    onDeleted: () => onDeleteText?.(it.textId!),
+                    disabled,
+                  }
+                : undefined
+            }
           >
             {it.content}
           </TextFrame>

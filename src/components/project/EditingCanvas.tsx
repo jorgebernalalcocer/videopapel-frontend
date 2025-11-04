@@ -266,6 +266,10 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   }
   function handleEditorSaved() { setTextsVersion(v => v + 1) }
 
+  const handleTextDeleted = useCallback(() => {
+    setTextsVersion((v) => v + 1)
+  }, [])
+
   const handleGenerateSubtitles = useCallback(async () => {
     if (!accessToken) {
       toast.error('Debes iniciar sesión para generar subtítulos.')
@@ -330,6 +334,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   onEditText={openEditTextEditor}
   onPositionChange={updateTextFrameLocal}
   getLinkedOverlayIds={getOverlayIdsForText}
+  onDeleteText={handleTextDeleted}
   leftHud={
     <div className="flex items-center gap-2">
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />

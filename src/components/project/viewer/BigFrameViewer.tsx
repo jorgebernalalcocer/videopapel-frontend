@@ -10,6 +10,7 @@ import { paintFrameToCanvas, seekVideo, setVideoSrcAndWait } from '@/utils/video
 
 type ActiveTextItem = {
   id: number
+  text_id?: number
   content: string
   typography: string | null
   position_x: number
@@ -26,6 +27,7 @@ export default function BigFrameViewer(props: {
   onEditText: (overlayId: number) => void
   onPositionChange: (id: number, x: number, y: number) => void
   getLinkedOverlayIds: (overlayId: number) => number[]
+  onDeleteText: (textId: number) => void
   leftHud?: React.ReactNode
   rightHud?: React.ReactNode
 }) {
@@ -39,6 +41,7 @@ export default function BigFrameViewer(props: {
     onEditText,
     onPositionChange,
     getLinkedOverlayIds,
+    onDeleteText,
     leftHud,
     rightHud,
   } = props
@@ -136,6 +139,7 @@ export default function BigFrameViewer(props: {
           canvasRef={canvasRef}
           items={activeTextFrames.map((tf) => ({
             id: tf.id,
+            textId: tf.text_id,
             content: tf.content,
             typography: tf.typography ?? null,
             x: Number(tf.position_x ?? 0.5),
@@ -144,6 +148,7 @@ export default function BigFrameViewer(props: {
           // la actualización se gestiona desde el padre con su callback propio; aquí no hacemos nada
           onLocalPositionChange={onPositionChange}
           getLinkedOverlayIds={getLinkedOverlayIds}
+          onDeleteText={onDeleteText}
           apiBase={apiBase}
           accessToken={accessToken}
           disabled={generating || !isCacheLoaded}
