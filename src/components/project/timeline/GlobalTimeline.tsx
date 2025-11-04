@@ -1,0 +1,68 @@
+// src/components/project/timeline/GlobalTimeline.tsx
+'use client'
+import { formatTime } from '@/utils/time'
+
+export type TimelineItem = { id: string; url?: string; tGlobal: number }
+export default function GlobalTimeline(props: {
+  items: TimelineItem[]
+  selectedId: string | null
+  onSelect: (item: TimelineItem) => void
+  isReady: boolean
+  thumbnailHeight: number
+  error?: string | null
+  onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>
+}) {
+  const { items, selectedId, onSelect, isReady, thumbnailHeight, error, onKeyDown } = props
+  return (
+    <div
+      className="overflow-x-auto border rounded-lg p-2 bg-white focus:outline-none flex-none"
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+    >
+      {error && <p className="text-red-600 text-sm px-2 py-1">{error}</p>}
+      {isReady && (
+        <ul className="flex gap-2 min-w-max">
+          {items.length === 0 ? (
+            <li className="text-gray-500 text-sm px-2 py-3">Sin miniaturas</li>
+          ) : (
+            items.map((it) => {
+              const selected = it.id === selectedId
+              return (
+                <li key={it.id} id={`thumb-${it.id}`}>
+                  <button
+                    type="button"
+                    onClick={() => onSelect(it)}
+                    className={`relative block rounded-md overflow-hidden border ${
+                      selected ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    {it.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={it.url}
+                        alt={`Frame ${formatTime(it.tGlobal)}`}
+                        height={thumbnailHeight}
+                        className="block"
+                        style={{ height: thumbnailHeight, width: 'auto' }}
+                      />
+                    ) : (
+                      <div
+                        className="bg-gray-100 grid place-items-center text-xs text-gray-500"
+                        style={{ height: thumbnailHeight, width: thumbnailHeight * (16 / 9) }}
+                      >
+                        ···
+                      </div>
+                    )}
+                    <span className="absolute bottom-1 right-1 text-[10px] bg-black/60 text-white px-1 rounded">
+                      {formatTime(it.tGlobal)}
+                    </span>
+                  </button>
+                </li>
+              )
+            })
+          )}
+        </ul>
+      )}
+    </div>
+  )
+}
