@@ -55,13 +55,29 @@ export function useCombinedThumbs(params: {
 
           let items = loadThumbsFromCache(projectId, c.clipId, sig)
 
-          const legacy39 = Array.isArray(c.frames) && c.frames.length === 39 && (thumbnailsCount == null)
-          const tooFew  = !Array.isArray(c.frames) || c.frames.length < 2
+          const backendFrames = Array.isArray(c.frames)
+            ? c.frames
+                .map((value) => Number(value))
+                .filter((value) => Number.isFinite(value) && value >= 0)
+                .sort((a, b) => a - b)
+            : []
 
-          if (!items || items.length === 0 || legacy39 || tooFew) {
+          if ((!items || items.length === 0) && backendFrames.length) {
+            items = backendFrames.map((t) => ({ t, url: '' }))
+          }
+
+          const legacy39 = backendFrames.length === 39 && thumbnailsCount == null
+          const missingAny = !items || items.length === 0
+
+          if (missingAny && backendFrames.length === 0) {
+            const seedsTimes = generateTimesFromDuration(c.durationMs, targetCount)
+            items = seedsTimes.map((t) => ({ t, url: '' }))
+          } else if (legacy39) {
             const seedsTimes = generateTimesFromDuration(c.durationMs, targetCount)
             items = seedsTimes.map((t) => ({ t, url: '' }))
           }
+
+          if (!items || items.length === 0) continue
 
           items = items.filter((it) => it.t >= start && it.t < end)
 

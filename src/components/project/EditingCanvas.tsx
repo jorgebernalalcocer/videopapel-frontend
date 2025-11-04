@@ -223,13 +223,32 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     try {
       await Promise.all(
         Array.from(byClip.entries()).map(([cid, frames]) =>
-          fetch(`${apiBase}/projects/${projectId}/clips/${cid}/frames/`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` },
-            body: JSON.stringify({ frames }),
-          })
+          (async () => {
+            const res = await fetch(`${apiBase}/projects/${projectId}/clips/${cid}/frames/`, {
+              method: 'PUT',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+              },
+              credentials: 'include',
+              body: JSON.stringify({ frames }),
+            })
+            if (!res.ok) {
+              const msg = await res.text()
+              throw new Error(msg || `No se pudieron guardar los frames del clip ${cid}.`)
+            }
+          })()
         )
       )
+      if (typeof window !== 'undefined') {
+        for (const cid of byClip.keys()) {
+          try {
+            localStorage.removeItem(LS_KEY(projectId, cid))
+          } catch {
+            /* ignore */
+          }
+        }
+      }
       setHasPendingChanges(false)
     } catch (e: any) {
       console.error(e); toast.error('No se pudieron guardar los cambios.')
