@@ -196,6 +196,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   // Borrar frame seleccionado
   const [hasPendingChanges, setHasPendingChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false)
 
   function deleteSelectedFrame() {
     if (!combinedThumbs.length) return
@@ -264,6 +265,48 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     setEditorOpen(true)
   }
   function handleEditorSaved() { setTextsVersion(v => v + 1) }
+
+  const handleGenerateSubtitles = useCallback(async () => {
+    if (!accessToken) {
+      toast.error('Debes iniciar sesión para generar subtítulos.')
+      return
+    }
+    if (!clipsOrdered.length) {
+      toast.warning('Añade al menos un clip antes de generar subtítulos.')
+      return
+    }
+    setIsGeneratingSubtitles(true)
+    try {
+      const res = await fetch(`${apiBase}/projects/${projectId}/generate-subtitles/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || 'No se pudieron generar los subtítulos.')
+      }
+      let summary: any = null
+      try {
+        summary = await res.json()
+      } catch {
+        summary = null
+      }
+      setTextsVersion((v) => v + 1)
+      if (summary?.segments) {
+        toast.success(`Subtítulos generados: ${summary.segments} segmentos procesados.`)
+      } else {
+        toast.success('Subtítulos generados correctamente.')
+      }
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudieron generar los subtítulos.')
+    } finally {
+      setIsGeneratingSubtitles(false)
+    }
+  }, [accessToken, apiBase, projectId, clipsOrdered.length])
 
   // Keyboard handler
   const onTimelineKeyDown = makeTimelineKeydownHandler(
@@ -334,6 +377,8 @@ export default function EditingCanvas(props: EditingCanvasProps) {
           isSaving={isSaving}
           onInsertVideo={onInsertVideo}
           onInsertText={openCreateTextEditor}
+          onGenerateSubtitles={handleGenerateSubtitles}
+          isGeneratingSubtitles={isGeneratingSubtitles}
         />
       </div>
 

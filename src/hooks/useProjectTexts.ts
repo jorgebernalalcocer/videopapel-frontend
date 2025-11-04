@@ -9,6 +9,7 @@ export type ProjectTextApiModel = {
   id: number; project: string; content: string; typography: string | null;
   frame_start: number | null; frame_end: number | null; specific_frames: number[];
   overlays: ProjectTextOverlayApi[];
+  kind?: 'manual' | 'subtitle';
 }
 export type TextFrame = {
   id: number; clip: number; text_id?: number; project_id?: string;
@@ -167,9 +168,13 @@ export function useProjectTexts(
   }, [clipsOrdered, clipOffsets, globalFrameLookupByClip])
 
   useEffect(() => {
-  if (!projectTexts.length) { setTextFramesByClip({}); setOverlayToTextId({}); return }
-  rebuildTextFrames(projectTexts)
-}, [projectTexts, clipSignature, rebuildTextFrames])
+    if (!projectTexts.length) {
+      setTextFramesByClip({})
+      setOverlayToTextId({})
+      return
+    }
+    rebuildTextFrames(projectTexts)
+  }, [projectTexts, clipSignature, rebuildTextFrames])
 
   return { projectTexts, textFramesByClip, overlayToTextId, updateTextFrameLocal, getOverlayIdsForText }
 }
