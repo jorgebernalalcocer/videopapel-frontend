@@ -64,8 +64,8 @@ export default function EditingTools({
 
   return (
     <div
-      className="mt-3 border rounded-lg bg-white flex items-center gap-2 px-2"
-      style={{ height: heightPx }}
+      className="mt-3 border rounded-lg bg-white flex flex-wrap items-start gap-2 px-2 py-2" // Añadimos 'flex-wrap' y cambiamos 'items-center' por 'items-start'. Añadimos 'py-2' para espacio vertical si hay varias líneas.
+      style={{ minHeight: heightPx }} // Usar minHeight para que crezca si hay wrapping
       aria-label="Editing tools"
     >
       <Button
@@ -138,13 +138,18 @@ export default function EditingTools({
         </span>
       </Button>
 
+      {/* Botón de Guardar movido al final para que siempre sea el último */}
       <Button
         type="button"
         variant="outline"
         onClick={onSave}
         disabled={!canSave || isSaving || isGeneratingSubtitles}
         aria-label="Guardar cambios"
-        className="ml-auto inline-flex items-center gap-2"
+        // ml-auto no funcionará correctamente con flex-wrap para este propósito,
+        // por lo que lo quitamos para que se alinee con los demás o lo colocamos
+        // en un contenedor separado si se necesita alineación especial.
+        // Lo dejamos sin 'ml-auto' para que se envuelva y alinee a la izquierda con los demás.
+        className="inline-flex items-center gap-2"
       >
         <Save className="h-4 w-4" />
         <span className="hidden sm:inline">{isSaving ? 'Guardando…' : 'Guardar cambios'}</span>
