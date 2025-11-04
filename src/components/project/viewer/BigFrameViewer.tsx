@@ -24,6 +24,7 @@ export default function BigFrameViewer(props: {
   apiBase: string
   accessToken: string | null
   onEditText: (overlayId: number) => void
+  onPositionChange: (id: number, x: number, y: number) => void
   leftHud?: React.ReactNode
   rightHud?: React.ReactNode
 }) {
@@ -35,6 +36,7 @@ export default function BigFrameViewer(props: {
     apiBase,
     accessToken,
     onEditText,
+    onPositionChange,
     leftHud,
     rightHud,
   } = props
@@ -138,7 +140,7 @@ export default function BigFrameViewer(props: {
             y: Number(tf.position_y ?? 0.5),
           }))}
           // la actualización se gestiona desde el padre con su callback propio; aquí no hacemos nada
-          onLocalPositionChange={() => {}}
+          onLocalPositionChange={onPositionChange}
           apiBase={apiBase}
           accessToken={accessToken}
           disabled={generating || !isCacheLoaded}

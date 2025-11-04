@@ -35,6 +35,28 @@ export function useProjectTexts(
   const [textFramesByClip, setTextFramesByClip] = useState<Record<number, TextFrame[]>>({})
   const [overlayToTextId, setOverlayToTextId] = useState<Record<number, number>>({})
 
+  const updateTextFrameLocal = useCallback((id: number, x: number, y: number) => {
+    setTextFramesByClip(prev => {
+      const next: typeof prev = {}
+      for (const [clipIdStr, list] of Object.entries(prev)) {
+        const clipId = Number(clipIdStr)
+        const idx = list.findIndex((t) => t.id === id)
+        if (idx === -1) {
+          next[clipId] = list
+          continue
+        }
+        const clone = list.slice()
+        clone[idx] = {
+          ...clone[idx],
+          position_x: Number(x),
+          position_y: Number(y),
+        }
+        next[clipId] = clone
+      }
+      return next
+    })
+  }, [])
+
   useEffect(() => {
     if (!enabled) { setProjectTexts([]); setTextFramesByClip({}); setOverlayToTextId({}); return }
     let cancelled = false
@@ -126,9 +148,9 @@ export function useProjectTexts(
   }, [clipsOrdered, clipOffsets, globalFrameLookupByClip])
 
   useEffect(() => {
-    if (!projectTexts.length) { setTextFramesByClip({}); setOverlayToTextId({}); return }
-    rebuildTextFrames(projectTexts)
-  }, [projectTexts, clipSignature, rebuildTextFrames])
+  if (!projectTexts.length) { setTextFramesByClip({}); setOverlayToTextId({}); return }
+  rebuildTextFrames(projectTexts)
+}, [projectTexts, clipSignature, rebuildTextFrames])
 
-  return { projectTexts, textFramesByClip, overlayToTextId }
+  return { projectTexts, textFramesByClip, overlayToTextId, updateTextFrameLocal }
 }
