@@ -39,6 +39,8 @@ type Props = {
   disabled?: boolean
   /** Abrir editor para el item */
   onEdit?: (id: number) => void
+  /** Devuelve otros overlays vinculados (mismo texto) para replicar guardado */
+  getLinkedOverlayIds?: (id: number) => number[]
 }
 
 /**
@@ -54,6 +56,7 @@ export default function DraggableTextOverlay({
   accessToken,
   disabled = false,
   onEdit, // 👈 ahora sí viene de props
+  getLinkedOverlayIds,
 }: Props) {
   const [draggingId, setDraggingId] = useState<number | null>(null)
   const startRef = useRef<{ id: number; startX: number; startY: number; origX: number; origY: number } | null>(null)
@@ -124,35 +127,43 @@ export default function DraggableTextOverlay({
         return
       }
       try {
-        inFlightRef.current[payload.id]?.abort()
-        const ctl = new AbortController()
-        inFlightRef.current[payload.id] = ctl
+        const targetsRaw = getLinkedOverlayIds?.(payload.id) ?? [payload.id]
+        const targets = Array.from(new Set([...targetsRaw, payload.id]))
 
-        const res = await fetch(`${apiBase}/text-frames/${payload.id}/`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            position_x: Number(payload.x.toFixed(6)),
-            position_y: Number(payload.y.toFixed(6)),
-          }),
-          signal: ctl.signal,
-          credentials: 'include',
-        })
-        if (!res.ok) {
-          const msg = await safeText(res)
-          throw new Error(msg || `Error ${res.status} guardando posición.`)
-        }
+        await Promise.all(targets.map(async (overlayId) => {
+          inFlightRef.current[overlayId]?.abort()
+          const ctl = new AbortController()
+          inFlightRef.current[overlayId] = ctl
+          try {
+            const res = await fetch(`${apiBase}/text-frames/${overlayId}/`, {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${accessToken}`,
+              },
+              body: JSON.stringify({
+                position_x: Number(payload.x.toFixed(6)),
+                position_y: Number(payload.y.toFixed(6)),
+              }),
+              signal: ctl.signal,
+              credentials: 'include',
+            })
+            if (!res.ok) {
+              const msg = await safeText(res)
+              throw new Error(msg || `Error ${res.status} guardando posición.`)
+            }
+          } finally {
+            if (inFlightRef.current[overlayId] === ctl) {
+              inFlightRef.current[overlayId] = null
+            }
+          }
+        }))
       } catch (err: any) {
         if (err?.name === 'AbortError') return
         toast.error(err?.message || 'No se pudo guardar la nueva posición.')
-      } finally {
-        inFlightRef.current[payload.id] = null
       }
     }, 300)
-  }, [apiBase, accessToken, disabled])
+  }, [apiBase, accessToken, disabled, getLinkedOverlayIds])
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>, item: DraggableTextItem) => {

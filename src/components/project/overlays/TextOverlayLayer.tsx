@@ -14,6 +14,7 @@ export default function TextOverlayLayer(props: {
   accessToken: string | null
   onLocalPositionChange: (id: number, x: number, y: number) => void
   onEdit: (overlayId: number) => void
+  getLinkedOverlayIds: (overlayId: number) => number[]
 }) {
   const { items, ...rest } = props
   return (

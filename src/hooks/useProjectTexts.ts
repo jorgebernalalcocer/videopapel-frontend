@@ -36,26 +36,45 @@ export function useProjectTexts(
   const [overlayToTextId, setOverlayToTextId] = useState<Record<number, number>>({})
 
   const updateTextFrameLocal = useCallback((id: number, x: number, y: number) => {
+    const textId = overlayToTextId[id] ?? overlayToTextId[String(id) as unknown as number]
     setTextFramesByClip(prev => {
       const next: typeof prev = {}
+      let hasChanges = false
       for (const [clipIdStr, list] of Object.entries(prev)) {
         const clipId = Number(clipIdStr)
-        const idx = list.findIndex((t) => t.id === id)
-        if (idx === -1) {
-          next[clipId] = list
-          continue
-        }
-        const clone = list.slice()
-        clone[idx] = {
-          ...clone[idx],
-          position_x: Number(x),
-          position_y: Number(y),
-        }
-        next[clipId] = clone
+        let mutated = false
+        const updated = list.map((tf) => {
+          if (tf.id === id || (textId != null && tf.text_id === textId)) {
+            mutated = true
+            hasChanges = true
+            return {
+              ...tf,
+              position_x: Number(x),
+              position_y: Number(y),
+            }
+          }
+          return tf
+        })
+        next[clipId] = mutated ? updated : list
       }
-      return next
+      return hasChanges ? next : prev
     })
-  }, [])
+  }, [overlayToTextId])
+
+  const getOverlayIdsForText = useCallback((overlayId: number) => {
+    const textId = overlayToTextId[overlayId] ?? overlayToTextId[String(overlayId) as unknown as number]
+    if (textId == null) return [overlayId]
+    const ids: number[] = []
+    for (const [overlayKey, mappedTextId] of Object.entries(overlayToTextId)) {
+      if (mappedTextId === textId) {
+        ids.push(Number(overlayKey))
+      }
+    }
+    if (!ids.includes(overlayId)) {
+      ids.push(overlayId)
+    }
+    return Array.from(new Set(ids))
+  }, [overlayToTextId])
 
   useEffect(() => {
     if (!enabled) { setProjectTexts([]); setTextFramesByClip({}); setOverlayToTextId({}); return }
@@ -152,5 +171,5 @@ export function useProjectTexts(
   rebuildTextFrames(projectTexts)
 }, [projectTexts, clipSignature, rebuildTextFrames])
 
-  return { projectTexts, textFramesByClip, overlayToTextId, updateTextFrameLocal }
+  return { projectTexts, textFramesByClip, overlayToTextId, updateTextFrameLocal, getOverlayIdsForText }
 }

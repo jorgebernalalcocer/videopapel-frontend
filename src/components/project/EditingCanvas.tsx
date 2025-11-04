@@ -141,7 +141,13 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
   // Textos del proyecto
   const [textsVersion, setTextsVersion] = useState(0)
-  const { projectTexts, textFramesByClip, overlayToTextId, updateTextFrameLocal } = useProjectTexts(
+  const {
+    projectTexts,
+    textFramesByClip,
+    overlayToTextId,
+    updateTextFrameLocal,
+    getOverlayIdsForText,
+  } = useProjectTexts(
     Boolean(accessToken && projectId && clipsOrdered.length),
     { apiBase, accessToken, projectId },
     clipSignature, clipsOrdered, clipOffsets, globalFrameLookupByClip, textsVersion
@@ -280,6 +286,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   accessToken={accessToken}
   onEditText={openEditTextEditor}
   onPositionChange={updateTextFrameLocal}
+  getLinkedOverlayIds={getOverlayIdsForText}
   leftHud={
     <div className="flex items-center gap-2">
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
