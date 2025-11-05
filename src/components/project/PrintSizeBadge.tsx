@@ -1,5 +1,5 @@
 'use client'
-import { Sparkles } from 'lucide-react'
+import { Scan } from 'lucide-react'
 type Props = {
   /** Nombre comercial: A4 / 8x10 ... */
   name?: string | null
@@ -45,7 +45,7 @@ export default function PrintSizeBadge({
       className={`inline-flex items-center gap-1 rounded-full ring-1 ${tone} ${size} ${className}`}
       aria-label={title}
     >
-      <Sparkles className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
+      <Scan className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
       <span className="font-medium">{label}</span>
     </span>
   )
