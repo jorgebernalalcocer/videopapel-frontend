@@ -380,9 +380,6 @@ async function handleExportPdf() {
                 />
               </div>
 
-              <button className="w-full mt-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-purple-700 transition">
-                Guardar Cambios
-              </button>
             </div>
           </div>
 

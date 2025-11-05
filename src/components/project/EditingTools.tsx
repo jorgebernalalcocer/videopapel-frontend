@@ -72,7 +72,7 @@ export default function EditingTools({
   return (
     <div
       className="mt-3 border rounded-lg bg-white flex flex-wrap items-start gap-2 px-2 py-2"
-      style={{ minHeight: heightPx }}
+      style={{ minHeight: '3rem' }}
       aria-label="Editing tools"
     >
       <Button

@@ -7,6 +7,7 @@ import { useAuth } from '@/store/auth'
 import DeleteProjectButton from '@/components/DeleteProjectButton'
 import { toast } from "sonner";
 import { CheckCircle2, XCircle } from "lucide-react";
+import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 
 type Project = {
   id: string
@@ -18,6 +19,12 @@ type Project = {
   print_size_label?: string | null
   orientation_name?: string | null
   effect_name?: string | null
+  primary_clip?: {
+    clip_id: number
+    frame_time_ms: number
+    video_url: string
+    thumbnails?: number[]
+  } | null
 }
 
 export default function MyProjects() {
@@ -111,6 +118,25 @@ export default function MyProjects() {
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((p) => (
           <li key={p.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
+            {p.primary_clip && p.primary_clip.video_url && (
+              <div className="bg-gray-100">
+                <div className="grid grid-cols-2 gap-0.5 aspect-video overflow-hidden">
+                  {(p.primary_clip.thumbnails ?? [p.primary_clip.frame_time_ms]).slice(0, 4).map((t, idx) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      key={`${p.id}-thumb-${idx}`}
+                      src={cloudinaryFrameUrlFromVideoUrl(
+                        p.primary_clip!.video_url,
+                        t ?? p.primary_clip!.frame_time_ms ?? 0,
+                        240
+                      )}
+                      alt={`Miniatura ${idx + 1} de ${p.name || p.id}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="p-4">
               <div className="flex items-start justify-between gap-3">
                 <h3 className="text-base font-semibold truncate">

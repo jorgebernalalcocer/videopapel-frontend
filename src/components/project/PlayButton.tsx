@@ -5,6 +5,8 @@ type PlayButtonProps = {
   title?: string
 }
 
+import { StepForward, Fingerprint, Activity, SquareActivity, Clapperboard } from "lucide-react";
+
 export default function PlayButton({ onClick, title = 'Siguiente fotograma' }: PlayButtonProps) {
   return (
     <button
@@ -21,9 +23,11 @@ export default function PlayButton({ onClick, title = 'Siguiente fotograma' }: P
       "
     >
       {/* Icono triangular clásico de “play” (sin texto) */}
-      <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
+      {/* <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="currentColor" d="M8 5v14l11-7z" />
-      </svg>
+      </svg> */}
+      <Clapperboard className="h-5 w-5" />
+
       <span className="sr-only">{title}</span>
     </button>
   )
