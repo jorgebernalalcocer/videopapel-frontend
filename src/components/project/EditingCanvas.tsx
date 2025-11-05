@@ -173,6 +173,29 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     })
   }, [textFramesByClip, currentThumb])
 
+  const textPresenceLookup = useMemo(() => {
+    const map = new Map<string, boolean>()
+    for (const thumb of combinedThumbs) {
+      const framesForClip = textFramesByClip[thumb.clipId] ?? []
+      const hasText = framesForClip.some((tf) => {
+        const start = tf.frame_start
+        const end = tf.frame_end
+        const specific = tf.specific_frames ?? []
+        const inRange =
+          start != null &&
+          end != null &&
+          start <= thumb.tLocal &&
+          thumb.tLocal < end
+        const inSpecific =
+          Array.isArray(specific) &&
+          specific.includes(Math.round(thumb.tLocal))
+        return inRange || inSpecific
+      })
+      map.set(thumb.id, hasText)
+    }
+    return map
+  }, [combinedThumbs, textFramesByClip])
+
   // Play/Step
   const [isPlaying, setIsPlaying] = useState(false)
   const togglePlay = () => setIsPlaying((p) => !p)
@@ -385,15 +408,16 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
 
       {/* Timeline */}
-      <GlobalTimeline
-        items={combinedThumbs}
-        selectedId={selectedId}
-        onSelect={(it) => { setSelectedId(it.id); setSelectedGlobalMs(it.tGlobal) }}
-        isReady={isCacheLoaded && !generating}
-        thumbnailHeight={thumbnailHeight}
-        error={error}
-        onKeyDown={onTimelineKeyDown}
-      />
+<GlobalTimeline
+  items={combinedThumbs}
+  selectedId={selectedId}
+  onSelect={(it) => { setSelectedId(it.id); setSelectedGlobalMs(it.tGlobal) }}
+  isReady={isCacheLoaded && !generating}
+  thumbnailHeight={thumbnailHeight}
+  error={error}
+  onKeyDown={onTimelineKeyDown}
+  textPresence={textPresenceLookup}
+/>
 
       {/* Tools */}
       <div className="flex-none">
