@@ -9,6 +9,7 @@ import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle } from "lucide-react";
 import ProgressIndicator from "@/components/ui/ProgressIndicator";
+import { Modal } from "@/components/ui/Modal";
 
 type SignResponse = {
   cloud_name: string;
@@ -23,6 +24,7 @@ export default function UploadVideo() {
   const [fileName, setFileName] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [uploading, setUploading] = useState(false);
+  const [progressModalOpen, setProgressModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Fuerza rehidratación por si este componente se monta sin el layout/menú
@@ -63,6 +65,7 @@ export default function UploadVideo() {
     setFileName(file.name);
     setProgress(0);
     setUploading(true);
+    setProgressModalOpen(true);
 
     try {
       // 1) Firma (apiFetch reintenta con refresh si toca)
@@ -136,12 +139,14 @@ export default function UploadVideo() {
         duration: 5000, // ⏱ duración en ms (configurable)
       });
       window.dispatchEvent(new CustomEvent("videopapel:uploaded"));
+      setProgressModalOpen(false);
     } catch (err: any) {
       console.error(err);
       toast.error("Error al subir el video", {
         icon: <XCircle className="text-red-500" />,
         duration: 5000, // ⏱ también configurable
       });
+      setProgressModalOpen(false);
     } finally {
       setUploading(false);
     }
@@ -206,8 +211,17 @@ export default function UploadVideo() {
           Archivo: <span className="font-medium">{fileName}</span>
         </p>
       )}
-
-      {uploading && <ProgressIndicator label="Subiendo video" progress={progress} />}
+      <Modal
+        open={progressModalOpen}
+        onClose={() => {
+          if (!uploading) setProgressModalOpen(false);
+        }}
+        closeOnOverlay={false}
+        size="sm"
+        title="Subiendo video"
+      >
+        <ProgressIndicator label="Subiendo video" progress={progress} />
+      </Modal>
     </div>
   );
 }
