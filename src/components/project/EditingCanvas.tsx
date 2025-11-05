@@ -9,6 +9,8 @@ import { toast } from 'sonner'
 import BigFrameViewer from '@/components/project/viewer/BigFrameViewer'
 import GlobalTimeline from '@/components/project/timeline/GlobalTimeline'
 import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextFrameEditorModal'
+import { Modal } from '@/components/ui/Modal'
+import ProgressIndicator from '@/components/ui/ProgressIndicator'
 
 import { useCombinedThumbs } from '@/hooks/useCombinedThumbs'
 import { usePlaybackStepper } from '@/hooks/usePlaybackStepper'
@@ -197,6 +199,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [hasPendingChanges, setHasPendingChanges] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false)
+  const [subtitleProgressModal, setSubtitleProgressModal] = useState(false)
 
   function deleteSelectedFrame() {
     if (!combinedThumbs.length) return
@@ -299,6 +302,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       return
     }
     setIsGeneratingSubtitles(true)
+    setSubtitleProgressModal(true)
     try {
       const res = await fetch(`${apiBase}/projects/${projectId}/generate-subtitles/`, {
         method: 'POST',
@@ -328,6 +332,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       toast.error(err?.message || 'No se pudieron generar los subtítulos.')
     } finally {
       setIsGeneratingSubtitles(false)
+      setSubtitleProgressModal(false)
     }
   }, [accessToken, apiBase, projectId, clipsOrdered.length])
 
@@ -392,23 +397,23 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
       {/* Tools */}
       <div className="flex-none">
-        <EditingTools
-          heightPx={thumbnailHeight}
-          isPlaying={isPlaying}
-          onTogglePlay={togglePlay}
-          onSave={handleSaveChanges}
-          canSave={Boolean(accessToken) && hasPendingChanges && !generating}
-          isSaving={isSaving}
-          onInsertVideo={onInsertVideo}
-          onInsertText={openCreateTextEditor}
-          onGenerateSubtitles={handleGenerateSubtitles}
-          isGeneratingSubtitles={isGeneratingSubtitles}
-        />
+<EditingTools
+  heightPx={thumbnailHeight}
+  isPlaying={isPlaying}
+  onTogglePlay={togglePlay}
+  onSave={handleSaveChanges}
+  canSave={Boolean(accessToken) && hasPendingChanges && !generating}
+  isSaving={isSaving}
+  onInsertVideo={onInsertVideo}
+  onInsertText={openCreateTextEditor}
+  onGenerateSubtitles={handleGenerateSubtitles}
+  isGeneratingSubtitles={isGeneratingSubtitles}
+/>
       </div>
 
       {/* Modal editor de textos */}
-      <TextFrameEditorModal
-        open={editorOpen}
+<TextFrameEditorModal
+  open={editorOpen}
         mode={editorMode}
         apiBase={apiBase}
         accessToken={accessToken}
@@ -419,7 +424,19 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         initial={editorInitial}
         onClose={() => setEditorOpen(false)}
         onSaved={handleEditorSaved}
-      />
+/>
+
+      <Modal
+        open={subtitleProgressModal}
+        onClose={() => {
+          if (!isGeneratingSubtitles) setSubtitleProgressModal(false)
+        }}
+        closeOnOverlay={false}
+        size="sm"
+        title="Generando subtítulos"
+      >
+        <ProgressIndicator label="Generando subtítulos" progress={isGeneratingSubtitles ? 25 : 100} />
+      </Modal>
     </div>
   )
 }
