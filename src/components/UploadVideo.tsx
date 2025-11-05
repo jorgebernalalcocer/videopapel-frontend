@@ -8,6 +8,7 @@ import { useAuth } from "@/store/auth";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
 import { CheckCircle2, XCircle } from "lucide-react";
+import ProgressIndicator from "@/components/ui/ProgressIndicator";
 
 type SignResponse = {
   cloud_name: string;
@@ -206,17 +207,7 @@ export default function UploadVideo() {
         </p>
       )}
 
-      {uploading && (
-        <div className="w-full max-w-md mt-5">
-          <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-            <div
-              className="h-2 bg-blue-600 rounded-full transition-all"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-          <p className="text-xs text-gray-600 mt-2 text-center">{progress}%</p>
-        </div>
-      )}
+      {uploading && <ProgressIndicator label="Subiendo video" progress={progress} />}
     </div>
   );
 }
