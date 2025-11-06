@@ -2,6 +2,7 @@
 'use client'
 
 import React, { useEffect, useRef, useState } from 'react'
+import clsx from 'clsx'
 import { Maximize2, Minimize2 } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
@@ -53,6 +54,7 @@ export default function BigFrameViewer(props: {
 
   const [isFull, setIsFull] = useState(false)
   const [paintError, setPaintError] = useState(false)
+  const [flash, setFlash] = useState(false)
 
   useEffect(() => {
     ;(async () => {
@@ -62,6 +64,7 @@ export default function BigFrameViewer(props: {
       const wrapper = wrapperRef.current
       if (!video || !canvas) return
       setPaintError(false)
+      setFlash(true)
 
       const targetHeight = Math.max(240, Math.min(wrapper?.clientHeight ?? 720, 1080))
       const previewSrc = cloudinaryPreviewVideoUrl(current.videoSrc, targetHeight)
@@ -85,6 +88,12 @@ export default function BigFrameViewer(props: {
       }
     })()
   }, [current?.videoSrc, current?.tLocal, isFull])
+
+  useEffect(() => {
+    if (!flash) return
+    const timer = setTimeout(() => setFlash(false), 160)
+    return () => clearTimeout(timer)
+  }, [flash])
 
   const canvasClassName = isFull
     ? 'block bg-black'
@@ -154,6 +163,32 @@ export default function BigFrameViewer(props: {
           disabled={generating || !isCacheLoaded}
           onEdit={onEditText}
         />
+      )}
+
+      {/* flash parpadeante ejecto pasar pagina */}
+
+      {flash && !paintError && (
+        <div className="pointer-events-none absolute inset-0 z-20">
+          <div
+            className={clsx(
+              'absolute inset-0 rounded-lg bg-gradient-to-br from-transparent via-transparent to-white/65',
+              'opacity-0 animate-[flashFade_180ms_ease-out]',
+            )}
+          />
+          <style jsx global>{`
+            @keyframes flashFade {
+              0% {
+                opacity: 0;
+              }
+              40% {
+                opacity: 0.25;
+              }
+              100% {
+                opacity: 0;
+              }
+            }
+          `}</style>
+        </div>
       )}
 
       {/* Botón de visualización arriba-izquierda */}
