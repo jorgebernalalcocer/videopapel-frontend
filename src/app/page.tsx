@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import Hero from "@/components/Hero";
 import Features from "@/components/Features"; // si lo creas
+import LandingProjectPreview from "@/components/LandingProjectPreview";
 
 // --- SEO ---
 export const metadata = {
@@ -178,6 +179,7 @@ export default function Page() {
   return (
     <>
       <Hero />
+      <LandingProjectPreview />
       <Features />
       <Gallery />
       <FAQ />
