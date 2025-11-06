@@ -14,6 +14,8 @@ import PrintOrientationBadge from '@/components/project/PrintOrientationBadge'
 import OrientationSelector from '@/components/project/OrientationSelector'
 import PrintEffectBadge from '@/components/project/PrintEffectBadge'
 import EffectSelector from '@/components/project/EffectSelector'
+import ProjectPrivacyBadge from '@/components/project/ProjectPrivacyBadge'
+import PrivacySelector from '@/components/project/PrivacySelector'
 import { text } from 'stream/consumers'
 
 /* =========================
@@ -48,6 +50,7 @@ type Project = {
   print_orientation_label?: string | null
   print_orientation_type?: 'vertical' | 'horizontal' | 'cuadrado' | null
   primary_clip?: ProjectClipPayload | null
+  is_public?: boolean
 }
 
 interface ProjectEditorProps {
@@ -377,6 +380,26 @@ async function handleExportPdf() {
                   })}
                   modalTitle="Seleccionar efecto de impresión"
                   modalDescription="Elige el efecto que se aplicará al proyecto."
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={ProjectPrivacyBadge}
+                  SelectorComponent={PrivacySelector}
+                  badgeProps={{
+                    isPublic: Boolean(project.is_public),
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.is_public ?? false,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Privacidad del proyecto"
+                  modalDescription="Define si este proyecto es público o privado."
                 />
               </div>
 
