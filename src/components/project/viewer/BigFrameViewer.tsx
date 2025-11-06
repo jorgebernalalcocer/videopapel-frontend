@@ -3,7 +3,7 @@
 
 import React, { useEffect, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Maximize2, Minimize2 } from 'lucide-react'
+import { Maximize2, Minimize2, Crop } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
 import { cloudinaryPreviewVideoUrl } from '@/utils/cloudinary'
@@ -55,6 +55,8 @@ export default function BigFrameViewer(props: {
   const [isFull, setIsFull] = useState(false)
   const [paintError, setPaintError] = useState(false)
   const [flash, setFlash] = useState(false)
+  const [showPrintArea, setShowPrintArea] = useState(false)
+  const [printFrame, setPrintFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
 
   useEffect(() => {
     ;(async () => {
@@ -83,6 +85,13 @@ export default function BigFrameViewer(props: {
       try {
         await seekVideo(video, current.tLocal / 1000)
         await paintFrameToCanvas(video, canvas, wrapper, isFull)
+        const rect = canvas.getBoundingClientRect()
+        setPrintFrame({
+          left: rect.left,
+          top: rect.top,
+          width: canvas.clientWidth,
+          height: canvas.clientHeight,
+        })
       } catch {
         setPaintError(true)
       }
@@ -132,13 +141,25 @@ export default function BigFrameViewer(props: {
       {/* Canvas centrado */}
       <div
         ref={wrapperRef}
-        className="flex h-full w-full items-center justify-center max-h-full max-w-full overflow-hidden"
+        className="flex h-full w-full items-center justify-center max-h-full max-w-full overflow-hidden relative"
       >
         <canvas
           ref={canvasRef}
           className={canvasClassName}
           style={{ display: paintError ? 'none' : 'block' }}
         />
+        {showPrintArea && !paintError && printFrame && (
+          <div
+            className="absolute pointer-events-none border-8 border-yellow-300 opacity-80"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: `${printFrame.width}px`,
+              height: `${printFrame.height}px`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          />
+        )}
       </div>
 
       {/* Capa de textos arrastrables (solo si no hay error) */}
@@ -192,7 +213,7 @@ export default function BigFrameViewer(props: {
       )}
 
       {/* Botón de visualización arriba-izquierda */}
-      <div className="absolute top-2 left-2 z-30 pointer-events-auto">
+      <div className="absolute top-2 left-2 z-30 pointer-events-auto flex gap-2">
         <button
           type="button"
           onClick={() => setIsFull((p) => !p)}
@@ -205,6 +226,19 @@ export default function BigFrameViewer(props: {
             <Maximize2 className="h-3.5 w-3.5" />
           )}
           Visualización
+        </button>
+        <button
+          type="button"
+          onClick={() => { setShowPrintArea((prev) => !prev); setIsFull(false) }}
+          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-white shadow-sm ring-1 backdrop-blur transition ${
+            showPrintArea
+              ? 'bg-yellow-500/20 ring-yellow-300 hover:bg-yellow-500/30 focus-visible:ring-yellow-400'
+              : 'bg-white/10 ring-white/20 hover:bg-white/20 focus-visible:ring-blue-400'
+          }`}
+          aria-pressed={showPrintArea}
+        >
+          <Crop className="h-3.5 w-3.5" />
+          {showPrintArea ? 'Ocultar zona impresión' : 'Zona de impresión'}
         </button>
       </div>
 
