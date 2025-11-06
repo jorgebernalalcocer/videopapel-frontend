@@ -18,6 +18,30 @@ type ActiveTextItem = {
   position_y: number
 }
 
+type PrintOverlay =
+  | {
+      mode: 'fit'
+      width: number
+      height: number
+      borderWidth: number
+      shadow: undefined
+      innerWidth: number
+      innerHeight: number
+      marginX: number
+      marginY: number
+    }
+  | {
+      mode: 'fill'
+      width: number
+      height: number
+      borderWidth: number
+      shadow: string
+      innerWidth?: undefined
+      innerHeight?: undefined
+      marginX?: undefined
+      marginY?: undefined
+    }
+
 export default function BigFrameViewer(props: {
   current?: { videoSrc: string; tLocal: number } | null
   generating: boolean
@@ -109,30 +133,67 @@ export default function BigFrameViewer(props: {
     return () => clearTimeout(timer)
   }, [flash])
 
-  const printOverlay = useMemo(() => {
+  const printOverlay = useMemo<PrintOverlay | null>(() => {
     if (!printFrame || !printFrame.width || !printFrame.height) return null
-    const baseWidth = printFrame.width
-    const baseHeight = printFrame.height
-    const minDim = Math.min(baseWidth, baseHeight)
-    const baseBorderWidth = 8
-    const aspect = (printAspect || 'fill').toLowerCase()
-    if (aspect === 'fit') {
-      const margin = Math.min(Math.max(12, Math.round(minDim * 0.08)), Math.round(minDim * 0.4))
+    const imgW = printFrame.width
+    const imgH = printFrame.height
+    const targetRatio = Math.SQRT2 // Serie A
+    const landscape = imgW >= imgH
+    const borderWidth = 8
+    const mode = (printAspect || 'fill').toLowerCase()
+
+    if (mode === 'fit') {
+      let rectW: number
+      let rectH: number
+      if (landscape) {
+        rectH = Math.max(imgH, imgW / targetRatio)
+        rectW = rectH * targetRatio
+        if (rectW < imgW) {
+          rectW = imgW
+          rectH = rectW / targetRatio
+        }
+      } else {
+        rectW = Math.max(imgW, imgH / targetRatio)
+        rectH = rectW * targetRatio
+        if (rectH < imgH) {
+          rectH = imgH
+          rectW = rectH / targetRatio
+        }
+      }
+      const marginX = (rectW - imgW) / 2
+      const marginY = (rectH - imgH) / 2
       return {
         mode: 'fit' as const,
-        width: baseWidth + margin * 2,
-        height: baseHeight + margin * 2,
-        borderWidth: baseBorderWidth,
-        boxShadow: `inset 0 0 0 ${margin}px rgba(255,255,255,0.85)`,
+        width: rectW,
+        height: rectH,
+        borderWidth,
+        innerWidth: imgW,
+        innerHeight: imgH,
+        marginX,
+        marginY,
+        shadow: undefined as string | undefined,
       }
     }
-    const inset = Math.min(Math.max(12, Math.round(minDim * 0.06)), Math.round(minDim / 3))
+
+    let rectW: number
+    let rectH: number
+    if (landscape) {
+      rectH = Math.min(imgH, imgW / targetRatio)
+      rectW = rectH * targetRatio
+    } else {
+      rectW = Math.min(imgW, imgH / targetRatio)
+      rectH = rectW * targetRatio
+    }
     return {
       mode: 'fill' as const,
-      width: Math.max(1, baseWidth - inset * 2),
-      height: Math.max(1, baseHeight - inset * 2),
-      borderWidth: baseBorderWidth,
-      boxShadow: '0 0 0 9999px rgba(0,0,0,0.25)',
+      width: rectW,
+      height: rectH,
+      borderWidth,
+      shadow: '0 0 0 9999px rgba(0,0,0,0.25)',
+      innerWidth: undefined,
+      innerHeight: undefined,
+      marginX: undefined,
+      marginY: undefined,
     }
   }, [printFrame, printAspect])
 
@@ -192,28 +253,86 @@ export default function BigFrameViewer(props: {
             }}
           >
             <div
-              className="rounded-sm border-yellow-300 opacity-90"
+              className="relative rounded-sm overflow-hidden"
               style={{
                 width: '100%',
                 height: '100%',
                 borderWidth: printOverlay.borderWidth,
                 borderStyle: 'solid',
-                boxShadow: printOverlay.boxShadow || undefined,
+                borderColor: '#facc15',
+                boxShadow: printOverlay.shadow,
               }}
-            />
-            {printOverlay.mode === 'fit' && printFrame && (
-              <div
-                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-              >
-                <div
-                  className="border border-dashed border-white/80"
-                  style={{
-                    width: `${printFrame.width}px`,
-                    height: `${printFrame.height}px`,
-                  }}
-                />
-              </div>
-            )}
+            >
+              {printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight && (
+                (() => {
+                  const marginX = Math.max(0, printOverlay.marginX ?? 0)
+                  const marginY = Math.max(0, printOverlay.marginY ?? 0)
+                  return (
+                    <div className="absolute inset-0 pointer-events-none">
+                      {marginY > 0 && (
+                        <>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 0,
+                              left: 0,
+                              right: 0,
+                              height: marginY,
+                              background: 'rgba(255,255,255,0.9)',
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: 'absolute',
+                              bottom: 0,
+                              left: 0,
+                              right: 0,
+                              height: marginY,
+                              background: 'rgba(255,255,255,0.9)',
+                            }}
+                          />
+                        </>
+                      )}
+                      {marginX > 0 && (
+                        <>
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: marginY,
+                              bottom: marginY,
+                              left: 0,
+                              width: marginX,
+                              background: 'rgba(255,255,255,0.9)',
+                            }}
+                          />
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: marginY,
+                              bottom: marginY,
+                              right: 0,
+                              width: marginX,
+                              background: 'rgba(255,255,255,0.9)',
+                            }}
+                          />
+                        </>
+                      )}
+                      <div
+                        className="absolute border border-dashed border-white/85"
+                        style={{
+                          width: `${printOverlay.innerWidth}px`,
+                          height: `${printOverlay.innerHeight}px`,
+                          left: '50%',
+                          top: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          boxShadow: '0 0 0 1px rgba(255,255,255,0.85)',
+                        }}
+                      />
+                    </div>
+                  )
+                })()
+              )}
+            </div>
           </div>
         )}
       </div>
