@@ -18,6 +18,7 @@ type PublicProjectResponse = {
     id: string
     name: string | null
     clip_count: number
+    print_aspect_slug?: string | null
   }
   clips: PublicClip[]
 }
@@ -29,6 +30,7 @@ export default function LandingProjectPreview() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? ''
   const [clips, setClips] = useState<PublicClip[]>([])
   const [projectName, setProjectName] = useState<string | null>(null)
+  const [printAspect, setPrintAspect] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -54,6 +56,7 @@ export default function LandingProjectPreview() {
         const data = (await res.json()) as PublicProjectResponse
         setClips(data.clips ?? [])
         setProjectName(data.project?.name ?? null)
+        setPrintAspect(data.project?.print_aspect_slug ?? 'fill')
       } catch (err: any) {
         if (err?.name === 'AbortError') return
         setError(err?.message || 'No se pudo cargar el proyecto de ejemplo.')
@@ -113,6 +116,7 @@ export default function LandingProjectPreview() {
             disableAutoThumbnails={false}
             loop={true}
             playbackFps={2}
+            printAspectSlug={printAspect ?? 'fill'}
           />
         </div>
       )}

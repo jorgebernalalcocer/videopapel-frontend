@@ -264,6 +264,7 @@ async function handleExportPdf() {
                 }))}
                 apiBase={API_BASE}
                 accessToken={accessToken}
+                printAspectSlug={project.print_aspect_slug ?? 'fill'}
                 playbackFps={2}
                 onChange={() => {}}
                 onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL

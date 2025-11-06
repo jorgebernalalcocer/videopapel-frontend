@@ -23,7 +23,7 @@ type Project = {
     clip_id: number
     frame_time_ms: number
     video_url: string
-    thumbnails?: number[]
+    thumbnails?: { video_url: string; frame_time_ms: number }[]
   } | null
 }
 

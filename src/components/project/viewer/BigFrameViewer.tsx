@@ -1,7 +1,7 @@
 // src/components/project/viewer/BigFrameViewer.tsx
 'use client'
 
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
 import { Maximize2, Minimize2, Crop } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
@@ -31,6 +31,7 @@ export default function BigFrameViewer(props: {
   onDeleteText: (textId: number) => void
   leftHud?: React.ReactNode
   rightHud?: React.ReactNode
+  printAspect?: string | null
 }) {
   const {
     current,
@@ -45,6 +46,7 @@ export default function BigFrameViewer(props: {
     onDeleteText,
     leftHud,
     rightHud,
+    printAspect = 'fill',
   } = props
 
   // 👇 te faltaban estos
@@ -56,11 +58,14 @@ export default function BigFrameViewer(props: {
   const [paintError, setPaintError] = useState(false)
   const [flash, setFlash] = useState(false)
   const [showPrintArea, setShowPrintArea] = useState(false)
-  const [printFrame, setPrintFrame] = useState<{ left: number; top: number; width: number; height: number } | null>(null)
+  const [printFrame, setPrintFrame] = useState<{ width: number; height: number } | null>(null)
 
   useEffect(() => {
     ;(async () => {
-      if (!current) return
+      if (!current) {
+        setPrintFrame(null)
+        return
+      }
       const video = videoRef.current
       const canvas = canvasRef.current
       const wrapper = wrapperRef.current
@@ -85,15 +90,15 @@ export default function BigFrameViewer(props: {
       try {
         await seekVideo(video, current.tLocal / 1000)
         await paintFrameToCanvas(video, canvas, wrapper, isFull)
-        const rect = canvas.getBoundingClientRect()
+        const width = canvas.clientWidth
+        const height = canvas.clientHeight
         setPrintFrame({
-          left: rect.left,
-          top: rect.top,
-          width: canvas.clientWidth,
-          height: canvas.clientHeight,
+          width,
+          height,
         })
       } catch {
         setPaintError(true)
+        setPrintFrame(null)
       }
     })()
   }, [current?.videoSrc, current?.tLocal, isFull])
@@ -103,6 +108,33 @@ export default function BigFrameViewer(props: {
     const timer = setTimeout(() => setFlash(false), 160)
     return () => clearTimeout(timer)
   }, [flash])
+
+  const printOverlay = useMemo(() => {
+    if (!printFrame || !printFrame.width || !printFrame.height) return null
+    const baseWidth = printFrame.width
+    const baseHeight = printFrame.height
+    const minDim = Math.min(baseWidth, baseHeight)
+    const baseBorderWidth = 8
+    const aspect = (printAspect || 'fill').toLowerCase()
+    if (aspect === 'fit') {
+      const margin = Math.min(Math.max(12, Math.round(minDim * 0.08)), Math.round(minDim * 0.4))
+      return {
+        mode: 'fit' as const,
+        width: baseWidth + margin * 2,
+        height: baseHeight + margin * 2,
+        borderWidth: baseBorderWidth,
+        boxShadow: `inset 0 0 0 ${margin}px rgba(255,255,255,0.85)`,
+      }
+    }
+    const inset = Math.min(Math.max(12, Math.round(minDim * 0.06)), Math.round(minDim / 3))
+    return {
+      mode: 'fill' as const,
+      width: Math.max(1, baseWidth - inset * 2),
+      height: Math.max(1, baseHeight - inset * 2),
+      borderWidth: baseBorderWidth,
+      boxShadow: '0 0 0 9999px rgba(0,0,0,0.25)',
+    }
+  }, [printFrame, printAspect])
 
   const canvasClassName = isFull
     ? 'block bg-black'
@@ -148,17 +180,41 @@ export default function BigFrameViewer(props: {
           className={canvasClassName}
           style={{ display: paintError ? 'none' : 'block' }}
         />
-        {showPrintArea && !paintError && printFrame && (
+        {showPrintArea && !paintError && printOverlay && (
           <div
-            className="absolute pointer-events-none border-8 border-yellow-300 opacity-80"
+            className="absolute pointer-events-none flex items-center justify-center"
             style={{
               left: '50%',
               top: '50%',
-              width: `${printFrame.width}px`,
-              height: `${printFrame.height}px`,
+              width: `${printOverlay.width}px`,
+              height: `${printOverlay.height}px`,
               transform: 'translate(-50%, -50%)',
             }}
-          />
+          >
+            <div
+              className="rounded-sm border-yellow-300 opacity-90"
+              style={{
+                width: '100%',
+                height: '100%',
+                borderWidth: printOverlay.borderWidth,
+                borderStyle: 'solid',
+                boxShadow: printOverlay.boxShadow || undefined,
+              }}
+            />
+            {printOverlay.mode === 'fit' && printFrame && (
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              >
+                <div
+                  className="border border-dashed border-white/80"
+                  style={{
+                    width: `${printFrame.width}px`,
+                    height: `${printFrame.height}px`,
+                  }}
+                />
+              </div>
+            )}
+          </div>
         )}
       </div>
 

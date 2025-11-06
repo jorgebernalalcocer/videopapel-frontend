@@ -26,6 +26,7 @@ type EditingCanvasProps = {
   initialFrames?: number[]; initialTimeMs?: number; thumbsPerSecond?: number;
   thumbnailsCount?: number; thumbnailHeight?: number; onChange?: (timeMs: number) => void;
   disableAutoThumbnails?: boolean; playbackFps?: number; loop?: boolean; onInsertVideo?: () => void;
+  printAspectSlug?: string | null;
 }
 
 /* ===== Componente ===== */
@@ -35,6 +36,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     projectId, apiBase, accessToken, clips, clipId, videoSrc, durationMs, initialFrames,
     initialTimeMs = 0, thumbnailsCount, thumbsPerSecond, thumbnailHeight = 68,
     onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo,
+    printAspectSlug = 'fill',
   } = props
 
   const isMulti = Array.isArray(clips) && clips.length > 0
@@ -382,6 +384,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   onPositionChange={updateTextFrameLocal}
   getLinkedOverlayIds={getOverlayIdsForText}
   onDeleteText={handleTextDeleted}
+  printAspect={printAspectSlug ?? 'fill'}
   leftHud={
     <div className="flex items-center gap-2">
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
