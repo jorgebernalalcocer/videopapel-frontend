@@ -16,6 +16,8 @@ import PrintEffectBadge from '@/components/project/PrintEffectBadge'
 import EffectSelector from '@/components/project/EffectSelector'
 import ProjectPrivacyBadge from '@/components/project/ProjectPrivacyBadge'
 import PrivacySelector from '@/components/project/PrivacySelector'
+import PrintAspectBadge from '@/components/project/PrintAspectBadge'
+import AspectSelector from '@/components/project/AspectSelector'
 import { text } from 'stream/consumers'
 
 /* =========================
@@ -51,6 +53,9 @@ type Project = {
   print_orientation_type?: 'vertical' | 'horizontal' | 'cuadrado' | null
   primary_clip?: ProjectClipPayload | null
   is_public?: boolean
+  print_aspect_id?: number | null
+  print_aspect_name?: string | null
+  print_aspect_slug?: string | null
 }
 
 interface ProjectEditorProps {
@@ -380,6 +385,27 @@ async function handleExportPdf() {
                   })}
                   modalTitle="Seleccionar efecto de impresión"
                   modalDescription="Elige el efecto que se aplicará al proyecto."
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintAspectBadge}
+                  SelectorComponent={AspectSelector}
+                  badgeProps={{
+                    slug: project.print_aspect_slug ?? null,
+                    name: project.print_aspect_name ?? null,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_aspect_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar proporción de impresión"
+                  modalDescription="Define cómo se ajustará la imagen al área de impresión."
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={ProjectPrivacyBadge}
