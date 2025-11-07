@@ -27,6 +27,7 @@ type EditingCanvasProps = {
   thumbnailsCount?: number; thumbnailHeight?: number; onChange?: (timeMs: number) => void;
   disableAutoThumbnails?: boolean; playbackFps?: number; loop?: boolean; onInsertVideo?: () => void;
   printAspectSlug?: string | null;
+  onThumbsDensityChange?: (value: number) => void;
 }
 
 /* ===== Componente ===== */
@@ -37,6 +38,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     initialTimeMs = 0, thumbnailsCount, thumbsPerSecond = 1, thumbnailHeight = 68,
     onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo,
     printAspectSlug = 'fill',
+    onThumbsDensityChange,
   } = props
 
   const isMulti = Array.isArray(clips) && clips.length > 0
@@ -52,7 +54,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     const controller = new AbortController()
     ;(async () => {
       try {
-        await fetch(`${apiBase}/projects/${projectId}/thumbs-per-second/`, {
+        const res = await fetch(`${apiBase}/projects/${projectId}/thumbs-per-second/`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -62,14 +64,19 @@ export default function EditingCanvas(props: EditingCanvasProps) {
           body: JSON.stringify({ thumbs_per_second: thumbsDensity }),
           signal: controller.signal,
         })
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || `Error ${res.status} guardando densidad.`)
+        }
         initialThumbsRef.current = thumbsDensity
+        onThumbsDensityChange?.(thumbsDensity)
       } catch (err: any) {
         if (err?.name === 'AbortError') return
         toast.error(err?.message || 'No se pudo actualizar la densidad de frames.')
       }
     })()
     return () => controller.abort()
-  }, [thumbsDensity, accessToken, apiBase, projectId])
+  }, [thumbsDensity, accessToken, apiBase, projectId, onThumbsDensityChange])
 
   // single-clip compat
   const baseClip: ClipState | null = useMemo(() => {

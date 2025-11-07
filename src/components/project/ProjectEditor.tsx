@@ -167,6 +167,10 @@ async function handleExportPdf() {
     fetchClips()
   }, [fetchClips])
 
+  const handleThumbsDensityChange = useCallback(async () => {
+    await fetchClips()
+  }, [fetchClips])
+
   /* --------- insertar video (crear clip) --------- */
   const handleSelectVideo = useCallback(async (video: VideoItem) => {
     if (!accessToken) return
@@ -401,6 +405,7 @@ async function handleExportPdf() {
                 apiBase={API_BASE}
                 accessToken={accessToken}
                 printAspectSlug={project.print_aspect_slug ?? 'fill'}
+                onThumbsDensityChange={handleThumbsDensityChange}
                 playbackFps={2}
                 onChange={() => {}}
                 onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
