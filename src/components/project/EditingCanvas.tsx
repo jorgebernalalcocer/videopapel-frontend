@@ -1,7 +1,7 @@
 // src/components/project/EditingCanvas.tsx
 'use client'
 
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
@@ -34,12 +34,16 @@ type EditingCanvasProps = {
 export default function EditingCanvas(props: EditingCanvasProps) {
   const {
     projectId, apiBase, accessToken, clips, clipId, videoSrc, durationMs, initialFrames,
-    initialTimeMs = 0, thumbnailsCount, thumbsPerSecond, thumbnailHeight = 68,
+    initialTimeMs = 0, thumbnailsCount, thumbsPerSecond = 1, thumbnailHeight = 68,
     onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo,
     printAspectSlug = 'fill',
   } = props
 
   const isMulti = Array.isArray(clips) && clips.length > 0
+  const [thumbsDensity, setThumbsDensity] = useState(thumbsPerSecond)
+  useEffect(() => {
+    setThumbsDensity(thumbsPerSecond)
+  }, [thumbsPerSecond])
 
   // single-clip compat
   const baseClip: ClipState | null = useMemo(() => {
@@ -124,7 +128,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   // Thumbnails combinados
   const { combinedThumbs, generating, error, isCacheLoaded, setCombinedThumbs } = useCombinedThumbs({
     projectId, apiBase, accessToken, clipsOrdered, clipOffsets,
-    thumbnailsCount, thumbsPerSecond, thumbnailHeight, disableAutoThumbnails,
+    thumbnailsCount, thumbsPerSecond: thumbsDensity, thumbnailHeight, disableAutoThumbnails,
   })
 
   const currentFrameIndex = useMemo(() => {
@@ -386,9 +390,23 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   onDeleteText={handleTextDeleted}
   printAspect={printAspectSlug ?? 'fill'}
   leftHud={
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
       <p className="text-white font-bold text-sm">{combinedThumbs.length} Páginas</p>
+      <label className="flex items-center gap-1 text-[11px] text-white/90">
+        Fotos por segundo
+        <select
+          value={thumbsDensity}
+          onChange={(e) => setThumbsDensity(Number(e.target.value))}
+          className="rounded border border-white/40 bg-black/40 text-white text-[11px] px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+        >
+          {Array.from({ length: 15 }, (_, i) => i + 1).map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </select>
+      </label>
     </div>
   }
   rightHud={

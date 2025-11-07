@@ -384,7 +384,7 @@ async function handleExportPdf() {
             {clips.length ? (
               <EditingCanvas
               // miniaturas por segundo. calcula fotogramas según duración
-              thumbsPerSecond={10}
+              thumbsPerSecond={1}
                 // elegir cantidad fija de miniaturas
                 // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
                 // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
