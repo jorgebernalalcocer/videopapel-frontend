@@ -241,66 +241,10 @@ async function handleExportPdf() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Columna 1: Visor */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow p-4">
-          <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2>
-
-          <div className="aspect-video bg-black rounded-lg mb-4 p-2">
-            {clips.length ? (
-              <EditingCanvas
-              // miniaturas por segundo. calcula fotogramas según duración
-              thumbsPerSecond={10}
-                // elegir cantidad fija de miniaturas
-                // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
-                // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
-                projectId={project.id}
-                clips={clips.map((c) => ({
-                  clipId: c.id,
-                  videoSrc: c.video_url,
-                  durationMs: (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
-                  frames: c.frames ?? [],
-                  timeStartMs: c.time_start_ms ?? 0,
-                  timeEndMs: c.time_end_ms ?? c.duration_ms,
-                }))}
-                apiBase={API_BASE}
-                accessToken={accessToken}
-                printAspectSlug={project.print_aspect_slug ?? 'fill'}
-                playbackFps={2}
-                onChange={() => {}}
-                onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
-              />
-            ) : (
-              <div className="h-full w-full grid place-items-center text-white/50">
-                Sin clips
-                <button
-                  className="ml-3 px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 text-white text-sm"
-                  onClick={() => setPickerOpen(true)}
-                >
-                  Insertar video
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="mt-4 border-t pt-4">
-            <h3 className="text-lg font-medium mb-2">Clips en el Proyecto</h3>
-            <div className="bg-gray-100 p-3 rounded-md min-h-[100px]">
-              {clips.length === 0 ? 'No hay clips' : (
-                <ul className="text-sm text-gray-700 list-disc pl-5">
-                  {clips.map((c) => (
-                    <li key={c.id}>
-                      #{c.position} · {c.video_url?.split('/').pop()} ({(c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0)} ms)
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Columna 2: Configuración */}
+                {/* Columna 2: Configuración */}
         <aside className="lg:col-span-1 space-y-6">
           <div className="bg-white rounded-xl shadow p-4 border">
-            <h2 className="text-xl font-semibold mb-3">Configuración de Salida</h2>
+            <h2 className="text-xl font-semibold mb-3">Configuración de impresión</h2>
             <div className="space-y-3 text-sm">
               <div className="flex flex-wrap gap-2">
                 <SelectableBadgeWrapper
@@ -432,6 +376,61 @@ async function handleExportPdf() {
 
             </div>
           </div>
+        {/* Columna 1: Visor */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow p-4">
+          <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2>
+
+          <div className="aspect-video bg-black rounded-lg mb-4 p-2">
+            {clips.length ? (
+              <EditingCanvas
+              // miniaturas por segundo. calcula fotogramas según duración
+              thumbsPerSecond={10}
+                // elegir cantidad fija de miniaturas
+                // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
+                // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
+                projectId={project.id}
+                clips={clips.map((c) => ({
+                  clipId: c.id,
+                  videoSrc: c.video_url,
+                  durationMs: (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
+                  frames: c.frames ?? [],
+                  timeStartMs: c.time_start_ms ?? 0,
+                  timeEndMs: c.time_end_ms ?? c.duration_ms,
+                }))}
+                apiBase={API_BASE}
+                accessToken={accessToken}
+                printAspectSlug={project.print_aspect_slug ?? 'fill'}
+                playbackFps={2}
+                onChange={() => {}}
+                onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
+              />
+            ) : (
+              <div className="h-full w-full grid place-items-center text-white/50">
+                Sin clips
+                <button
+                  className="ml-3 px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 text-white text-sm"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  Insertar video
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 border-t pt-4">
+            <h3 className="text-lg font-medium mb-2">Clips en el Proyecto</h3>
+            <div className="bg-gray-100 p-3 rounded-md min-h-[100px]">
+              {clips.length === 0 ? 'No hay clips' : (
+                <ul className="text-sm text-gray-700 list-disc pl-5">
+                  {clips.map((c) => (
+                    <li key={c.id}>
+                      #{c.position} · {c.video_url?.split('/').pop()} ({(c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0)} ms)
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
 
 <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
   <h2 className="text-xl font-semibold mb-3 text-green-800">Exportar y Comprar</h2>
