@@ -41,9 +41,35 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
   const isMulti = Array.isArray(clips) && clips.length > 0
   const [thumbsDensity, setThumbsDensity] = useState(thumbsPerSecond)
+  const initialThumbsRef = useRef(thumbsPerSecond)
   useEffect(() => {
     setThumbsDensity(thumbsPerSecond)
+    initialThumbsRef.current = thumbsPerSecond
   }, [thumbsPerSecond])
+  useEffect(() => {
+    if (!accessToken) return
+    if (thumbsDensity === initialThumbsRef.current) return
+    const controller = new AbortController()
+    ;(async () => {
+      try {
+        await fetch(`${apiBase}/projects/${projectId}/thumbs-per-second/`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: 'include',
+          body: JSON.stringify({ thumbs_per_second: thumbsDensity }),
+          signal: controller.signal,
+        })
+        initialThumbsRef.current = thumbsDensity
+      } catch (err: any) {
+        if (err?.name === 'AbortError') return
+        toast.error(err?.message || 'No se pudo actualizar la densidad de frames.')
+      }
+    })()
+    return () => controller.abort()
+  }, [thumbsDensity, accessToken, apiBase, projectId])
 
   // single-clip compat
   const baseClip: ClipState | null = useMemo(() => {
@@ -394,11 +420,12 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
       <p className="text-white font-bold text-sm">{combinedThumbs.length} Páginas</p>
       <label className="flex items-center gap-1 text-[11px] text-white/90">
-        Fotos por segundo
+        Frames/s
         <select
           value={thumbsDensity}
           onChange={(e) => setThumbsDensity(Number(e.target.value))}
           className="rounded border border-white/40 bg-black/40 text-white text-[11px] px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+          disabled={!accessToken}
         >
           {Array.from({ length: 15 }, (_, i) => i + 1).map((value) => (
             <option key={value} value={value}>

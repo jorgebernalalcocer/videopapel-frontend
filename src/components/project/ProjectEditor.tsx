@@ -56,6 +56,7 @@ type Project = {
   print_aspect_id?: number | null
   print_aspect_name?: string | null
   print_aspect_slug?: string | null
+  thumbs_per_second?: number | null
 }
 
 interface ProjectEditorProps {
@@ -384,7 +385,7 @@ async function handleExportPdf() {
             {clips.length ? (
               <EditingCanvas
               // miniaturas por segundo. calcula fotogramas según duración
-              thumbsPerSecond={1}
+              thumbsPerSecond={project.thumbs_per_second ?? 1}
                 // elegir cantidad fija de miniaturas
                 // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
                 // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
