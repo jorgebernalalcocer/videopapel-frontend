@@ -28,6 +28,7 @@ type EditingCanvasProps = {
   disableAutoThumbnails?: boolean; playbackFps?: number; loop?: boolean; onInsertVideo?: () => void;
   printAspectSlug?: string | null;
   onThumbsDensityChange?: (value: number) => void;
+  printSizeLabel?: string | null;
 }
 
 /* ===== Componente ===== */
@@ -39,6 +40,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo,
     printAspectSlug = 'fill',
     onThumbsDensityChange,
+    printSizeLabel,
   } = props
 
   const isMulti = Array.isArray(clips) && clips.length > 0
@@ -422,12 +424,13 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   getLinkedOverlayIds={getOverlayIdsForText}
   onDeleteText={handleTextDeleted}
   printAspect={printAspectSlug ?? 'fill'}
+  printSizeLabel={printSizeLabel ?? undefined}
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
       <p className="text-white font-bold text-sm">{combinedThumbs.length} Páginas</p>
       <label className="flex items-center gap-1 text-[11px] text-white/90">
-        Frames/s
+        Fotos / Seg
         <select
           value={thumbsDensity}
           onChange={(e) => setThumbsDensity(Number(e.target.value))}

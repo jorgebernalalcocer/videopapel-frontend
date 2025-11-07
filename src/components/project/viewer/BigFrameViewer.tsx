@@ -56,6 +56,7 @@ export default function BigFrameViewer(props: {
   leftHud?: React.ReactNode
   rightHud?: React.ReactNode
   printAspect?: string | null
+  printSizeLabel?: string | null
 }) {
   const {
     current,
@@ -71,6 +72,7 @@ export default function BigFrameViewer(props: {
     leftHud,
     rightHud,
     printAspect = 'fill',
+    printSizeLabel,
   } = props
 
   // 👇 te faltaban estos
@@ -335,6 +337,13 @@ export default function BigFrameViewer(props: {
             </div>
           </div>
         )}
+        {showPrintArea && !paintError && printSizeLabel && (
+          <div className="absolute top-2 right-2 z-40 pointer-events-none">
+            <span className="text-m font-semibold text-yellow-300 bg-black/60 px-2 py-0.5 rounded">
+              {printSizeLabel}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Capa de textos arrastrables (solo si no hay error) */}
@@ -413,7 +422,7 @@ export default function BigFrameViewer(props: {
           aria-pressed={showPrintArea}
         >
           <Crop className="h-3.5 w-3.5" />
-          {showPrintArea ? 'Ocultar zona impresión' : 'Zona de impresión'}
+          {showPrintArea ? 'Ocultar zona imp.' : 'Zona de impresión'}
         </button>
       </div>
 

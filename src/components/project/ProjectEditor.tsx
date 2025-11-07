@@ -406,6 +406,7 @@ async function handleExportPdf() {
                 accessToken={accessToken}
                 printAspectSlug={project.print_aspect_slug ?? 'fill'}
                 onThumbsDensityChange={handleThumbsDensityChange}
+                printSizeLabel={project.print_size_label ?? null}
                 playbackFps={2}
                 onChange={() => {}}
                 onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
