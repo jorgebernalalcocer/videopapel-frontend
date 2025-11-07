@@ -227,8 +227,7 @@ export default function BigFrameViewer(props: {
       {paintError && (
         <div className="absolute inset-0 z-20 flex items-center justify-center text-center">
           <p className="text-white text-base bg-black/70 p-4 rounded-lg">
-            Fallo al abrir el fotograma. Recomendamos borrar este proyecto y el
-            video problemático y volver a subirlo de nuevo.
+            Fallo al abrir el fotograma. Refresca la página y si no se soluciona recomendamos borrar este proyecto y comenzar de nuevo.
           </p>
         </div>
       )}
