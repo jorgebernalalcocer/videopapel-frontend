@@ -231,6 +231,10 @@ async function handleExportPdf() {
 
   /* --------- Render principal --------- */
 
+  /* --------- Render principal --------- */
+
+ /* --------- Render principal --------- */
+
   return (
     <div className="w-full h-full p-4 bg-gray-50">
       <header className="mb-6 border-b pb-4 flex justify-between items-center">
@@ -246,8 +250,201 @@ async function handleExportPdf() {
       </header>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Columna 2: Configuración */}
-        <aside className="lg:col-span-1 space-y-6">
+
+        {/* Columna 1 (2/3): Visor y Edición de Clips (lg:col-span-2) */}
+        {/* En móvil (por defecto), aparece primero. En desktop, usamos lg:order-1 para forzarlo a la izquierda. */}
+        <div className="lg:col-span-2 bg-white rounded-xl shadow p-4 lg:order-1">
+          {/* <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2> */}
+
+       <div className="space-y-3 text-sm">
+              <div className="flex flex-wrap gap-2">
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintQualityBadge}
+                  SelectorComponent={QualitySelector}
+                  badgeProps={{
+                    name: project.print_quality_name,
+                    ppi: project.print_quality_ppi,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_quality_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar calidad de impresión"
+                  modalDescription="Elige la calidad con la que se generarán las impresiones."
+                />
+
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintSizeBadge}
+                  SelectorComponent={SizeSelector}
+                  badgeProps={{
+                    name: project.print_size_label,
+                    widthMm: project.print_size_width_mm,
+                    heightMm: project.print_size_height_mm,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_size_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar tamaño de impresión"
+                  modalDescription="Escoge el tamaño que se aplicará al proyecto."
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintOrientationBadge}
+                  SelectorComponent={OrientationSelector}
+                  badgeProps={{
+                    orientation: project.print_orientation_type ?? null,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_orientation_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar orientación de impresión"
+                  modalDescription="Elige la orientación que se aplicará al proyecto."
+                />    
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintEffectBadge}
+                  SelectorComponent={EffectSelector}
+                  badgeProps={{
+                    name: project.print_effect_label,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_effect_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar efecto de impresión"
+                  modalDescription="Elige el efecto que se aplicará al proyecto."
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintAspectBadge}
+                  SelectorComponent={AspectSelector}
+                  badgeProps={{
+                    slug: project.print_aspect_slug ?? null,
+                    name: project.print_aspect_name ?? null,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_aspect_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar proporción de impresión"
+                  modalDescription="Define cómo se ajustará la imagen al área de impresión."
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={ProjectPrivacyBadge}
+                  SelectorComponent={PrivacySelector}
+                  badgeProps={{
+                    isPublic: Boolean(project.is_public),
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.is_public ?? false,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Privacidad del proyecto"
+                  modalDescription="Define si este proyecto es público o privado."
+                />
+              </div>
+
+            </div>
+          <div className="aspect-video bg-black rounded-lg mb-4 p-2">
+            {clips.length ? (
+              <EditingCanvas
+              // miniaturas por segundo. calcula fotogramas según duración
+              thumbsPerSecond={project.thumbs_per_second ?? 1}
+                // elegir cantidad fija de miniaturas
+                // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
+                // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
+                projectId={project.id}
+                clips={clips.map((c) => ({
+                  clipId: c.id,
+                  videoSrc: c.video_url,
+                  durationMs: (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
+                  frames: c.frames ?? [],
+                  timeStartMs: c.time_start_ms ?? 0,
+                  timeEndMs: c.time_end_ms ?? c.duration_ms,
+                }))}
+                apiBase={API_BASE}
+                accessToken={accessToken}
+                printAspectSlug={project.print_aspect_slug ?? 'fill'}
+                onThumbsDensityChange={handleThumbsDensityChange}
+                printSizeLabel={project.print_size_label ?? null}
+                playbackFps={2}
+                onChange={() => {}}
+                onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
+              />
+            ) : (
+              <div className="h-full w-full grid place-items-center text-white/50">
+                Sin clips
+                <button
+                  className="ml-3 px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 text-white text-sm"
+                  onClick={() => setPickerOpen(true)}
+                >
+                  Insertar video
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="mt-4 border-t pt-4">
+            <h3 className="text-lg font-medium mb-2">Clips en el Proyecto</h3>
+            <div className="bg-gray-100 p-3 rounded-md min-h-[100px]">
+              {clips.length === 0 ? 'No hay clips' : (
+                <ul className="text-sm text-gray-700 list-disc pl-5">
+                  {clips.map((c) => (
+                    <li key={c.id}>
+                      #{c.position} · {c.video_url?.split('/').pop()} ({(c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0)} ms)
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Columna 2 (1/3): Configuración + Exportar (lg:col-span-1) */}
+        {/* En desktop, usamos lg:order-2 para forzarlo a la derecha. */}
+        <div className="lg:col-span-1 space-y-6 lg:order-2">
+          
+          {/* Contenedor de Configuración de impresión */}
           <div className="bg-white rounded-xl shadow p-4 border">
             <h2 className="text-xl font-semibold mb-3">Configuración de impresión</h2>
             <div className="space-y-3 text-sm">
@@ -381,78 +578,22 @@ async function handleExportPdf() {
 
             </div>
           </div>
-        {/* Columna 1: Visor */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow p-4">
-          <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2>
-
-          <div className="aspect-video bg-black rounded-lg mb-4 p-2">
-            {clips.length ? (
-              <EditingCanvas
-              // miniaturas por segundo. calcula fotogramas según duración
-              thumbsPerSecond={project.thumbs_per_second ?? 1}
-                // elegir cantidad fija de miniaturas
-                // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
-                // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
-                projectId={project.id}
-                clips={clips.map((c) => ({
-                  clipId: c.id,
-                  videoSrc: c.video_url,
-                  durationMs: (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
-                  frames: c.frames ?? [],
-                  timeStartMs: c.time_start_ms ?? 0,
-                  timeEndMs: c.time_end_ms ?? c.duration_ms,
-                }))}
-                apiBase={API_BASE}
-                accessToken={accessToken}
-                printAspectSlug={project.print_aspect_slug ?? 'fill'}
-                onThumbsDensityChange={handleThumbsDensityChange}
-                printSizeLabel={project.print_size_label ?? null}
-                playbackFps={2}
-                onChange={() => {}}
-                onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
-              />
-            ) : (
-              <div className="h-full w-full grid place-items-center text-white/50">
-                Sin clips
-                <button
-                  className="ml-3 px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 text-white text-sm"
-                  onClick={() => setPickerOpen(true)}
-                >
-                  Insertar video
-                </button>
-              </div>
-            )}
-          </div>
-          <div className="mt-4 border-t pt-4">
-            <h3 className="text-lg font-medium mb-2">Clips en el Proyecto</h3>
-            <div className="bg-gray-100 p-3 rounded-md min-h-[100px]">
-              {clips.length === 0 ? 'No hay clips' : (
-                <ul className="text-sm text-gray-700 list-disc pl-5">
-                  {clips.map((c) => (
-                    <li key={c.id}>
-                      #{c.position} · {c.video_url?.split('/').pop()} ({(c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0)} ms)
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
+          
+          {/* Contenedor de Exportar y Comprar */}
+          <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
+            <h2 className="text-xl font-semibold mb-3 text-green-800">Exportar y Comprar</h2>
+            <button
+              className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
+              onClick={handleExportPdf}
+              disabled={exporting}
+            >
+              {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
+            </button>
+            {exportError && <p className="text-xs text-red-600 mt-2">{exportError}</p>}
+            <p className="text-xs text-green-700 mt-2">Se utilizarán los clips y configuraciones actuales.</p>
           </div>
         </div>
 
-<div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
-  <h2 className="text-xl font-semibold mb-3 text-green-800">Exportar y Comprar</h2>
-  <button
-    className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
-    onClick={handleExportPdf}
-    disabled={exporting}
-  >
-    {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
-  </button>
-  {exportError && <p className="text-xs text-red-600 mt-2">{exportError}</p>}
-  <p className="text-xs text-green-700 mt-2">Se utilizarán los clips y configuraciones actuales.</p>
-</div>
-
-        </aside>
       </div>
 
       {/* Modal de selección de video */}
