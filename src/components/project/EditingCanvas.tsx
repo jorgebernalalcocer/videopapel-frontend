@@ -9,6 +9,7 @@ import { toast } from 'sonner'
 import BigFrameViewer from '@/components/project/viewer/BigFrameViewer'
 import GlobalTimeline from '@/components/project/timeline/GlobalTimeline'
 import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextFrameEditorModal'
+import FrameInsertModal, { FrameInsertPayload } from '@/components/project/FrameInsertModal'
 import { Modal } from '@/components/ui/Modal'
 import ProgressIndicator from '@/components/ui/ProgressIndicator'
 
@@ -17,6 +18,7 @@ import { usePlaybackStepper } from '@/hooks/usePlaybackStepper'
 import { useProjectTexts } from '@/hooks/useProjectTexts'
 import { makeTimelineKeydownHandler } from '@/hooks/useKeyboardTimelineNav'
 import { formatTime, nearestIndex } from '@/utils/time'
+import type { FrameSettingClient } from '@/types/frame'
 
 /* ===== Tipos (abrev.) ===== */
 type ClipState = { clipId: number; videoSrc: string; durationMs: number; frames: number[]; timeStartMs?: number; timeEndMs?: number }
@@ -29,6 +31,7 @@ type EditingCanvasProps = {
   printAspectSlug?: string | null;
   onThumbsDensityChange?: (value: number) => void;
   printSizeLabel?: string | null;
+  frameSetting?: FrameSettingClient | null;
 }
 
 /* ===== Componente ===== */
@@ -41,6 +44,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     printAspectSlug = 'fill',
     onThumbsDensityChange,
     printSizeLabel,
+    frameSetting = null,
   } = props
 
   const isMulti = Array.isArray(clips) && clips.length > 0
@@ -264,6 +268,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [isSaving, setIsSaving] = useState(false)
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false)
   const [subtitleProgressModal, setSubtitleProgressModal] = useState(false)
+  const [frameModalOpen, setFrameModalOpen] = useState(false)
 
   function deleteSelectedFrame() {
     if (!combinedThumbs.length) return
@@ -400,6 +405,42 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     }
   }, [accessToken, apiBase, projectId, clipsOrdered.length])
 
+  const handleFrameButtonClick = useCallback(() => {
+    if (!clipsOrdered.length) {
+      toast.warning('Añade al menos un clip antes de insertar un marco.')
+      return
+    }
+    setFrameModalOpen(true)
+  }, [clipsOrdered.length])
+
+  const handleFrameModalConfirm = useCallback(
+    async (payload: FrameInsertPayload) => {
+      if (!accessToken) {
+        throw new Error('Debes iniciar sesión para aplicar un marco.')
+      }
+      const res = await fetch(`${apiBase}/projects/${projectId}/frame/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          frame_id: payload.frameId,
+          thickness_px: payload.thickness,
+          positions: payload.positions,
+        }),
+      })
+      if (!res.ok) {
+        const msg = await res.text()
+        throw new Error(msg || 'No se pudo actualizar el marco del proyecto.')
+      }
+      const posLabel = payload.positions.join(', ')
+      toast.success(`Marco configurado: ID ${payload.frameId}, ${payload.thickness}px, lados ${posLabel || '—'}.`)
+    },
+    [accessToken, apiBase, projectId]
+  )
+
   // Keyboard handler
   const onTimelineKeyDown = makeTimelineKeydownHandler(
     combinedThumbs,
@@ -425,6 +466,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   onDeleteText={handleTextDeleted}
   printAspect={printAspectSlug ?? 'fill'}
   printSizeLabel={printSizeLabel ?? undefined}
+  frameSetting={frameSetting ?? undefined}
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
@@ -488,6 +530,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   isSaving={isSaving}
   onInsertVideo={onInsertVideo}
   onInsertText={openCreateTextEditor}
+  onInsertFrame={handleFrameButtonClick}
   onGenerateSubtitles={handleGenerateSubtitles}
   isGeneratingSubtitles={isGeneratingSubtitles}
 />
@@ -506,6 +549,14 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         initial={editorInitial}
         onClose={() => setEditorOpen(false)}
         onSaved={handleEditorSaved}
+/>
+
+<FrameInsertModal
+  open={frameModalOpen}
+  apiBase={apiBase}
+  accessToken={accessToken}
+  onClose={() => setFrameModalOpen(false)}
+  onConfirm={handleFrameModalConfirm}
 />
 
       <Modal

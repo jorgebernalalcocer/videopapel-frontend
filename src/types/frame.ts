@@ -1,0 +1,11 @@
+export type FramePosition = 'top' | 'right' | 'bottom' | 'left'
+
+export type FrameSettingClient = {
+  frame?: {
+    id: number
+    name: string | null
+    description?: string | null
+  } | null
+  thickness_px: number
+  positions: FramePosition[]
+} | null

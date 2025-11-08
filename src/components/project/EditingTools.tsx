@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Film, Camera, Type, Save, Captions, RotateCcw } from 'lucide-react'
+import { Play, Film, Camera, Type, Save, Captions, RotateCcw, Frame as FrameIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 type EditingToolsProps = {
@@ -13,6 +13,7 @@ type EditingToolsProps = {
   isSaving?: boolean
   onInsertVideo?: () => void
   onInsertText?: () => void
+  onInsertFrame?: () => void
   onGenerateSubtitles?: () => void
   isGeneratingSubtitles?: boolean
 }
@@ -26,6 +27,7 @@ export default function EditingTools({
   isSaving = false,
   onInsertVideo,
   onInsertText,
+  onInsertFrame,
   onGenerateSubtitles,
   isGeneratingSubtitles = false,
 }: EditingToolsProps) {
@@ -61,6 +63,17 @@ export default function EditingTools({
       return
     }
     onGenerateSubtitles?.()
+  }
+
+  const handleInsertFrame = () => {
+    if (actionsLocked) {
+      toast.warning(isGeneratingSubtitles
+        ? 'Estamos generando subtítulos. Espera a que finalice para insertar un nuevo marco.'
+        : 'Acción no disponible en este momento.'
+      )
+      return
+    }
+    onInsertFrame?.()
   }
 
   const handleDiscardChanges = () => {
@@ -145,6 +158,21 @@ export default function EditingTools({
             <span className="hidden sm:inline">
               {isGeneratingSubtitles ? 'Generando…' : 'Añadir subtítulos'}
             </span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleInsertFrame}
+            aria-disabled={actionsLocked}
+            aria-label="Insertar marco"
+            className={`
+              inline-flex items-center gap-2
+              ${actionsLocked ? 'opacity-60 cursor-not-allowed' : ''}
+            `}
+          >
+            <FrameIcon className="h-4 w-4 text-emerald-600" />
+            <span className="hidden sm:inline">Insertar marco</span>
           </Button>
         </>
       )}

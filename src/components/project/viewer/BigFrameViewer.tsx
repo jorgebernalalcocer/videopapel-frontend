@@ -6,8 +6,10 @@ import clsx from 'clsx'
 import { Maximize2, Minimize2, Crop } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
+import FrameStyleOverlay from '@/components/project/viewer/FrameStyleOverlay'
 import { cloudinaryPreviewVideoUrl } from '@/utils/cloudinary'
 import { paintFrameToCanvas, seekVideo, setVideoSrcAndWait } from '@/utils/video'
+import type { FrameSettingClient } from '@/types/frame'
 
 type ActiveTextItem = {
   id: number
@@ -57,6 +59,7 @@ export default function BigFrameViewer(props: {
   rightHud?: React.ReactNode
   printAspect?: string | null
   printSizeLabel?: string | null
+  frameSetting?: FrameSettingClient | null
 }) {
   const {
     current,
@@ -73,6 +76,7 @@ export default function BigFrameViewer(props: {
     rightHud,
     printAspect = 'fill',
     printSizeLabel,
+    frameSetting,
   } = props
 
   // 👇 te faltaban estos
@@ -85,6 +89,10 @@ export default function BigFrameViewer(props: {
   const [flash, setFlash] = useState(false)
   const [showPrintArea, setShowPrintArea] = useState(false)
   const [printFrame, setPrintFrame] = useState<{ width: number; height: number } | null>(null)
+  const activeFrameSetting =
+    frameSetting && Array.isArray(frameSetting.positions) && frameSetting.positions.length
+      ? frameSetting
+      : null
 
   useEffect(() => {
     ;(async () => {
@@ -242,6 +250,9 @@ export default function BigFrameViewer(props: {
           className={canvasClassName}
           style={{ display: paintError ? 'none' : 'block' }}
         />
+        {activeFrameSetting && !showPrintArea && !paintError && printFrame && (
+          <FrameStyleOverlay setting={activeFrameSetting} dimensions={printFrame} />
+        )}
         {showPrintArea && !paintError && printOverlay && (
           <div
             className="absolute pointer-events-none flex items-center justify-center"
@@ -264,6 +275,12 @@ export default function BigFrameViewer(props: {
                 boxShadow: printOverlay.shadow,
               }}
             >
+              {activeFrameSetting && (
+                <FrameStyleOverlay
+                  setting={activeFrameSetting}
+                  dimensions={{ width: printOverlay.width, height: printOverlay.height }}
+                />
+              )}
               {printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight && (
                 (() => {
                   const marginX = Math.max(0, printOverlay.marginX ?? 0)

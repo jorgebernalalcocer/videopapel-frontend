@@ -19,6 +19,7 @@ import PrivacySelector from '@/components/project/PrivacySelector'
 import PrintAspectBadge from '@/components/project/PrintAspectBadge'
 import AspectSelector from '@/components/project/AspectSelector'
 import { text } from 'stream/consumers'
+import type { FrameSettingClient } from '@/types/frame'
 
 /* =========================
    Tipos
@@ -57,6 +58,10 @@ type Project = {
   print_aspect_name?: string | null
   print_aspect_slug?: string | null
   thumbs_per_second?: number | null
+  frame_id?: number | null
+  frame_name?: string | null
+  frame_description?: string | null
+  frame_setting?: FrameSettingClient
 }
 
 const STATUS_LABELS: Record<Project['status'], string> = {
@@ -423,6 +428,7 @@ async function handleExportPdf() {
                 printAspectSlug={project.print_aspect_slug ?? 'fill'}
                 onThumbsDensityChange={handleThumbsDensityChange}
                 printSizeLabel={project.print_size_label ?? null}
+                frameSetting={project.frame_setting ?? null}
                 playbackFps={2}
                 onChange={() => {}}
                 onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
