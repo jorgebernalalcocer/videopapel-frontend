@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import UploadVideoTriggerButton from '@/components/UploadVideoTriggerButton'
 
 export type VideoItem = {
   id: number
@@ -94,6 +95,12 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
         </div>
       }
     >
+      <div className="mb-3 flex justify-start">
+        <UploadVideoTriggerButton
+          disabled={!accessToken || loading}
+          onUploaded={fetchVideos}
+        />
+      </div>
       {loading ? (
         <p className="text-gray-500 text-sm">Cargando videos…</p>
       ) : videos.length === 0 ? (
