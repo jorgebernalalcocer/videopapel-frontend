@@ -113,7 +113,7 @@ export default function UploadVideo() {
         xhr.send(form);
       });
 
-      const { secure_url, public_id, format, duration, original_filename } =
+      const { secure_url, public_id, format, duration, original_filename, width, height } =
         responseJson;
 
       // 3) Registrar en backend (apiFetch maneja refresh)
@@ -126,6 +126,8 @@ export default function UploadVideo() {
           file: secure_url,
           public_id,
           duration,
+          width,
+          height,
         }),
       });
       if (!createRes.ok) {
