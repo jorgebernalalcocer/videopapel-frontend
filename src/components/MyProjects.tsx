@@ -121,19 +121,30 @@ export default function MyProjects() {
             {p.primary_clip && p.primary_clip.video_url && (
               <div className="bg-gray-100">
                 <div className="grid grid-cols-2 gap-0.5 aspect-video overflow-hidden">
-                  {(p.primary_clip.thumbnails ?? [p.primary_clip.frame_time_ms]).slice(0, 4).map((t, idx) => (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      key={`${p.id}-thumb-${idx}`}
-                      src={cloudinaryFrameUrlFromVideoUrl(
-                        p.primary_clip!.video_url,
-                        t ?? p.primary_clip!.frame_time_ms ?? 0,
-                        240
-                      )}
-                      alt={`Miniatura ${idx + 1} de ${p.name || p.id}`}
-                      className="h-full w-full object-cover"
-                    />
-                  ))}
+                  {(p.primary_clip.thumbnails?.length
+                    ? p.primary_clip.thumbnails
+                    : [{ video_url: p.primary_clip.video_url, frame_time_ms: p.primary_clip.frame_time_ms }]
+                  )
+                    .slice(0, 4)
+                    .map((thumb, idx) => {
+                      const frameMs = typeof thumb === 'number' ? thumb : thumb?.frame_time_ms
+                      const videoUrl =
+                        typeof thumb === 'number' ? p.primary_clip!.video_url : thumb?.video_url || p.primary_clip!.video_url
+
+                      return (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={`${p.id}-thumb-${idx}`}
+                          src={cloudinaryFrameUrlFromVideoUrl(
+                            videoUrl,
+                            frameMs ?? p.primary_clip!.frame_time_ms ?? 0,
+                            240
+                          )}
+                          alt={`Miniatura ${idx + 1} de ${p.name || p.id}`}
+                          className="h-full w-full object-cover"
+                        />
+                      )
+                    })}
                 </div>
               </div>
             )}
