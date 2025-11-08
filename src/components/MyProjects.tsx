@@ -217,9 +217,9 @@ function StatusBadge({ status }: { status: Project['status'] }) {
     exported: 'bg-green-100 text-green-700',
   }
   const label: Record<Project['status'], string> = {
-    draft: 'Borrador',
+    draft: 'Elaborando',
     ready: 'Listo',
-    exported: 'Exportado',
+    exported: 'Comprado',
   }
   return (
     <span className={`inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded ${map[status]}`}>

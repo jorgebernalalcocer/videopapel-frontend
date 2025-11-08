@@ -59,6 +59,12 @@ type Project = {
   thumbs_per_second?: number | null
 }
 
+const STATUS_LABELS: Record<Project['status'], string> = {
+  draft: 'Elaborando',
+  ready: 'Listo',
+  exported: 'Comprado',
+}
+
 interface ProjectEditorProps {
   projectId: string // UUID del proyecto
 }
@@ -75,6 +81,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [pickerOpen, setPickerOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [creatingClip, setCreatingClip] = useState(false)
+  const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
@@ -243,9 +250,17 @@ async function handleExportPdf() {
         </h1>
         <div className="text-sm text-gray-500">
           Estado:{' '}
-          <span className={`font-medium ${project.status === 'draft' ? 'text-blue-500' : 'text-green-600'}`}>
-            {project.status.toUpperCase()}
-          </span>
+<span
+  className={`font-medium ${
+    project.status === 'ready'
+      ? 'text-blue-500' // Si es 'ready', azul
+      : project.status === 'draft'
+      ? 'text-orange-600' // Si es 'draft', naranja (usaremos 'text-orange-500' de Tailwind)
+      : 'text-green-600' // Cualquier otro caso, verde
+  }`}
+>
+  {statusLabel}
+</span>
         </div>
       </header>
 
