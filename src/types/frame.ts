@@ -7,5 +7,6 @@ export type FrameSettingClient = {
     description?: string | null
   } | null
   thickness_px: number
+  thickness_pct?: number | null
   positions: FramePosition[]
 } | null

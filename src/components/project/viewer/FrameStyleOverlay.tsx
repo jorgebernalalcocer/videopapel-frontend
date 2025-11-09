@@ -34,18 +34,22 @@ export default function FrameStyleOverlay({
   const uniquePositions = Array.from(new Set(setting.positions)) as FramePosition[]
   if (!uniquePositions.length) return null
 
-  const baseThicknessPx = setting.thickness_px || 8
   const ppi = Math.max(1, printQualityPpi || FALLBACK_PPI)
+  const thicknessPct =
+    setting.thickness_pct != null ? Math.max(0, Number(setting.thickness_pct)) : null
+  const baseThicknessPx = setting.thickness_px || 8
 
   const frameName = (setting.frame?.name || '').toLowerCase()
   const color = getFrameColor(frameName)
   const thicknessTopBottom = computeThicknessPx({
+    thicknessPct,
     thicknessPx: baseThicknessPx,
     ppi,
     dimensionMm: printHeightMm,
     dimensionPx: dimensions.height,
   })
   const thicknessLeftRight = computeThicknessPx({
+    thicknessPct,
     thicknessPx: baseThicknessPx,
     ppi,
     dimensionMm: printWidthMm,
@@ -81,17 +85,23 @@ export default function FrameStyleOverlay({
 }
 
 function computeThicknessPx({
+  thicknessPct,
   thicknessPx,
   ppi,
   dimensionMm,
   dimensionPx,
 }: {
+  thicknessPct: number | null
   thicknessPx: number
   ppi: number
   dimensionMm?: number | null
   dimensionPx: number
 }) {
   const minDimensionPx = Math.max(1, dimensionPx)
+  if (thicknessPct && thicknessPct > 0) {
+    const scaled = thicknessPct * minDimensionPx
+    return Math.max(2, Math.min(scaled, minDimensionPx / 2))
+  }
   if (!dimensionMm || dimensionMm <= 0) {
     const fallback = Math.max(2, Math.min(thicknessPx, minDimensionPx / 2))
     return fallback

@@ -440,7 +440,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         credentials: 'include',
         body: JSON.stringify({
           frame_id: payload.frameId,
-          thickness_px: payload.thickness,
+          thickness_pct: payload.thicknessPct,
           positions: payload.positions,
         }),
       })
@@ -449,7 +449,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         throw new Error(msg || 'No se pudo actualizar el marco del proyecto.')
       }
       const posLabel = payload.positions.join(', ')
-      toast.success(`Marco configurado: ID ${payload.frameId}, ${payload.thickness}px, lados ${posLabel || '—'}.`)
+      toast.success(`Marco configurado: ${ (payload.thicknessPct * 100).toFixed(2)}% • lados ${posLabel || '—'}.`)
       onFrameChange?.()
     },
     [accessToken, apiBase, projectId, onFrameChange]
@@ -596,7 +596,6 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   mode={frameModalMode}
   apiBase={apiBase}
   accessToken={accessToken}
-  projectId={projectId}
   currentSetting={frameSetting ?? null}
   onClose={() => setFrameModalOpen(false)}
   onConfirm={handleFrameModalConfirm}

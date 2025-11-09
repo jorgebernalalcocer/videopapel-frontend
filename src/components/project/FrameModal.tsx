@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import type { CSSProperties } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import type { FramePosition, FrameSettingClient } from '@/types/frame'
 
@@ -12,7 +13,7 @@ export type FrameOption = {
 
 export type FrameFormPayload = {
   frameId: number
-  thickness: number
+  thicknessPct: number
   positions: FramePosition[]
 }
 
@@ -23,7 +24,6 @@ type Props = {
   mode: Mode
   apiBase: string
   accessToken: string | null
-  projectId: string
   currentSetting?: FrameSettingClient | null
   onClose: () => void
   onConfirm: (payload: FrameFormPayload) => Promise<void>
@@ -37,7 +37,7 @@ const POSITION_LABELS: Record<FramePosition, string> = {
   left: 'Izquierda',
 }
 
-const POSITION_CLASSES: Record<FramePosition, React.CSSProperties> = {
+const POSITION_CLASSES: Record<FramePosition, CSSProperties> = {
   top: { top: 0, left: 0, right: 0 },
   bottom: { bottom: 0, left: 0, right: 0 },
   left: { top: 0, bottom: 0, left: 0 },
@@ -51,7 +51,6 @@ export default function FrameModal({
   mode,
   apiBase,
   accessToken,
-  projectId,
   currentSetting,
   onClose,
   onConfirm,
@@ -62,7 +61,7 @@ export default function FrameModal({
   const [error, setError] = useState<string | null>(null)
 
   const [frameId, setFrameId] = useState<number | ''>('')
-  const [thickness, setThickness] = useState(8)
+  const [thicknessPct, setThicknessPct] = useState(0.02)
   const [positions, setPositions] = useState<FramePosition[]>(ALL_POSITIONS)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -98,13 +97,17 @@ export default function FrameModal({
   useEffect(() => {
     if (!open) return
     const initialFrameId = currentSetting?.frame?.id ?? ''
-    const initialThickness = currentSetting?.thickness_px ?? 8
+    const initialThickness = currentSetting?.thickness_pct != null
+      ? Number(currentSetting.thickness_pct)
+      : currentSetting?.thickness_px
+        ? Math.max(0.001, Math.min(0.5, (currentSetting.thickness_px || 8) / 400))
+        : 0.02
     const initialPositions = currentSetting?.positions?.length
       ? (Array.from(new Set(currentSetting.positions)) as FramePosition[])
       : ALL_POSITIONS
 
     setFrameId(initialFrameId)
-    setThickness(initialThickness)
+    setThicknessPct(initialThickness)
     setPositions(initialPositions)
     setIsSubmitting(false)
     setIsDeleting(false)
@@ -124,8 +127,8 @@ export default function FrameModal({
       setError('Selecciona un marco disponible.')
       return
     }
-    if (thickness < 4 || thickness > 400) {
-      setError('El grosor debe estar entre 4px y 400px.')
+    if (thicknessPct < 0.001 || thicknessPct > 0.5) {
+      setError('El grosor debe estar entre 0.1% y 50% del lienzo.')
       return
     }
     if (!positions.length) {
@@ -135,7 +138,7 @@ export default function FrameModal({
     setIsSubmitting(true)
     setError(null)
     try {
-      await onConfirm({ frameId, thickness, positions })
+      await onConfirm({ frameId, thicknessPct, positions })
       onClose()
     } catch (err: any) {
       setError(err?.message || 'No se pudo aplicar el marco.')
@@ -234,17 +237,24 @@ export default function FrameModal({
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Grosor (px)
+            Grosor (% del lienzo)
           </label>
           <input
             type="number"
-            min={4}
-            max={400}
+            min={0.1}
+            max={50}
+            step={0.1}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-            value={thickness}
-            onChange={(e) => setThickness(Number(e.target.value))}
+            value={Number((thicknessPct * 100).toFixed(2))}
+            onChange={(e) => {
+              const value = Number(e.target.value)
+              if (Number.isNaN(value)) return
+              setThicknessPct(Math.max(0.001, Math.min(0.5, value / 100)))
+            }}
           />
-          <p className="text-xs text-gray-500 mt-1">Entre 4 y 400 píxeles.</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Entre 0.1% y 50% del alto/ancho visible. Actual: {(thicknessPct * 100).toFixed(2)}%
+          </p>
         </div>
 
         <div>
