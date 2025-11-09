@@ -93,7 +93,7 @@ export default function BigFrameViewer(props: {
   const [isFull, setIsFull] = useState(false)
   const [paintError, setPaintError] = useState(false)
   const [flash, setFlash] = useState(false)
-  const [showPrintArea, setShowPrintArea] = useState(false)
+  const [showPrintArea, setShowPrintArea] = useState(true)
   const [printFrame, setPrintFrame] = useState<{ width: number; height: number } | null>(null)
   const activeFrameSetting =
     frameSetting && Array.isArray(frameSetting.positions) && frameSetting.positions.length
@@ -155,7 +155,7 @@ export default function BigFrameViewer(props: {
     const imgH = printFrame.height
     const targetRatio = Math.SQRT2 // Serie A
     const landscape = imgW >= imgH
-    const borderWidth = 4 //espesor grosor marco amarillo
+    const borderWidth = 2 //espesor grosor marco amarillo
     const mode = (printAspect || 'fill').toLowerCase()
 
     if (mode === 'fit') {
