@@ -298,14 +298,14 @@ export default function BigFrameViewer(props: {
               )}
               {printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight && (
                 <div
-                  className="absolute border border-dashed border-white/85 pointer-events-none"
+                  className="absolute border border-dashed border-yellow-300 pointer-events-none"
                   style={{
                     width: `${printOverlay.innerWidth}px`,
                     height: `${printOverlay.innerHeight}px`,
                     left: '50%',
                     top: '50%',
                     transform: 'translate(-50%, -50%)',
-                    boxShadow: '0 0 0 1px rgba(255,255,255,0.85)',
+                    boxShadow: '0 0 0 1px rgba(249,224,138,0.9)',
                   }}
                 />
               )}
