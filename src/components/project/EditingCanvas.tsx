@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import BigFrameViewer from '@/components/project/viewer/BigFrameViewer'
 import GlobalTimeline from '@/components/project/timeline/GlobalTimeline'
 import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextFrameEditorModal'
-import FrameInsertModal, { FrameInsertPayload } from '@/components/project/FrameInsertModal'
+import FrameModal, { type FrameFormPayload } from '@/components/project/FrameModal'
 import { Modal } from '@/components/ui/Modal'
 import ProgressIndicator from '@/components/ui/ProgressIndicator'
 
@@ -32,6 +32,10 @@ type EditingCanvasProps = {
   onThumbsDensityChange?: (value: number) => void;
   printSizeLabel?: string | null;
   frameSetting?: FrameSettingClient | null;
+  onFrameChange?: () => void;
+  printWidthMm?: number | null;
+  printHeightMm?: number | null;
+  printQualityPpi?: number | null;
 }
 
 /* ===== Componente ===== */
@@ -45,7 +49,11 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     onThumbsDensityChange,
     printSizeLabel,
     frameSetting = null,
+    printWidthMm = null,
+    printHeightMm = null,
+    printQualityPpi = null,
   } = props
+  const { onFrameChange } = props
 
   const isMulti = Array.isArray(clips) && clips.length > 0
   const [thumbsDensity, setThumbsDensity] = useState(thumbsPerSecond)
@@ -269,6 +277,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [isGeneratingSubtitles, setIsGeneratingSubtitles] = useState(false)
   const [subtitleProgressModal, setSubtitleProgressModal] = useState(false)
   const [frameModalOpen, setFrameModalOpen] = useState(false)
+  const [frameModalMode, setFrameModalMode] = useState<'create' | 'edit'>('create')
 
   function deleteSelectedFrame() {
     if (!combinedThumbs.length) return
@@ -405,16 +414,20 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     }
   }, [accessToken, apiBase, projectId, clipsOrdered.length])
 
-  const handleFrameButtonClick = useCallback(() => {
-    if (!clipsOrdered.length) {
-      toast.warning('Añade al menos un clip antes de insertar un marco.')
-      return
-    }
-    setFrameModalOpen(true)
-  }, [clipsOrdered.length])
+  const handleFrameButtonClick = useCallback(
+    (mode: 'create' | 'edit' = 'create') => {
+      if (!clipsOrdered.length) {
+        toast.warning('Añade al menos un clip antes de insertar un marco.')
+        return
+      }
+      setFrameModalMode(mode)
+      setFrameModalOpen(true)
+    },
+    [clipsOrdered.length]
+  )
 
   const handleFrameModalConfirm = useCallback(
-    async (payload: FrameInsertPayload) => {
+    async (payload: FrameFormPayload) => {
       if (!accessToken) {
         throw new Error('Debes iniciar sesión para aplicar un marco.')
       }
@@ -437,9 +450,31 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       }
       const posLabel = payload.positions.join(', ')
       toast.success(`Marco configurado: ID ${payload.frameId}, ${payload.thickness}px, lados ${posLabel || '—'}.`)
+      onFrameChange?.()
     },
-    [accessToken, apiBase, projectId]
+    [accessToken, apiBase, projectId, onFrameChange]
   )
+
+  const handleFrameDelete = useCallback(async () => {
+    if (!accessToken) {
+      throw new Error('Debes iniciar sesión para eliminar el marco.')
+    }
+    const res = await fetch(`${apiBase}/projects/${projectId}/frame/`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify({ frame_id: null }),
+    })
+    if (!res.ok) {
+      const msg = await res.text()
+      throw new Error(msg || 'No se pudo eliminar el marco del proyecto.')
+    }
+    toast.success('Marco eliminado del proyecto.')
+    onFrameChange?.()
+  }, [accessToken, apiBase, projectId, onFrameChange])
 
   // Keyboard handler
   const onTimelineKeyDown = makeTimelineKeydownHandler(
@@ -467,6 +502,9 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   printAspect={printAspectSlug ?? 'fill'}
   printSizeLabel={printSizeLabel ?? undefined}
   frameSetting={frameSetting ?? undefined}
+  printWidthMm={printWidthMm ?? undefined}
+  printHeightMm={printHeightMm ?? undefined}
+  printQualityPpi={printQualityPpi ?? undefined}
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
@@ -530,9 +568,11 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   isSaving={isSaving}
   onInsertVideo={onInsertVideo}
   onInsertText={openCreateTextEditor}
-  onInsertFrame={handleFrameButtonClick}
+          onInsertFrame={() => handleFrameButtonClick('create')}
+          onEditFrame={() => handleFrameButtonClick('edit')}
   onGenerateSubtitles={handleGenerateSubtitles}
   isGeneratingSubtitles={isGeneratingSubtitles}
+  hasFrame={Boolean(frameSetting && frameSetting.frame)}
 />
       </div>
 
@@ -551,12 +591,16 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         onSaved={handleEditorSaved}
 />
 
-<FrameInsertModal
+<FrameModal
   open={frameModalOpen}
+  mode={frameModalMode}
   apiBase={apiBase}
   accessToken={accessToken}
+  projectId={projectId}
+  currentSetting={frameSetting ?? null}
   onClose={() => setFrameModalOpen(false)}
   onConfirm={handleFrameModalConfirm}
+  onDelete={frameSetting ? handleFrameDelete : undefined}
 />
 
       <Modal

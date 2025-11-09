@@ -14,8 +14,10 @@ type EditingToolsProps = {
   onInsertVideo?: () => void
   onInsertText?: () => void
   onInsertFrame?: () => void
+  onEditFrame?: () => void
   onGenerateSubtitles?: () => void
   isGeneratingSubtitles?: boolean
+  hasFrame?: boolean
 }
 
 export default function EditingTools({
@@ -28,8 +30,10 @@ export default function EditingTools({
   onInsertVideo,
   onInsertText,
   onInsertFrame,
+  onEditFrame,
   onGenerateSubtitles,
   isGeneratingSubtitles = false,
+  hasFrame = false,
 }: EditingToolsProps) {
   const hasPendingChanges = canSave && !isSaving
   const actionsLocked = isGeneratingSubtitles
@@ -163,16 +167,16 @@ export default function EditingTools({
           <Button
             type="button"
             variant="outline"
-            onClick={handleInsertFrame}
+            onClick={hasFrame ? onEditFrame ?? handleInsertFrame : handleInsertFrame}
             aria-disabled={actionsLocked}
-            aria-label="Insertar marco"
+            aria-label={hasFrame ? 'Editar marco' : 'Insertar marco'}
             className={`
               inline-flex items-center gap-2
               ${actionsLocked ? 'opacity-60 cursor-not-allowed' : ''}
             `}
           >
             <FrameIcon className="h-4 w-4 text-emerald-600" />
-            <span className="hidden sm:inline">Insertar marco</span>
+            <span className="hidden sm:inline">{hasFrame ? 'Editar marco' : 'Insertar marco'}</span>
           </Button>
         </>
       )}

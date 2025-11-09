@@ -6,6 +6,9 @@ import type { FrameSettingClient, FramePosition } from '@/types/frame'
 type Props = {
   setting?: FrameSettingClient | null
   dimensions: { width: number; height: number }
+  printWidthMm?: number | null
+  printHeightMm?: number | null
+  printQualityPpi?: number | null
 }
 
 const POSITION_STYLES: Record<FramePosition, CSSProperties> = {
@@ -16,18 +19,38 @@ const POSITION_STYLES: Record<FramePosition, CSSProperties> = {
 }
 
 const DEFAULT_COLOR = 'rgba(0,0,0,0.9)'
+const FALLBACK_PPI = 300
 
-export default function FrameStyleOverlay({ setting, dimensions }: Props) {
+export default function FrameStyleOverlay({
+  setting,
+  dimensions,
+  printWidthMm,
+  printHeightMm,
+  printQualityPpi,
+}: Props) {
   if (!setting || !setting.positions || !setting.positions.length) return null
   if (!dimensions.width || !dimensions.height) return null
 
   const uniquePositions = Array.from(new Set(setting.positions)) as FramePosition[]
   if (!uniquePositions.length) return null
 
-  const maxThickness = Math.floor(Math.min(dimensions.height, dimensions.width) / 2)
-  const thickness = Math.max(2, Math.min(setting.thickness_px || 8, maxThickness || setting.thickness_px || 8))
+  const baseThicknessPx = setting.thickness_px || 8
+  const ppi = Math.max(1, printQualityPpi || FALLBACK_PPI)
+
   const frameName = (setting.frame?.name || '').toLowerCase()
   const color = getFrameColor(frameName)
+  const thicknessTopBottom = computeThicknessPx({
+    thicknessPx: baseThicknessPx,
+    ppi,
+    dimensionMm: printHeightMm,
+    dimensionPx: dimensions.height,
+  })
+  const thicknessLeftRight = computeThicknessPx({
+    thicknessPx: baseThicknessPx,
+    ppi,
+    dimensionMm: printWidthMm,
+    dimensionPx: dimensions.width,
+  })
 
   return (
     <div
@@ -48,13 +71,37 @@ export default function FrameStyleOverlay({ setting, dimensions }: Props) {
             ...POSITION_STYLES[position],
             backgroundColor: color,
             ...(position === 'top' || position === 'bottom'
-              ? { height: `${thickness}px` }
-              : { width: `${thickness}px` }),
+              ? { height: `${thicknessTopBottom}px` }
+              : { width: `${thicknessLeftRight}px` }),
           }}
         />
       ))}
     </div>
   )
+}
+
+function computeThicknessPx({
+  thicknessPx,
+  ppi,
+  dimensionMm,
+  dimensionPx,
+}: {
+  thicknessPx: number
+  ppi: number
+  dimensionMm?: number | null
+  dimensionPx: number
+}) {
+  const minDimensionPx = Math.max(1, dimensionPx)
+  if (!dimensionMm || dimensionMm <= 0) {
+    const fallback = Math.max(2, Math.min(thicknessPx, minDimensionPx / 2))
+    return fallback
+  }
+  const thicknessInches = thicknessPx / ppi
+  const thicknessMm = thicknessInches * 25.4
+  const mmPerPixel = dimensionMm / minDimensionPx
+  const displayThickness = thicknessMm / mmPerPixel
+  const clamped = Math.max(2, Math.min(displayThickness, minDimensionPx / 2))
+  return clamped
 }
 
 function getFrameColor(name: string): string {

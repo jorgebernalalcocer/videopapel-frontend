@@ -60,6 +60,9 @@ export default function BigFrameViewer(props: {
   printAspect?: string | null
   printSizeLabel?: string | null
   frameSetting?: FrameSettingClient | null
+  printWidthMm?: number | null
+  printHeightMm?: number | null
+  printQualityPpi?: number | null
 }) {
   const {
     current,
@@ -77,6 +80,9 @@ export default function BigFrameViewer(props: {
     printAspect = 'fill',
     printSizeLabel,
     frameSetting,
+    printWidthMm,
+    printHeightMm,
+    printQualityPpi,
   } = props
 
   // 👇 te faltaban estos
@@ -251,7 +257,13 @@ export default function BigFrameViewer(props: {
           style={{ display: paintError ? 'none' : 'block' }}
         />
         {activeFrameSetting && !showPrintArea && !paintError && printFrame && (
-          <FrameStyleOverlay setting={activeFrameSetting} dimensions={printFrame} />
+          <FrameStyleOverlay
+            setting={activeFrameSetting}
+            dimensions={printFrame}
+            printWidthMm={printWidthMm}
+            printHeightMm={printHeightMm}
+            printQualityPpi={printQualityPpi}
+          />
         )}
         {showPrintArea && !paintError && printOverlay && (
           <div
@@ -279,6 +291,9 @@ export default function BigFrameViewer(props: {
                 <FrameStyleOverlay
                   setting={activeFrameSetting}
                   dimensions={{ width: printOverlay.width, height: printOverlay.height }}
+                  printWidthMm={printWidthMm}
+                  printHeightMm={printHeightMm}
+                  printQualityPpi={printQualityPpi}
                 />
               )}
               {printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight && (

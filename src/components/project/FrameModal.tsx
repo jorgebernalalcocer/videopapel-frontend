@@ -2,26 +2,32 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import type { FramePosition } from '@/types/frame'
+import type { FramePosition, FrameSettingClient } from '@/types/frame'
 
-type FrameOption = {
+export type FrameOption = {
   id: number
   name: string
   description?: string | null
 }
 
-export type FrameInsertPayload = {
+export type FrameFormPayload = {
   frameId: number
   thickness: number
   positions: FramePosition[]
 }
 
+type Mode = 'create' | 'edit'
+
 type Props = {
   open: boolean
+  mode: Mode
   apiBase: string
   accessToken: string | null
+  projectId: string
+  currentSetting?: FrameSettingClient | null
   onClose: () => void
-  onConfirm: (payload: FrameInsertPayload) => void | Promise<void>
+  onConfirm: (payload: FrameFormPayload) => Promise<void>
+  onDelete?: () => Promise<void>
 }
 
 const POSITION_LABELS: Record<FramePosition, string> = {
@@ -31,22 +37,35 @@ const POSITION_LABELS: Record<FramePosition, string> = {
   left: 'Izquierda',
 }
 
-const POSITION_CLASSES: Record<FramePosition, string> = {
-  top: 'top-2 left-1/2 -translate-x-1/2',
-  right: 'right-2 top-1/2 -translate-y-1/2',
-  bottom: 'bottom-2 left-1/2 -translate-x-1/2',
-  left: 'left-2 top-1/2 -translate-y-1/2',
+const POSITION_CLASSES: Record<FramePosition, React.CSSProperties> = {
+  top: { top: 0, left: 0, right: 0 },
+  bottom: { bottom: 0, left: 0, right: 0 },
+  left: { top: 0, bottom: 0, left: 0 },
+  right: { top: 0, bottom: 0, right: 0 },
 }
 
-export default function FrameInsertModal({ open, apiBase, accessToken, onClose, onConfirm }: Props) {
+const ALL_POSITIONS: FramePosition[] = ['top', 'right', 'bottom', 'left']
+
+export default function FrameModal({
+  open,
+  mode,
+  apiBase,
+  accessToken,
+  projectId,
+  currentSetting,
+  onClose,
+  onConfirm,
+  onDelete,
+}: Props) {
   const [frames, setFrames] = useState<FrameOption[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [frameId, setFrameId] = useState<number | ''>('')
   const [thickness, setThickness] = useState(8)
-  const [positions, setPositions] = useState<FramePosition[]>(['top', 'right', 'bottom', 'left'])
+  const [positions, setPositions] = useState<FramePosition[]>(ALL_POSITIONS)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (!open || !accessToken) return
@@ -78,14 +97,26 @@ export default function FrameInsertModal({ open, apiBase, accessToken, onClose, 
 
   useEffect(() => {
     if (!open) return
-    setFrameId('')
-    setThickness(8)
-    setPositions(['top', 'right', 'bottom', 'left'])
-    setIsSubmitting(false)
-    setError(null)
-  }, [open])
+    const initialFrameId = currentSetting?.frame?.id ?? ''
+    const initialThickness = currentSetting?.thickness_px ?? 8
+    const initialPositions = currentSetting?.positions?.length
+      ? (Array.from(new Set(currentSetting.positions)) as FramePosition[])
+      : ALL_POSITIONS
 
-  const title = useMemo(() => 'Configurar marco', [])
+    setFrameId(initialFrameId)
+    setThickness(initialThickness)
+    setPositions(initialPositions)
+    setIsSubmitting(false)
+    setIsDeleting(false)
+    setError(null)
+  }, [open, currentSetting])
+
+  const title = useMemo(
+    () => (mode === 'edit' ? 'Editar marco' : 'Configurar marco'),
+    [mode]
+  )
+
+  const primaryLabel = mode === 'edit' ? 'Guardar cambios' : 'Aplicar marco'
 
   const handleSubmit = async (ev: FormEvent) => {
     ev.preventDefault()
@@ -93,8 +124,8 @@ export default function FrameInsertModal({ open, apiBase, accessToken, onClose, 
       setError('Selecciona un marco disponible.')
       return
     }
-    if (thickness < 4 || thickness > 60) {
-      setError('El grosor debe estar entre 4px y 40px.')
+    if (thickness < 4 || thickness > 400) {
+      setError('El grosor debe estar entre 4px y 400px.')
       return
     }
     if (!positions.length) {
@@ -113,6 +144,20 @@ export default function FrameInsertModal({ open, apiBase, accessToken, onClose, 
     }
   }
 
+  const handleDelete = async () => {
+    if (!onDelete) return
+    setIsDeleting(true)
+    setError(null)
+    try {
+      await onDelete()
+      onClose()
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo eliminar el marco.')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const renderFrameOptionLabel = (frame: FrameOption) => {
     if (frame.description) return `${frame.name} — ${frame.description}`
     return frame.name
@@ -122,7 +167,7 @@ export default function FrameInsertModal({ open, apiBase, accessToken, onClose, 
     <Modal
       open={open}
       onClose={() => {
-        if (!isSubmitting) onClose()
+        if (!isSubmitting && !isDeleting) onClose()
       }}
       title={title}
       size="md"
@@ -130,27 +175,37 @@ export default function FrameInsertModal({ open, apiBase, accessToken, onClose, 
         <div className="flex justify-between w-full">
           {error && <span className="text-sm text-red-600">{error}</span>}
           <div className="flex gap-2 ml-auto">
+            {mode === 'edit' && onDelete && (
+              <button
+                type="button"
+                className="px-4 py-2 rounded-xl border border-red-400 text-red-600 hover:bg-red-50 disabled:opacity-60"
+                onClick={handleDelete}
+                disabled={isSubmitting || isDeleting}
+              >
+                {isDeleting ? 'Eliminando…' : 'Eliminar marco'}
+              </button>
+            )}
             <button
               type="button"
               className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50 disabled:opacity-60"
               onClick={onClose}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isDeleting}
             >
               Cancelar
             </button>
             <button
               type="submit"
-              form="frame-insert-form"
+              form="frame-modal-form"
               className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
               disabled={isSubmitting || !frameId}
             >
-              {isSubmitting ? 'Aplicando…' : 'Aplicar marco'}
+              {isSubmitting ? 'Aplicando…' : primaryLabel}
             </button>
           </div>
         </div>
       }
     >
-      <form id="frame-insert-form" onSubmit={handleSubmit} className="space-y-4">
+      <form id="frame-modal-form" onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Selecciona un marco
@@ -184,35 +239,34 @@ export default function FrameInsertModal({ open, apiBase, accessToken, onClose, 
           <input
             type="number"
             min={4}
-            max={40}
+            max={400}
             className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
             value={thickness}
             onChange={(e) => setThickness(Number(e.target.value))}
           />
-          <p className="text-xs text-gray-500 mt-1">Entre 4 y 40 píxeles.</p>
+          <p className="text-xs text-gray-500 mt-1">Entre 4 y 400 píxeles.</p>
         </div>
 
         <div>
           <p className="block text-sm font-medium text-gray-700 mb-2">
             Posición en el lienzo
           </p>
-          <div className="flex items-center gap-">
-            <div className="relative w-36 h-36 border rounded-xl bg-slate-50">
-              {(['top', 'right', 'bottom', 'left'] as FramePosition[]).map((pos) => {
+          <div className="flex items-center gap-3">
+<div className="relative w-4/4 aspect-square border rounded-xl bg-slate-50">              {ALL_POSITIONS.map((pos) => {
                 const active = positions.includes(pos)
                 return (
                   <button
                     key={pos}
                     type="button"
-                    className={`
-                      absolute px-2 py-1 text-xs rounded-md border text-gray-700 bg-white shadow-sm
-                      transition-colors
-                      ${POSITION_CLASSES[pos]}
-                      ${active ? 'bg-emerald-500 text-white border-emerald-500' : 'hover:bg-gray-100'}
-                    `}
+                    className={`absolute px-2 py-1 text-xs rounded-md border text-gray-700 bg-white shadow-sm transition-colors ${
+                      active ? 'bg-emerald-500 text-white border-emerald-500' : 'hover:bg-gray-100'
+                    }`}
+                    style={POSITION_CLASSES[pos]}
                     onClick={() =>
                       setPositions((prev) =>
-                        prev.includes(pos) ? prev.filter((item) => item !== pos) : [...prev, pos]
+                        prev.includes(pos)
+                          ? (prev.filter((item) => item !== pos) as FramePosition[])
+                          : ([...prev, pos] as FramePosition[])
                       )
                     }
                   >
@@ -222,9 +276,7 @@ export default function FrameInsertModal({ open, apiBase, accessToken, onClose, 
               })}
               <div className="absolute inset-6 border border-dashed border-gray-300 rounded-lg pointer-events-none" />
             </div>
-            <div className="text-sm text-gray-600">
-              {/* <p>Selecciona uno o varios lados del lienzo para aplicar el marco.</p> */}
-            </div>
+  
           </div>
         </div>
       </form>

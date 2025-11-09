@@ -62,6 +62,7 @@ type Project = {
   frame_name?: string | null
   frame_description?: string | null
   frame_setting?: FrameSettingClient
+  print_quality_ppi?: number | null
 }
 
 const STATUS_LABELS: Record<Project['status'], string> = {
@@ -429,6 +430,10 @@ async function handleExportPdf() {
                 onThumbsDensityChange={handleThumbsDensityChange}
                 printSizeLabel={project.print_size_label ?? null}
                 frameSetting={project.frame_setting ?? null}
+                printWidthMm={project.print_size_width_mm ?? null}
+                printHeightMm={project.print_size_height_mm ?? null}
+                printQualityPpi={project.print_quality_ppi ?? null}
+                onFrameChange={() => void fetchProject()}
                 playbackFps={2}
                 onChange={() => {}}
                 onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
