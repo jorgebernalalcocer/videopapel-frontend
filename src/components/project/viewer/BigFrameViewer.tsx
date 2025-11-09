@@ -297,73 +297,17 @@ export default function BigFrameViewer(props: {
                 />
               )}
               {printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight && (
-                (() => {
-                  const marginX = Math.max(0, printOverlay.marginX ?? 0)
-                  const marginY = Math.max(0, printOverlay.marginY ?? 0)
-                  return (
-                    <div className="absolute inset-0 pointer-events-none">
-                      {marginY > 0 && (
-                        <>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: 0,
-                              left: 0,
-                              right: 0,
-                              height: marginY,
-                              background: 'rgba(255,255,255,0.9)',
-                            }}
-                          />
-                          <div
-                            style={{
-                              position: 'absolute',
-                              bottom: 0,
-                              left: 0,
-                              right: 0,
-                              height: marginY,
-                              background: 'rgba(255,255,255,0.9)',
-                            }}
-                          />
-                        </>
-                      )}
-                      {marginX > 0 && (
-                        <>
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: marginY,
-                              bottom: marginY,
-                              left: 0,
-                              width: marginX,
-                              background: 'rgba(255,255,255,0.9)',
-                            }}
-                          />
-                          <div
-                            style={{
-                              position: 'absolute',
-                              top: marginY,
-                              bottom: marginY,
-                              right: 0,
-                              width: marginX,
-                              background: 'rgba(255,255,255,0.9)',
-                            }}
-                          />
-                        </>
-                      )}
-                      <div
-                        className="absolute border border-dashed border-white/85"
-                        style={{
-                          width: `${printOverlay.innerWidth}px`,
-                          height: `${printOverlay.innerHeight}px`,
-                          left: '50%',
-                          top: '50%',
-                          transform: 'translate(-50%, -50%)',
-                          boxShadow: '0 0 0 1px rgba(255,255,255,0.85)',
-                        }}
-                      />
-                    </div>
-                  )
-                })()
+                <div
+                  className="absolute border border-dashed border-white/85 pointer-events-none"
+                  style={{
+                    width: `${printOverlay.innerWidth}px`,
+                    height: `${printOverlay.innerHeight}px`,
+                    left: '50%',
+                    top: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    boxShadow: '0 0 0 1px rgba(255,255,255,0.85)',
+                  }}
+                />
               )}
             </div>
           </div>
