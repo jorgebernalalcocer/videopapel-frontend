@@ -155,7 +155,7 @@ export default function BigFrameViewer(props: {
     const imgH = printFrame.height
     const targetRatio = Math.SQRT2 // Serie A
     const landscape = imgW >= imgH
-    const borderWidth = 8
+    const borderWidth = 4 //espesor grosor marco amarillo
     const mode = (printAspect || 'fill').toLowerCase()
 
     if (mode === 'fit') {
@@ -285,6 +285,7 @@ export default function BigFrameViewer(props: {
                 borderStyle: 'solid',
                 borderColor: '#facc15',
                 boxShadow: printOverlay.shadow,
+                opacity: 1, //opacidad borde amarillo
               }}
             >
               {activeFrameSetting && (
