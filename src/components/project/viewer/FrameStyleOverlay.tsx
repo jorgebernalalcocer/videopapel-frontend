@@ -67,7 +67,7 @@ export default function FrameStyleOverlay({
         renderSegment(style, position, color, {
           thicknessTopBottom,
           thicknessLeftRight,
-          dimensions, // 👈 Pasamos las dimensiones al renderizador de segmento
+          dimensions,
         })
       )}
     </div>
@@ -80,8 +80,8 @@ function renderSegment(
   color: string,
   dims: { 
     thicknessTopBottom: number; 
-    thicknessLeftRight: number;
-    dimensions: { width: number; height: number }; // 👈 Propiedad añadida
+    thicknessLeftRight: number; 
+    dimensions: { width: number; height: number } 
   },
 ) {
   const thickness =
@@ -89,10 +89,9 @@ function renderSegment(
       ? dims.thicknessTopBottom
       : dims.thicknessLeftRight
 
-  // --- ESTILO 'LINE' (CORREGIDO) ---
+  // --- ESTILO 'LINE' (CORRECTO) ---
   if (style === 'line') {
     const isHorizontal = position === 'top' || position === 'bottom'
-    // Aseguramos un mínimo de 2px para visibilidad.
     const lineThickness = Math.max(2, thickness / 3) 
     
     return (
@@ -100,16 +99,14 @@ function renderSegment(
         key={`${style}-${position}`}
         className="absolute"
         style={{
-          ...POSITION_STYLES[position], // Posicionamiento base
+          ...POSITION_STYLES[position], 
           backgroundColor: color,
           ...(isHorizontal
             ? {
-                // Definimos la altura de la línea y la centramos dentro del grosor teórico
                 height: `${lineThickness}px`,
                 [position]: `calc(${thickness / 2}px - ${lineThickness / 2}px)`, 
               }
             : {
-                // Definimos la anchura de la línea y la centramos dentro del grosor teórico
                 width: `${lineThickness}px`,
                 [position]: `calc(${thickness / 2}px - ${lineThickness / 2}px)`,
               }),
@@ -118,101 +115,101 @@ function renderSegment(
     )
   }
 
-// ... dentro de function renderSegment(...)
-
-  // --- ESTILO 'DOTS' (MEJORADO CON ESPACIADO DINÁMICO) ---
+  // --- ESTILO 'DOTS' (SOLUCIÓN DEFINITIVA CON POSICIONAMIENTO ABSOLUTO) ---
   if (style === 'dots') {
     const { width, height } = dims.dimensions
     const isHorizontal = position === 'top' || position === 'bottom'
     
-    // El 'totalLength' DEBE ser el tamaño de la línea que realmente dibujaremos, no el ancho/alto total.
-    // Usaremos 'padding' o 'margin' para reducir la longitud real del área de dibujo.
-    
     const dotSize = Math.max(4, thickness / 2)
+    const radius = dotSize / 2
     
-    // La longitud que se va a dibujar debe ser reducida en 'dotSize' en cada esquina.
-    // Esto es lo que evita la superposición.
+    // REDUCCIÓN: El diámetro completo del punto (lo que dejamos libre en la esquina).
     const reduction = dotSize 
-    const totalLength = (isHorizontal ? width : height) - (reduction * 2) 
 
-    // Si la longitud es muy pequeña, evitamos calcular los dots
-    if (totalLength < dotSize * 2) return null 
+    // LONGITUD EFECTIVA: El área de dibujo después de recortar las esquinas.
+    const effectiveLength = (isHorizontal ? width : height) - (reduction * 2) 
 
-    // Cálculo para espaciado uniforme
-    const spacingFactor = 3.5 // Múltiplo del dotSize para el paso (e.g., 1 punto + 2.5 espacio)
-    const step = dotSize * spacingFactor
-    const numDots = Math.floor(totalLength / step)
+    if (effectiveLength < dotSize) return null 
+
+    // Replicamos la lógica de espaciado del backend
+    const spacingFactor = 3.5 
+    const step = dotSize * spacingFactor 
+    const numDots = Math.floor(effectiveLength / step)
     
     if (numDots < 2) return null 
     
-    // ... (el cálculo de 'space' y 'dotsArray' sigue igual)
-    const remainingLength = totalLength - (numDots * dotSize)
-    const space = remainingLength / (numDots - 1)
+    // Distancia entre el centro de los puntos (para distribución uniforme)
+    const centerSpacing = effectiveLength / (numDots - 1) 
     
     const dotsArray = Array.from({ length: numDots })
+
+    // 1. Estilos del contenedor principal 
+    const thicknessCenterOffset = `calc(${thickness / 2}px - ${dotSize / 2}px)`
+    
+    let containerStyles: CSSProperties = {
+        position: 'absolute',
+        // Estilos base para el eje de la línea
+        [isHorizontal ? 'left' : 'top']: `${reduction}px`,
+        [isHorizontal ? 'right' : 'bottom']: `${reduction}px`,
+
+        // Estilos para el grosor
+        [isHorizontal ? 'height' : 'width']: `${dotSize}px`,
+        [position]: thicknessCenterOffset, // Centrar el contenedor en el grosor del marco
+        
+        display: 'block', 
+    }
+    
+    // Si la posición es 'top' o 'bottom', necesitamos asegurar que left/right están a 0
+    if (isHorizontal) {
+        containerStyles.left = `${reduction}px`
+        containerStyles.right = `${reduction}px`
+        containerStyles.width = `auto` // Permitir que el ancho se calcule por left/right
+    } else {
+        // Si la posición es 'left' o 'right', necesitamos asegurar que top/bottom están a 0
+        containerStyles.top = `${reduction}px`
+        containerStyles.bottom = `${reduction}px`
+        containerStyles.height = `auto` // Permitir que la altura se calcule por top/bottom
+    }
 
     return (
       <div
         key={`${style}-${position}`}
-        className="absolute flex items-center justify-between"
-        style={{
-          ...POSITION_STYLES[position],
-          // 👈 AQUÍ ESTÁN LOS CAMBIOS CLAVE: AÑADIR `left`/`right` o `top`/`bottom`
-          // Esto recorta la longitud de la línea para evitar la esquina.
-          ...(isHorizontal
-            ? {
-                // Segmentos horizontales (top, bottom)
-                // Se mueven a la derecha 'reduction' (dotSize) y se encogen 'reduction' del otro lado
-                left: `${reduction}px`,   
-                right: `${reduction}px`,
-                height: `${dotSize}px`,
-                // Centrar la fila de puntos verticalmente (sin cambios)
-                top: position === 'top' 
-                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
-                    : undefined,
-                bottom: position === 'bottom' 
-                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
-                    : undefined,
-                flexDirection: 'row',
-              }
-            : {
-                // Segmentos verticales (left, right) - NO SE MODIFICAN
-                // Deben ir de borde a borde para 'llenar' el hueco de la esquina.
-                top: `${reduction}px`,
-                bottom: `${reduction}px`,
-                width: `${dotSize}px`,
-                // Centrar la columna de puntos horizontalmente (sin cambios)
-                left: position === 'left'
-                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
-                    : undefined,
-                right: position === 'right' 
-                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
-                    : undefined,
-                flexDirection: 'column',
-              }),
-        }}
+        className="absolute"
+        style={containerStyles} 
       >
-        {/* ... (mapeo de puntos sin cambios) */}
-        {dotsArray.map((_, idx) => (
-          <span
-            key={`${position}-dot-${idx}`}
-            style={{
-              display: 'inline-block',
-              width: `${dotSize}px`,
-              height: `${dotSize}px`,
-              minWidth: `${dotSize}px`, 
-              minHeight: `${dotSize}px`, 
-              borderRadius: '50%',
-              backgroundColor: color,
-              opacity: 0.85,
-            }}
-          />
-        ))}
+        {dotsArray.map((_, idx) => {
+          // Posición del centro del punto desde el inicio de la longitud efectiva
+          const centerPos = idx * centerSpacing
+          
+          // Posición del BORDE izquierdo/superior del punto (lo que usa CSS)
+          // = Centro del punto - Radio
+          const offsetPos = centerPos - radius
+
+          return (
+            <span
+              key={`${position}-dot-${idx}`}
+              style={{
+                display: 'block',
+                position: 'absolute', // CRUCIAL para que left/top funcionen
+                width: `${dotSize}px`,
+                height: `${dotSize}px`,
+                borderRadius: '50%',
+                backgroundColor: color,
+                opacity: 0.85,
+                // Aplicamos la posición calculada:
+                ...(isHorizontal 
+                    ? { left: `${offsetPos}px`, top: 0 } // Horizontal: 'left' es el offset calculado; 'top' es 0 (centrado por el contenedor).
+                    : { top: `${offsetPos}px`, left: 0 } // Vertical: 'top' es el offset calculado; 'left' es 0 (centrado por el contenedor).
+                ),
+              }}
+            />
+          )
+        })}
       </div>
     )
   }
 
-  // --- ESTILO 'FILL' (ORIGINAL) ---
+  // --- ESTILO 'FILL' (FALLBACK ORIGINAL) ---
   return (
     <div
       key={`${style}-${position}`}
@@ -228,7 +225,7 @@ function renderSegment(
   )
 }
 
-// --- FUNCIONES AUXILIARES (Sin cambios, incluidas para que el código sea completo) ---
+// --- Funciones auxiliares (sin cambios) ---
 
 function computeThicknessPx({
   thicknessPct,

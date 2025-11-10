@@ -24,8 +24,7 @@ type PublicProjectResponse = {
   clips: PublicClip[]
 }
 
-// const PREVIEW_PROJECT_ID = '7c32aa3e-3abb-472d-a8b5-c7411efde806'
-const PREVIEW_PROJECT_ID = '61202b95-a4bd-4d85-a5b6-eef34dd5e0ef'
+const PREVIEW_PROJECT_ID = 'd563cd62-d1fb-4c91-ab94-1ff3a75b809a'
 
 export default function LandingProjectPreview() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? ''
@@ -88,7 +87,7 @@ export default function LandingProjectPreview() {
     <section className="mx-auto max-w-6xl px-6 pb-56 pt-10">
       <div className="mb-6">
         <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">
-          Prueba el visor en vivo
+          Prueba el editor en vivo
         </h2>
         <p className="mt-1 text-sm text-gray-500">
           {projectName
