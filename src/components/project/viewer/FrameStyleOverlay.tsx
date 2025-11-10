@@ -1,6 +1,8 @@
 'use client'
 
 import type { CSSProperties } from 'react'
+import * as LucideIcons from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { FrameSettingClient, FramePosition } from '@/types/frame'
 
 type Props = {
@@ -41,6 +43,7 @@ export default function FrameStyleOverlay({
 
   const color = normalizeColor(setting.color_hex, setting.frame?.name)
   const style = (setting.frame?.style || 'fill').toLowerCase()
+  const tileSlug = setting.tile?.slug ?? null
   const referenceDimensionPx = dimensions.height
   const baseThicknessPx = computeThicknessPx({
     thicknessPct,
@@ -64,11 +67,17 @@ export default function FrameStyleOverlay({
       }}
     >
       {uniquePositions.map((position) =>
-        renderSegment(style, position, color, {
-          thicknessTopBottom,
-          thicknessLeftRight,
-          dimensions,
-        })
+        renderSegment(
+          style,
+          position,
+          color,
+          {
+            thicknessTopBottom,
+            thicknessLeftRight,
+            dimensions,
+          },
+          tileSlug
+        )
       )}
     </div>
   )
@@ -83,6 +92,7 @@ function renderSegment(
     thicknessLeftRight: number; 
     dimensions: { width: number; height: number } 
   },
+  tileSlug?: string | null,
 ) {
   const thickness =
     position === 'top' || position === 'bottom'
@@ -113,6 +123,15 @@ function renderSegment(
         }}
       />
     )
+  }
+
+  // --- ESTILO 'TILE' ---
+  if (style === 'tile') {
+    const segment = renderTileSegment(position, color, dims, tileSlug)
+    if (segment) {
+      return segment
+    }
+    // si no hay icono válido, hacemos fallback a relleno estándar
   }
 
   // --- ESTILO 'DOTS' (SOLUCIÓN DEFINITIVA CON POSICIONAMIENTO ABSOLUTO) ---
@@ -223,6 +242,78 @@ function renderSegment(
       }}
     />
   )
+}
+
+function renderTileSegment(
+  position: FramePosition,
+  color: string,
+  dims: {
+    thicknessTopBottom: number
+    thicknessLeftRight: number
+    dimensions: { width: number; height: number }
+  },
+  tileSlug?: string | null
+) {
+  const IconComponent = resolveTileIcon(tileSlug)
+  if (!IconComponent) return null
+  const thickness =
+    position === 'top' || position === 'bottom'
+      ? dims.thicknessTopBottom
+      : dims.thicknessLeftRight
+  const isHorizontal = position === 'top' || position === 'bottom'
+  const iconSize = Math.max(10, Math.min(thickness * 1.1, 56))
+  const availableLength = isHorizontal ? dims.dimensions.width : dims.dimensions.height
+  const spacingUnit = Math.max(16, iconSize * 1.4)
+  const iconCount = Math.max(2, Math.floor(availableLength / spacingUnit))
+  const icons = Array.from({ length: iconCount })
+  const containerStyles: CSSProperties = {
+    position: 'absolute',
+    display: 'flex',
+    flexDirection: isHorizontal ? 'row' : 'column',
+    alignItems: 'center',
+    justifyContent: iconCount > 2 ? 'space-between' : 'center',
+    gap: `${Math.max(4, iconSize * 0.3)}px`,
+    [isHorizontal ? 'left' : 'top']: `${iconSize / 2}px`,
+    [isHorizontal ? 'right' : 'bottom']: `${iconSize / 2}px`,
+    [isHorizontal ? 'height' : 'width']: `${iconSize}px`,
+    [position]: `calc(${thickness / 2}px - ${iconSize / 2}px)`,
+    color,
+  }
+
+  return (
+    <div key={`tile-${position}`} className="absolute" style={containerStyles}>
+      {icons.map((_, idx) => (
+        <IconComponent
+          key={`tile-${position}-${idx}`}
+          size={iconSize}
+          strokeWidth={1.6}
+          style={{ color }}
+        />
+      ))}
+    </div>
+  )
+}
+
+function resolveTileIcon(slug?: string | null): LucideIcon | null {
+  if (!slug) return null
+  const normalized = slug.trim()
+  if (!normalized) return null
+  const pascal = toPascalCase(normalized)
+  const candidates = Array.from(
+    new Set([normalized, normalized.toLowerCase(), normalized.toUpperCase(), pascal])
+  )
+  const pool = LucideIcons as Record<string, LucideIcon | undefined>
+  for (const key of candidates) {
+    const icon = pool[key]
+    if (icon) return icon
+  }
+  return null
+}
+
+function toPascalCase(value: string): string {
+  return value
+    .replace(/[-_\s]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
+    .replace(/^[a-z]/, (ch) => ch.toUpperCase())
 }
 
 // --- Funciones auxiliares (sin cambios) ---

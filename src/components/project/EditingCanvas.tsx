@@ -443,6 +443,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
           thickness_pct: payload.thicknessPct,
           positions: payload.positions,
           color_hex: payload.colorHex,
+          tile_id: payload.tileId ?? null,
         }),
       })
       if (!res.ok) {

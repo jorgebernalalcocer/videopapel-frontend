@@ -9,6 +9,13 @@ export type FrameOption = {
   id: number
   name: string
   description?: string | null
+  style?: string | null
+}
+
+export type FrameTileOption = {
+  id: number
+  name: string
+  slug: string
 }
 
 export type FrameFormPayload = {
@@ -16,6 +23,7 @@ export type FrameFormPayload = {
   thicknessPct: number
   positions: FramePosition[]
   colorHex: string
+  tileId?: number | null
 }
 
 type Mode = 'create' | 'edit'
@@ -58,10 +66,12 @@ export default function FrameModal({
   onDelete,
 }: Props) {
   const [frames, setFrames] = useState<FrameOption[]>([])
+  const [tiles, setTiles] = useState<FrameTileOption[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const [frameId, setFrameId] = useState<number | ''>('')
+  const [tileId, setTileId] = useState<number | ''>('')
   const [thicknessPct, setThicknessPct] = useState(0.02)
   const [positions, setPositions] = useState<FramePosition[]>(ALL_POSITIONS)
   const [colorHex, setColorHex] = useState('#000000')
@@ -75,18 +85,32 @@ export default function FrameModal({
     setError(null)
     ;(async () => {
       try {
-        const res = await fetch(`${apiBase}/frames/`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-          credentials: 'include',
-        })
-        if (!res.ok) {
-          const detail = await res.text()
-          throw new Error(detail || `Error ${res.status}`)
+        const [framesRes, tilesRes] = await Promise.all([
+          fetch(`${apiBase}/frames/`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            credentials: 'include',
+          }),
+          fetch(`${apiBase}/frame-tiles/`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            credentials: 'include',
+          }),
+        ])
+        if (!framesRes.ok) {
+          const detail = await framesRes.text()
+          throw new Error(detail || `Error ${framesRes.status}`)
         }
-        const data = (await res.json()) as FrameOption[]
-        if (!cancelled) setFrames(Array.isArray(data) ? data : [])
+        if (!tilesRes.ok) {
+          const detail = await tilesRes.text()
+          throw new Error(detail || `Error ${tilesRes.status}`)
+        }
+        const framesData = (await framesRes.json()) as FrameOption[]
+        const tilesData = (await tilesRes.json()) as FrameTileOption[]
+        if (!cancelled) {
+          setFrames(Array.isArray(framesData) ? framesData : [])
+          setTiles(Array.isArray(tilesData) ? tilesData : [])
+        }
       } catch (err: any) {
-        if (!cancelled) setError(err?.message || 'No se pudieron cargar los marcos.')
+        if (!cancelled) setError(err?.message || 'No se pudieron cargar los marcos ni los iconos.')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -108,8 +132,10 @@ export default function FrameModal({
       ? (Array.from(new Set(currentSetting.positions)) as FramePosition[])
       : ALL_POSITIONS
     const initialColor = currentSetting?.color_hex ?? '#000000'
+    const initialTileId = currentSetting?.tile?.id ?? ''
 
     setFrameId(initialFrameId)
+    setTileId(initialTileId)
     setThicknessPct(initialThickness)
     setPositions(initialPositions)
     setColorHex(initialColor)
@@ -117,6 +143,26 @@ export default function FrameModal({
     setIsDeleting(false)
     setError(null)
   }, [open, currentSetting])
+
+  const selectedFrame =
+    typeof frameId === 'number'
+      ? frames.find((frame) => frame.id === frameId)
+      : undefined
+  const selectedFrameStyle = (selectedFrame?.style || '').toLowerCase()
+  const requiresTile = selectedFrameStyle === 'tile'
+
+  useEffect(() => {
+    if (frameId === '') {
+      if (tileId !== '') setTileId('')
+      return
+    }
+    if (!selectedFrame) {
+      return
+    }
+    if (!requiresTile && tileId !== '') {
+      setTileId('')
+    }
+  }, [frameId, selectedFrame, requiresTile, tileId])
 
   const title = useMemo(
     () => (mode === 'edit' ? 'Editar marco' : 'Configurar marco'),
@@ -127,7 +173,7 @@ export default function FrameModal({
 
   const handleSubmit = async (ev: FormEvent) => {
     ev.preventDefault()
-    if (!frameId || typeof frameId !== 'number') {
+    if (typeof frameId !== 'number') {
       setError('Selecciona un marco disponible.')
       return
     }
@@ -142,7 +188,17 @@ export default function FrameModal({
     setIsSubmitting(true)
     setError(null)
     try {
-      await onConfirm({ frameId, thicknessPct, positions, colorHex })
+      if (requiresTile && tileId === '') {
+        setError('Selecciona un icono para el mosaico.')
+        return
+      }
+      await onConfirm({
+        frameId,
+        thicknessPct,
+        positions,
+        colorHex,
+        tileId: tileId === '' ? null : tileId,
+      })
       onClose()
     } catch (err: any) {
       setError(err?.message || 'No se pudo aplicar el marco.')
@@ -204,7 +260,11 @@ export default function FrameModal({
               type="submit"
               form="frame-modal-form"
               className="px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700 disabled:opacity-60"
-              disabled={isSubmitting || !frameId}
+              disabled={
+                isSubmitting ||
+                typeof frameId !== 'number' ||
+                (requiresTile && tileId === '')
+              }
             >
               {isSubmitting ? 'Aplicando…' : primaryLabel}
             </button>
@@ -238,6 +298,34 @@ export default function FrameModal({
             </select>
           )}
         </div>
+
+        {requiresTile && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Icono del mosaico
+            </label>
+            {loading ? (
+              <p className="text-gray-500 text-sm">Cargando iconos…</p>
+            ) : tiles.length === 0 ? (
+              <p className="text-gray-500 text-sm">
+                No hay iconos disponibles. Agrégalos desde el panel de administración.
+              </p>
+            ) : (
+              <select
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                value={tileId}
+                onChange={(e) => setTileId(e.target.value ? Number(e.target.value) : '')}
+              >
+                <option value="">Seleccionar icono…</option>
+                {tiles.map((tile) => (
+                  <option key={tile.id} value={tile.id}>
+                    {tile.name} — {tile.slug}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
