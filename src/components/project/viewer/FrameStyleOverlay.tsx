@@ -37,24 +37,19 @@ export default function FrameStyleOverlay({
   const ppi = Math.max(1, printQualityPpi || FALLBACK_PPI)
   const thicknessPct =
     setting.thickness_pct != null ? Math.max(0, Number(setting.thickness_pct)) : null
-  const baseThicknessPx = setting.thickness_px || 8
+  const rawThicknessPx = setting.thickness_px || 8
 
   const frameName = (setting.frame?.name || '').toLowerCase()
   const color = getFrameColor(frameName)
-  const thicknessTopBottom = computeThicknessPx({
+  const baseThicknessPx = computeThicknessPx({
     thicknessPct,
-    thicknessPx: baseThicknessPx,
+    thicknessPx: rawThicknessPx,
     ppi,
     dimensionMm: printHeightMm,
     dimensionPx: dimensions.height,
   })
-  const thicknessLeftRight = computeThicknessPx({
-    thicknessPct,
-    thicknessPx: baseThicknessPx,
-    ppi,
-    dimensionMm: printWidthMm,
-    dimensionPx: dimensions.width,
-  })
+  const thicknessTopBottom = baseThicknessPx
+  const thicknessLeftRight = baseThicknessPx
 
   return (
     <div
