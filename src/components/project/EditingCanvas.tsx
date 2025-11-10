@@ -442,6 +442,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
           frame_id: payload.frameId,
           thickness_pct: payload.thicknessPct,
           positions: payload.positions,
+          color_hex: payload.colorHex,
         }),
       })
       if (!res.ok) {
@@ -449,7 +450,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
         throw new Error(msg || 'No se pudo actualizar el marco del proyecto.')
       }
       const posLabel = payload.positions.join(', ')
-      toast.success(`Marco configurado: ${ (payload.thicknessPct * 100).toFixed(2)}% • lados ${posLabel || '—'}.`)
+      toast.success(`Marco configurado: ${(payload.thicknessPct * 100).toFixed(2)}% • lados ${posLabel || '—'}.`)
       onFrameChange?.()
     },
     [accessToken, apiBase, projectId, onFrameChange]

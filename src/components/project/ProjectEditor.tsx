@@ -381,7 +381,7 @@ async function handleExportPdf() {
                       closeModal()
                     },
                   })}
-                  modalTitle="Seleccionar proporción de impresión"
+                  modalTitle="Seleccionar posición de impresión"
                   modalDescription="Define cómo se ajustará la imagen al área de impresión."
                 />
                 <SelectableBadgeWrapper

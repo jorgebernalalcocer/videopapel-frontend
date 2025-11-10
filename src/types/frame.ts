@@ -9,4 +9,5 @@ export type FrameSettingClient = {
   thickness_px: number
   thickness_pct?: number | null
   positions: FramePosition[]
+  color_hex?: string | null
 } | null

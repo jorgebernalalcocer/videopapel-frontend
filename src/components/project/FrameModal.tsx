@@ -15,6 +15,7 @@ export type FrameFormPayload = {
   frameId: number
   thicknessPct: number
   positions: FramePosition[]
+  colorHex: string
 }
 
 type Mode = 'create' | 'edit'
@@ -63,6 +64,7 @@ export default function FrameModal({
   const [frameId, setFrameId] = useState<number | ''>('')
   const [thicknessPct, setThicknessPct] = useState(0.02)
   const [positions, setPositions] = useState<FramePosition[]>(ALL_POSITIONS)
+  const [colorHex, setColorHex] = useState('#000000')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
@@ -105,10 +107,12 @@ export default function FrameModal({
     const initialPositions = currentSetting?.positions?.length
       ? (Array.from(new Set(currentSetting.positions)) as FramePosition[])
       : ALL_POSITIONS
+    const initialColor = currentSetting?.color_hex ?? '#000000'
 
     setFrameId(initialFrameId)
     setThicknessPct(initialThickness)
     setPositions(initialPositions)
+    setColorHex(initialColor)
     setIsSubmitting(false)
     setIsDeleting(false)
     setError(null)
@@ -138,7 +142,7 @@ export default function FrameModal({
     setIsSubmitting(true)
     setError(null)
     try {
-      await onConfirm({ frameId, thicknessPct, positions })
+      await onConfirm({ frameId, thicknessPct, positions, colorHex })
       onClose()
     } catch (err: any) {
       setError(err?.message || 'No se pudo aplicar el marco.')
@@ -262,7 +266,8 @@ export default function FrameModal({
             Posición en el lienzo
           </p>
           <div className="flex items-center gap-3">
-<div className="relative w-4/4 aspect-square border rounded-xl bg-slate-50">              {ALL_POSITIONS.map((pos) => {
+            <div className="relative w-40 aspect-square border rounded-xl bg-slate-50">
+              {ALL_POSITIONS.map((pos) => {
                 const active = positions.includes(pos)
                 return (
                   <button
@@ -288,6 +293,18 @@ export default function FrameModal({
             </div>
   
           </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Color del marco
+          </label>
+          <input
+            type="color"
+            className="h-10 w-16 rounded border border-gray-300"
+            value={colorHex}
+            onChange={(e) => setColorHex(e.target.value)}
+          />
         </div>
       </form>
     </Modal>

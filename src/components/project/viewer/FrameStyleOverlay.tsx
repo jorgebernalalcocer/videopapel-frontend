@@ -39,8 +39,7 @@ export default function FrameStyleOverlay({
     setting.thickness_pct != null ? Math.max(0, Number(setting.thickness_pct)) : null
   const rawThicknessPx = setting.thickness_px || 8
 
-  const frameName = (setting.frame?.name || '').toLowerCase()
-  const color = getFrameColor(frameName)
+  const color = normalizeColor(setting.color_hex, setting.frame?.name)
   const baseThicknessPx = computeThicknessPx({
     thicknessPct,
     thicknessPx: rawThicknessPx,
@@ -109,9 +108,12 @@ function computeThicknessPx({
   return clamped
 }
 
-function getFrameColor(name: string): string {
-  if (name === 'cine' || name === 'cinema') {
-    return 'rgba(0,0,0,0.92)'
+function normalizeColor(value?: string | null, fallbackName?: string | null): string {
+  if (value) return value
+  if (!fallbackName) return DEFAULT_COLOR
+  const name = fallbackName.toLowerCase()
+  if (name.includes('negro') || name.includes('black') || name.includes('cine')) {
+    return '#000000'
   }
   return DEFAULT_COLOR
 }
