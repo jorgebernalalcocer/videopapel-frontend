@@ -66,19 +66,20 @@ export default function FrameStyleOverlay({
         transform: 'translate(-50%, -50%)',
       }}
     >
-      {uniquePositions.map((position) =>
-        renderSegment(
-          style,
-          position,
-          color,
-          {
-            thicknessTopBottom,
-            thicknessLeftRight,
-            dimensions,
-          },
-          tileSlug
-        )
-      )}
+    {uniquePositions.map((position) =>
+      renderSegment(
+        style,
+        position,
+        color,
+        {
+          thicknessTopBottom,
+          thicknessLeftRight,
+          dimensions,
+        },
+        tileSlug,
+        new Set(uniquePositions) // <-- añadido
+      )
+    )}
     </div>
   )
 }
@@ -87,12 +88,13 @@ function renderSegment(
   style: string,
   position: FramePosition,
   color: string,
-  dims: { 
-    thicknessTopBottom: number; 
-    thicknessLeftRight: number; 
-    dimensions: { width: number; height: number } 
+  dims: {
+    thicknessTopBottom: number
+    thicknessLeftRight: number
+    dimensions: { width: number; height: number }
   },
   tileSlug?: string | null,
+  present?: Set<FramePosition> // <-- añadido
 ) {
   const thickness =
     position === 'top' || position === 'bottom'
@@ -125,16 +127,88 @@ function renderSegment(
     )
   }
 
-  // --- ESTILO 'TILE' ---
-  if (style === 'tile') {
-    const segment = renderTileSegment(position, color, dims, tileSlug)
-    if (segment) {
-      return segment
-    }
-    // si no hay icono válido, hacemos fallback a relleno estándar
+// --- ESTILO 'TILE' (MIMÉTICO A DOTS, SOLO CAMBIA EL ELEMENTO) ---
+if (style === 'tile') {
+  const { width, height } = dims.dimensions
+  const isHorizontal = position === 'top' || position === 'bottom'
+
+  const IconComponent = resolveTileIcon(tileSlug)
+  if (!IconComponent) {
+    // fallback idéntico al de siempre
+    return (
+      <div
+        key={`fill-${position}`}
+        className="absolute"
+        style={{
+          ...POSITION_STYLES[position],
+          backgroundColor: color,
+          ...(isHorizontal ? { height: `${thickness}px` } : { width: `${thickness}px` }),
+        }}
+      />
+    )
   }
 
-  // --- ESTILO 'DOTS' (SOLUCIÓN DEFINITIVA CON POSICIONAMIENTO ABSOLUTO) ---
+  // === COPIA EXACTA DE DOTS ===
+  const dotSize = Math.max(4, thickness / 2)     // igual que dots
+  const radius = dotSize / 2
+  const reduction = dotSize                      // igual que dots
+
+  const effectiveLength = (isHorizontal ? width : height) - (reduction * 2)
+  if (effectiveLength < dotSize) return null
+
+  const spacingFactor = 3.5                      // igual que dots
+  const step = dotSize * spacingFactor
+  const numDots = Math.floor(effectiveLength / step)
+  if (numDots < 2) return null
+
+  const centerSpacing = effectiveLength / (numDots - 1)
+
+  const thicknessCenterOffset = `calc(${thickness / 2}px - ${dotSize / 2}px)`
+  const containerStyles: CSSProperties = {
+    position: 'absolute',
+    [isHorizontal ? 'left' : 'top']: `${reduction}px`,
+    [isHorizontal ? 'right' : 'bottom']: `${reduction}px`,
+    [isHorizontal ? 'height' : 'width']: `${dotSize}px`,
+    [position]: thicknessCenterOffset,
+    display: 'block',
+    color, // Lucide usa currentColor en stroke → se tiñe correctamente
+  }
+  if (isHorizontal) {
+    containerStyles.width = 'auto'
+  } else {
+    containerStyles.height = 'auto'
+  }
+
+  return (
+    <div key={`tile-${position}`} className="absolute" style={containerStyles}>
+      {Array.from({ length: numDots }).map((_, idx) => {
+        const centerPos = idx * centerSpacing
+        const offsetPos = centerPos - radius  // igual que dots (top-left del box)
+
+        return (
+          <IconComponent
+            key={`${position}-tile-${idx}`}
+            size={dotSize}       // caja igual que el “dot”
+            strokeWidth={1.6}
+            style={{
+              display: 'block',
+              position: 'absolute',
+              color,
+              ...(isHorizontal
+                ? { left: `${offsetPos}px`, top: 0 }
+                : { top: `${offsetPos}px`, left: 0 }),
+              width: `${dotSize}px`,
+              height: `${dotSize}px`,
+            }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+
+  // --- ESTILO 'DOTS' (EL CÓDIGO QUE FUNCIONA) ---
   if (style === 'dots') {
     const { width, height } = dims.dimensions
     const isHorizontal = position === 'top' || position === 'bottom'
@@ -142,52 +216,39 @@ function renderSegment(
     const dotSize = Math.max(4, thickness / 2)
     const radius = dotSize / 2
     
-    // REDUCCIÓN: El diámetro completo del punto (lo que dejamos libre en la esquina).
     const reduction = dotSize 
 
-    // LONGITUD EFECTIVA: El área de dibujo después de recortar las esquinas.
     const effectiveLength = (isHorizontal ? width : height) - (reduction * 2) 
 
     if (effectiveLength < dotSize) return null 
 
-    // Replicamos la lógica de espaciado del backend
     const spacingFactor = 3.5 
     const step = dotSize * spacingFactor 
     const numDots = Math.floor(effectiveLength / step)
     
     if (numDots < 2) return null 
     
-    // Distancia entre el centro de los puntos (para distribución uniforme)
     const centerSpacing = effectiveLength / (numDots - 1) 
     
     const dotsArray = Array.from({ length: numDots })
 
-    // 1. Estilos del contenedor principal 
     const thicknessCenterOffset = `calc(${thickness / 2}px - ${dotSize / 2}px)`
     
     let containerStyles: CSSProperties = {
         position: 'absolute',
-        // Estilos base para el eje de la línea
         [isHorizontal ? 'left' : 'top']: `${reduction}px`,
         [isHorizontal ? 'right' : 'bottom']: `${reduction}px`,
 
-        // Estilos para el grosor
         [isHorizontal ? 'height' : 'width']: `${dotSize}px`,
-        [position]: thicknessCenterOffset, // Centrar el contenedor en el grosor del marco
+        [position]: thicknessCenterOffset, 
         
         display: 'block', 
     }
     
-    // Si la posición es 'top' o 'bottom', necesitamos asegurar que left/right están a 0
     if (isHorizontal) {
-        containerStyles.left = `${reduction}px`
-        containerStyles.right = `${reduction}px`
-        containerStyles.width = `auto` // Permitir que el ancho se calcule por left/right
+        containerStyles.width = `auto`
     } else {
-        // Si la posición es 'left' o 'right', necesitamos asegurar que top/bottom están a 0
-        containerStyles.top = `${reduction}px`
-        containerStyles.bottom = `${reduction}px`
-        containerStyles.height = `auto` // Permitir que la altura se calcule por top/bottom
+        containerStyles.height = `auto`
     }
 
     return (
@@ -197,11 +258,8 @@ function renderSegment(
         style={containerStyles} 
       >
         {dotsArray.map((_, idx) => {
-          // Posición del centro del punto desde el inicio de la longitud efectiva
           const centerPos = idx * centerSpacing
           
-          // Posición del BORDE izquierdo/superior del punto (lo que usa CSS)
-          // = Centro del punto - Radio
           const offsetPos = centerPos - radius
 
           return (
@@ -209,16 +267,15 @@ function renderSegment(
               key={`${position}-dot-${idx}`}
               style={{
                 display: 'block',
-                position: 'absolute', // CRUCIAL para que left/top funcionen
+                position: 'absolute', 
                 width: `${dotSize}px`,
                 height: `${dotSize}px`,
                 borderRadius: '50%',
                 backgroundColor: color,
                 opacity: 0.85,
-                // Aplicamos la posición calculada:
                 ...(isHorizontal 
-                    ? { left: `${offsetPos}px`, top: 0 } // Horizontal: 'left' es el offset calculado; 'top' es 0 (centrado por el contenedor).
-                    : { top: `${offsetPos}px`, left: 0 } // Vertical: 'top' es el offset calculado; 'left' es 0 (centrado por el contenedor).
+                    ? { left: `${offsetPos}px`, top: 0 } 
+                    : { top: `${offsetPos}px`, left: 0 } 
                 ),
               }}
             />
@@ -244,55 +301,7 @@ function renderSegment(
   )
 }
 
-function renderTileSegment(
-  position: FramePosition,
-  color: string,
-  dims: {
-    thicknessTopBottom: number
-    thicknessLeftRight: number
-    dimensions: { width: number; height: number }
-  },
-  tileSlug?: string | null
-) {
-  const IconComponent = resolveTileIcon(tileSlug)
-  if (!IconComponent) return null
-  const thickness =
-    position === 'top' || position === 'bottom'
-      ? dims.thicknessTopBottom
-      : dims.thicknessLeftRight
-  const isHorizontal = position === 'top' || position === 'bottom'
-  const iconSize = Math.max(10, Math.min(thickness * 1.1, 56))
-  const availableLength = isHorizontal ? dims.dimensions.width : dims.dimensions.height
-  const spacingUnit = Math.max(16, iconSize * 1.4)
-  const iconCount = Math.max(2, Math.floor(availableLength / spacingUnit))
-  const icons = Array.from({ length: iconCount })
-  const containerStyles: CSSProperties = {
-    position: 'absolute',
-    display: 'flex',
-    flexDirection: isHorizontal ? 'row' : 'column',
-    alignItems: 'center',
-    justifyContent: iconCount > 2 ? 'space-between' : 'center',
-    gap: `${Math.max(4, iconSize * 0.3)}px`,
-    [isHorizontal ? 'left' : 'top']: `${iconSize / 2}px`,
-    [isHorizontal ? 'right' : 'bottom']: `${iconSize / 2}px`,
-    [isHorizontal ? 'height' : 'width']: `${iconSize}px`,
-    [position]: `calc(${thickness / 2}px - ${iconSize / 2}px)`,
-    color,
-  }
-
-  return (
-    <div key={`tile-${position}`} className="absolute" style={containerStyles}>
-      {icons.map((_, idx) => (
-        <IconComponent
-          key={`tile-${position}-${idx}`}
-          size={iconSize}
-          strokeWidth={1.6}
-          style={{ color }}
-        />
-      ))}
-    </div>
-  )
-}
+// --- Funciones auxiliares (Sin cambios) ---
 
 function resolveTileIcon(slug?: string | null): LucideIcon | null {
   if (!slug) return null
@@ -315,8 +324,6 @@ function toPascalCase(value: string): string {
     .replace(/[-_\s]+(.)?/g, (_, chr) => (chr ? chr.toUpperCase() : ''))
     .replace(/^[a-z]/, (ch) => ch.toUpperCase())
 }
-
-// --- Funciones auxiliares (sin cambios) ---
 
 function computeThicknessPx({
   thicknessPct,
