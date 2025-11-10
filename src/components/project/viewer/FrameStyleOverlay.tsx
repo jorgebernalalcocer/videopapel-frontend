@@ -40,12 +40,14 @@ export default function FrameStyleOverlay({
   const rawThicknessPx = setting.thickness_px || 8
 
   const color = normalizeColor(setting.color_hex, setting.frame?.name)
+  const style = (setting.frame?.style || 'fill').toLowerCase()
+  const referenceDimensionPx = dimensions.height
   const baseThicknessPx = computeThicknessPx({
     thicknessPct,
     thicknessPx: rawThicknessPx,
     ppi,
     dimensionMm: printHeightMm,
-    dimensionPx: dimensions.height,
+    dimensionPx: referenceDimensionPx,
   })
   const thicknessTopBottom = baseThicknessPx
   const thicknessLeftRight = baseThicknessPx
@@ -61,20 +63,117 @@ export default function FrameStyleOverlay({
         transform: 'translate(-50%, -50%)',
       }}
     >
-      {uniquePositions.map((position) => (
-        <div
-          key={position}
-          className="absolute"
-          style={{
-            ...POSITION_STYLES[position],
-            backgroundColor: color,
-            ...(position === 'top' || position === 'bottom'
-              ? { height: `${thicknessTopBottom}px` }
-              : { width: `${thicknessLeftRight}px` }),
-          }}
-        />
-      ))}
+      {uniquePositions.map((position) =>
+        renderSegment(style, position, color, {
+          thicknessTopBottom,
+          thicknessLeftRight,
+        })
+      )}
     </div>
+  )
+}
+
+function renderSegment(
+  style: string,
+  position: FramePosition,
+  color: string,
+  dims: { thicknessTopBottom: number; thicknessLeftRight: number },
+) {
+  const thickness =
+    position === 'top' || position === 'bottom'
+      ? dims.thicknessTopBottom
+      : dims.thicknessLeftRight
+
+  if (style === 'line') {
+    const isHorizontal = position === 'top' || position === 'bottom'
+    const lineThickness = Math.max(1, thickness / 3)
+    return (
+      <div
+        key={`${style}-${position}`}
+        className="absolute"
+        style={{
+          ...(isHorizontal
+            ? {
+                left: 0,
+                right: 0,
+                height: `${lineThickness}px`,
+                top: position === 'top' ? 0 : undefined,
+                bottom: position === 'bottom' ? 0 : undefined,
+              }
+            : {
+                top: 0,
+                bottom: 0,
+                width: `${lineThickness}px`,
+                left: position === 'left' ? 0 : undefined,
+                right: position === 'right' ? 0 : undefined,
+              }),
+          backgroundColor: color,
+        }}
+      />
+    )
+  }
+
+  if (style === 'dots') {
+    const isHorizontal = position === 'top' || position === 'bottom'
+    const dotSize = Math.max(4, thickness / 2)
+    return (
+      <div
+        key={`${style}-${position}`}
+        className="absolute flex"
+        style={{
+          ...(isHorizontal
+            ? {
+                top: position === 'top' ? 0 : undefined,
+                bottom: position === 'bottom' ? 0 : undefined,
+                left: 0,
+                right: 0,
+                height: `${dotSize}px`,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '0 4px',
+              }
+            : {
+                left: position === 'left' ? 0 : undefined,
+                right: position === 'right' ? 0 : undefined,
+                top: 0,
+                bottom: 0,
+                width: `${dotSize}px`,
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '4px 0',
+              }),
+        }}
+      >
+        {Array.from({ length: 12 }).map((_, idx) => (
+          <span
+            key={`${position}-dot-${idx}`}
+            style={{
+              display: 'inline-block',
+              width: `${dotSize}px`,
+              height: `${dotSize}px`,
+              borderRadius: '50%',
+              backgroundColor: color,
+              opacity: 0.85,
+            }}
+          />
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div
+      key={`${style}-${position}`}
+      className="absolute"
+      style={{
+        ...POSITION_STYLES[position],
+        backgroundColor: color,
+        ...(position === 'top' || position === 'bottom'
+          ? { height: `${thickness}px` }
+          : { width: `${thickness}px` }),
+      }}
+    />
   )
 }
 

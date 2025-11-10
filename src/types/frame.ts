@@ -5,6 +5,7 @@ export type FrameSettingClient = {
     id: number
     name: string | null
     description?: string | null
+    style?: string | null
   } | null
   thickness_px: number
   thickness_pct?: number | null
