@@ -289,13 +289,34 @@ export default function BigFrameViewer(props: {
               }}
             >
               {activeFrameSetting && (
-                <FrameStyleOverlay
-                  setting={activeFrameSetting}
-                  dimensions={{ width: printOverlay.width, height: printOverlay.height }}
-                  printWidthMm={printWidthMm}
-                  printHeightMm={printHeightMm}
-                  printQualityPpi={printQualityPpi}
-                />
+                printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight ? (
+                  <div
+                    className="absolute pointer-events-none"
+                    style={{
+                      width: `${printOverlay.innerWidth}px`,
+                      height: `${printOverlay.innerHeight}px`,
+                      left: '50%',
+                      top: '50%',
+                      transform: 'translate(-50%, -50%)',
+                    }}
+                  >
+                    <FrameStyleOverlay
+                      setting={activeFrameSetting}
+                      dimensions={{ width: printOverlay.innerWidth, height: printOverlay.innerHeight }}
+                      printWidthMm={printWidthMm}
+                      printHeightMm={printHeightMm}
+                      printQualityPpi={printQualityPpi}
+                    />
+                  </div>
+                ) : (
+                  <FrameStyleOverlay
+                    setting={activeFrameSetting}
+                    dimensions={{ width: printOverlay.width, height: printOverlay.height }}
+                    printWidthMm={printWidthMm}
+                    printHeightMm={printHeightMm}
+                    printQualityPpi={printQualityPpi}
+                  />
+                )
               )}
               {printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight && (
                 <div
