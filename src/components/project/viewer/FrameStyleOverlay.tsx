@@ -67,6 +67,7 @@ export default function FrameStyleOverlay({
         renderSegment(style, position, color, {
           thicknessTopBottom,
           thicknessLeftRight,
+          dimensions, // 👈 Pasamos las dimensiones al renderizador de segmento
         })
       )}
     </div>
@@ -77,81 +78,130 @@ function renderSegment(
   style: string,
   position: FramePosition,
   color: string,
-  dims: { thicknessTopBottom: number; thicknessLeftRight: number },
+  dims: { 
+    thicknessTopBottom: number; 
+    thicknessLeftRight: number;
+    dimensions: { width: number; height: number }; // 👈 Propiedad añadida
+  },
 ) {
   const thickness =
     position === 'top' || position === 'bottom'
       ? dims.thicknessTopBottom
       : dims.thicknessLeftRight
 
+  // --- ESTILO 'LINE' (CORREGIDO) ---
   if (style === 'line') {
     const isHorizontal = position === 'top' || position === 'bottom'
-    const lineThickness = Math.max(1, thickness / 3)
+    // Aseguramos un mínimo de 2px para visibilidad.
+    const lineThickness = Math.max(2, thickness / 3) 
+    
     return (
       <div
         key={`${style}-${position}`}
         className="absolute"
         style={{
+          ...POSITION_STYLES[position], // Posicionamiento base
+          backgroundColor: color,
           ...(isHorizontal
             ? {
-                left: 0,
-                right: 0,
+                // Definimos la altura de la línea y la centramos dentro del grosor teórico
                 height: `${lineThickness}px`,
-                top: position === 'top' ? 0 : undefined,
-                bottom: position === 'bottom' ? 0 : undefined,
+                [position]: `calc(${thickness / 2}px - ${lineThickness / 2}px)`, 
               }
             : {
-                top: 0,
-                bottom: 0,
+                // Definimos la anchura de la línea y la centramos dentro del grosor teórico
                 width: `${lineThickness}px`,
-                left: position === 'left' ? 0 : undefined,
-                right: position === 'right' ? 0 : undefined,
+                [position]: `calc(${thickness / 2}px - ${lineThickness / 2}px)`,
               }),
-          backgroundColor: color,
         }}
       />
     )
   }
 
+// ... dentro de function renderSegment(...)
+
+  // --- ESTILO 'DOTS' (MEJORADO CON ESPACIADO DINÁMICO) ---
   if (style === 'dots') {
+    const { width, height } = dims.dimensions
     const isHorizontal = position === 'top' || position === 'bottom'
+    
+    // El 'totalLength' DEBE ser el tamaño de la línea que realmente dibujaremos, no el ancho/alto total.
+    // Usaremos 'padding' o 'margin' para reducir la longitud real del área de dibujo.
+    
     const dotSize = Math.max(4, thickness / 2)
+    
+    // La longitud que se va a dibujar debe ser reducida en 'dotSize' en cada esquina.
+    // Esto es lo que evita la superposición.
+    const reduction = dotSize 
+    const totalLength = (isHorizontal ? width : height) - (reduction * 2) 
+
+    // Si la longitud es muy pequeña, evitamos calcular los dots
+    if (totalLength < dotSize * 2) return null 
+
+    // Cálculo para espaciado uniforme
+    const spacingFactor = 3.5 // Múltiplo del dotSize para el paso (e.g., 1 punto + 2.5 espacio)
+    const step = dotSize * spacingFactor
+    const numDots = Math.floor(totalLength / step)
+    
+    if (numDots < 2) return null 
+    
+    // ... (el cálculo de 'space' y 'dotsArray' sigue igual)
+    const remainingLength = totalLength - (numDots * dotSize)
+    const space = remainingLength / (numDots - 1)
+    
+    const dotsArray = Array.from({ length: numDots })
+
     return (
       <div
         key={`${style}-${position}`}
-        className="absolute flex"
+        className="absolute flex items-center justify-between"
         style={{
+          ...POSITION_STYLES[position],
+          // 👈 AQUÍ ESTÁN LOS CAMBIOS CLAVE: AÑADIR `left`/`right` o `top`/`bottom`
+          // Esto recorta la longitud de la línea para evitar la esquina.
           ...(isHorizontal
             ? {
-                top: position === 'top' ? 0 : undefined,
-                bottom: position === 'bottom' ? 0 : undefined,
-                left: 0,
-                right: 0,
+                // Segmentos horizontales (top, bottom)
+                // Se mueven a la derecha 'reduction' (dotSize) y se encogen 'reduction' del otro lado
+                left: `${reduction}px`,   
+                right: `${reduction}px`,
                 height: `${dotSize}px`,
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '0 4px',
+                // Centrar la fila de puntos verticalmente (sin cambios)
+                top: position === 'top' 
+                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
+                    : undefined,
+                bottom: position === 'bottom' 
+                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
+                    : undefined,
+                flexDirection: 'row',
               }
             : {
-                left: position === 'left' ? 0 : undefined,
-                right: position === 'right' ? 0 : undefined,
-                top: 0,
-                bottom: 0,
+                // Segmentos verticales (left, right) - NO SE MODIFICAN
+                // Deben ir de borde a borde para 'llenar' el hueco de la esquina.
+                top: `${reduction}px`,
+                bottom: `${reduction}px`,
                 width: `${dotSize}px`,
+                // Centrar la columna de puntos horizontalmente (sin cambios)
+                left: position === 'left'
+                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
+                    : undefined,
+                right: position === 'right' 
+                    ? `calc(${thickness / 2}px - ${dotSize / 2}px)`
+                    : undefined,
                 flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '4px 0',
               }),
         }}
       >
-        {Array.from({ length: 12 }).map((_, idx) => (
+        {/* ... (mapeo de puntos sin cambios) */}
+        {dotsArray.map((_, idx) => (
           <span
             key={`${position}-dot-${idx}`}
             style={{
               display: 'inline-block',
               width: `${dotSize}px`,
               height: `${dotSize}px`,
+              minWidth: `${dotSize}px`, 
+              minHeight: `${dotSize}px`, 
               borderRadius: '50%',
               backgroundColor: color,
               opacity: 0.85,
@@ -162,6 +212,7 @@ function renderSegment(
     )
   }
 
+  // --- ESTILO 'FILL' (ORIGINAL) ---
   return (
     <div
       key={`${style}-${position}`}
@@ -176,6 +227,8 @@ function renderSegment(
     />
   )
 }
+
+// --- FUNCIONES AUXILIARES (Sin cambios, incluidas para que el código sea completo) ---
 
 function computeThicknessPx({
   thicknessPct,
