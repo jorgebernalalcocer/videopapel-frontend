@@ -24,6 +24,7 @@ export type FrameFormPayload = {
   positions: FramePosition[]
   colorHex: string
   tileId?: number | null
+  tileFilled: boolean
 }
 
 type Mode = 'create' | 'edit'
@@ -72,6 +73,7 @@ export default function FrameModal({
 
   const [frameId, setFrameId] = useState<number | ''>('')
   const [tileId, setTileId] = useState<number | ''>('')
+  const [filledIcon, setFilledIcon] = useState(true)
   const [thicknessPct, setThicknessPct] = useState(0.02)
   const [positions, setPositions] = useState<FramePosition[]>(ALL_POSITIONS)
   const [colorHex, setColorHex] = useState('#000000')
@@ -133,12 +135,14 @@ export default function FrameModal({
       : ALL_POSITIONS
     const initialColor = currentSetting?.color_hex ?? '#000000'
     const initialTileId = currentSetting?.tile?.id ?? ''
+    const initialFilled = currentSetting?.tile_filled !== false
 
     setFrameId(initialFrameId)
     setTileId(initialTileId)
     setThicknessPct(initialThickness)
     setPositions(initialPositions)
     setColorHex(initialColor)
+    setFilledIcon(initialFilled)
     setIsSubmitting(false)
     setIsDeleting(false)
     setError(null)
@@ -198,6 +202,7 @@ export default function FrameModal({
         positions,
         colorHex,
         tileId: tileId === '' ? null : tileId,
+        tileFilled: filledIcon,
       })
       onClose()
     } catch (err: any) {
@@ -324,12 +329,34 @@ export default function FrameModal({
                 ))}
               </select>
             )}
+            <div className="flex items-center justify-between mt-3">
+              <div>
+                <p className="text-sm font-medium text-gray-700">Icono relleno</p>
+                <p className="text-xs text-gray-500">Activa para rellenar el icono, desactiva para mostrar solo el contorno.</p>
+              </div>
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={filledIcon}
+                  onChange={(e) => setFilledIcon(e.target.checked)}
+                  className="sr-only"
+                />
+                <span
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition ${filledIcon ? 'bg-emerald-600' : 'bg-gray-300'}`}
+                >
+                  <span
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition ${filledIcon ? 'translate-x-5' : 'translate-x-0'}`}
+                  />
+                </span>
+                <span className="text-sm text-gray-700">{filledIcon ? 'Relleno' : 'Contorno'}</span>
+              </label>
+            </div>
           </div>
         )}
 
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
-            Grosor (% del lienzo)
+            Grosor del marco
           </label>
           <input
             type="number"

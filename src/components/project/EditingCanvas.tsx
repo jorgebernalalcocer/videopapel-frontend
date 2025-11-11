@@ -444,6 +444,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
           positions: payload.positions,
           color_hex: payload.colorHex,
           tile_id: payload.tileId ?? null,
+          tile_filled: payload.tileFilled,
         }),
       })
       if (!res.ok) {

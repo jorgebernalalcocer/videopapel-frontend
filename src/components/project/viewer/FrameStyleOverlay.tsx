@@ -44,6 +44,7 @@ export default function FrameStyleOverlay({
   const color = normalizeColor(setting.color_hex, setting.frame?.name)
   const style = (setting.frame?.style || 'fill').toLowerCase()
   const tileSlug = setting.tile?.slug ?? null
+  const tileFilled = setting.tile_filled !== false
   const referenceDimensionPx = dimensions.height
   const baseThicknessPx = computeThicknessPx({
     thicknessPct,
@@ -66,20 +67,20 @@ export default function FrameStyleOverlay({
         transform: 'translate(-50%, -50%)',
       }}
     >
-    {uniquePositions.map((position) =>
-      renderSegment(
-        style,
-        position,
-        color,
-        {
-          thicknessTopBottom,
-          thicknessLeftRight,
-          dimensions,
-        },
-        tileSlug,
-        new Set(uniquePositions) // <-- añadido
-      )
-    )}
+      {uniquePositions.map((position) =>
+        renderSegment(
+          style,
+          position,
+          color,
+          {
+            thicknessTopBottom,
+            thicknessLeftRight,
+            dimensions,
+          },
+          tileSlug,
+          tileFilled
+        )
+      )}
     </div>
   )
 }
@@ -94,7 +95,7 @@ function renderSegment(
     dimensions: { width: number; height: number }
   },
   tileSlug?: string | null,
-  present?: Set<FramePosition> // <-- añadido
+  tileFilled?: boolean
 ) {
   const thickness =
     position === 'top' || position === 'bottom'
@@ -131,17 +132,20 @@ function renderSegment(
 if (style === 'tile') {
   const { width, height } = dims.dimensions
   const isHorizontal = position === 'top' || position === 'bottom'
+  const isFilled = tileFilled !== false
 
   const IconComponent = resolveTileIcon(tileSlug)
   if (!IconComponent) {
-    // fallback idéntico al de siempre
+    const baseShapeStyles = isFilled
+      ? { backgroundColor: color }
+      : { backgroundColor: 'transparent', border: `2px solid ${color}` }
     return (
       <div
         key={`fill-${position}`}
         className="absolute"
         style={{
           ...POSITION_STYLES[position],
-          backgroundColor: color,
+          ...baseShapeStyles,
           ...(isHorizontal ? { height: `${thickness}px` } : { width: `${thickness}px` }),
         }}
       />
@@ -183,22 +187,21 @@ if (style === 'tile') {
     <div key={`tile-${position}`} className="absolute" style={containerStyles}>
       {Array.from({ length: numDots }).map((_, idx) => {
         const centerPos = idx * centerSpacing
-        const offsetPos = centerPos - radius  // igual que dots (top-left del box)
+        const offsetPos = centerPos - radius
 
         return (
           <IconComponent
             key={`${position}-tile-${idx}`}
-            size={dotSize}       // caja igual que el “dot”
-            strokeWidth={1.6}
+            size={dotSize}
+            strokeWidth={isFilled ? 1.4 : 1.8}
+            color={color}
+            fill={isFilled ? color : 'none'}
             style={{
               display: 'block',
               position: 'absolute',
-              color,
               ...(isHorizontal
                 ? { left: `${offsetPos}px`, top: 0 }
                 : { top: `${offsetPos}px`, left: 0 }),
-              width: `${dotSize}px`,
-              height: `${dotSize}px`,
             }}
           />
         )

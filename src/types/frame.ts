@@ -12,6 +12,7 @@ export type FrameSettingClient = {
     name: string | null
     slug?: string | null
   } | null
+  tile_filled?: boolean | null
   thickness_px: number
   thickness_pct?: number | null
   positions: FramePosition[]
