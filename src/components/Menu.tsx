@@ -9,6 +9,7 @@ import RegisterButton from '@/components/RegisterButton'
 import LogoutButton from '@/components/LogoutButton'
 import ClipsButton from '@/components/ClipsButton'
 import ProjectsButton from '@/components/ProjectsButton'
+import ProfileButton from '@/components/ProfileButton'
 import { Menu as MenuIcon, X } from 'lucide-react' // Importar iconos
 
 export default function Menu() {
@@ -51,6 +52,7 @@ export default function Menu() {
             </span>
             <ClipsButton />
             <ProjectsButton />
+            <ProfileButton />
             <LogoutButton />
           </>
         ) : (
