@@ -133,7 +133,7 @@ export default function FrameModal({
     const initialPositions = currentSetting?.positions?.length
       ? (Array.from(new Set(currentSetting.positions)) as FramePosition[])
       : ALL_POSITIONS
-    const initialColor = currentSetting?.color_hex ?? '#000000'
+    const initialColor = currentSetting?.color_hex ?? '#F5E1DF'
     const initialTileId = currentSetting?.tile?.id ?? ''
     const initialFilled = currentSetting?.tile_filled !== false
 
