@@ -359,7 +359,15 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     const defaultStartMs = indexToStartMs(1)
     const defaultEndMs = indexToEndMs(totalFrameCount || 1)
     setEditorMode('create')
-    setEditorInitial({ frame_start: defaultStartMs, frame_end: defaultEndMs, specific_frames: [], content: '', typography: '', font_size: 18 })
+    setEditorInitial({
+      frame_start: defaultStartMs,
+      frame_end: defaultEndMs,
+      specific_frames: [],
+      content: '',
+      typography: '',
+      font_size: 18,
+      color_hex: '#FFFFFF',
+    })
     setEditorOpen(true)
   }
   function openEditTextEditor(overlayId: number) {
@@ -375,6 +383,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       content: aggregate.content,
       typography: aggregate.typography ?? '',
       font_size: aggregate.font_size ?? 18,
+      color_hex: aggregate.color_hex ?? '#FFFFFF',
       frame_start: fallbackStart,
       frame_end: fallbackEnd,
       specific_frames: fallbackSpecific,

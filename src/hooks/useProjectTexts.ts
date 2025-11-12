@@ -8,13 +8,14 @@ export type ProjectTextOverlayApi = {
 export type ProjectTextApiModel = {
   id: number; project: string; content: string; typography: string | null;
   font_size?: number | null;
+  color_hex?: string | null;
   frame_start: number | null; frame_end: number | null; specific_frames: number[];
   overlays: ProjectTextOverlayApi[];
   kind?: 'manual' | 'subtitle';
 }
 export type TextFrame = {
   id: number; clip: number; text_id?: number; project_id?: string;
-  content: string; typography: string | null; font_size?: number | null;
+  content: string; typography: string | null; font_size?: number | null; color_hex?: string | null;
   frame_start: number | null; frame_end: number | null; specific_frames: number[];
   position_x: number; position_y: number;
   frame_start_global?: number | null; frame_end_global?: number | null;
@@ -25,6 +26,14 @@ const clampFontSize = (value: number | null | undefined) => {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return 18
   return Math.min(60, Math.max(5, parsed))
+}
+
+const normalizeColor = (value?: string | null) => {
+  const raw = (value || '#FFFFFF').trim()
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) {
+    return raw.toUpperCase()
+  }
+  return '#FFFFFF'
 }
 
 type ClipMetaMap = Record<number, { offset: number; start: number; end: number }>
@@ -148,7 +157,7 @@ export function useProjectTexts(
         const localEnd = toLocal(overlay.frame_end)
         const normalized: TextFrame = {
           id: overlay.id, clip: overlay.clip, text_id: item.id, project_id: item.project,
-          content: item.content, typography: item.typography, font_size: clampFontSize(item.font_size),
+          content: item.content, typography: item.typography, font_size: clampFontSize(item.font_size), color_hex: normalizeColor(item.color_hex),
           frame_start: localStart == null ? null : Math.max(0, Math.min(localStart, clipDuration)),
           frame_end: localEnd == null ? null : Math.max(0, Math.min(localEnd, clipDuration)),
           specific_frames: normalizeSpecific(overlay.specific_frames),

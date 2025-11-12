@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import ColorPickerField from '@/components/project/ColorPickerField'
 import { toast } from 'sonner'
 
 export type TextFrameModel = {
@@ -12,6 +13,7 @@ export type TextFrameModel = {
   content: string
   typography: string | null
   font_size?: number | null
+  color_hex?: string | null
   frame_start: number | null
   frame_end: number | null
   specific_frames: number[]
@@ -40,14 +42,23 @@ type Props = {
   onSaved: () => void
 }
 
-const FONT_SIZE_MIN = 8
-const FONT_SIZE_MAX = 28
-const DEFAULT_FONT_SIZE = 12
+const FONT_SIZE_MIN = 5
+const FONT_SIZE_MAX = 30
+const DEFAULT_FONT_SIZE = 18
+const DEFAULT_COLOR = '#FFFFFF'
 
 const clampFontSize = (value: number | null | undefined) => {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return DEFAULT_FONT_SIZE
   return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, parsed))
+}
+
+const normalizeColor = (value?: string | null) => {
+  const raw = (value || DEFAULT_COLOR).trim()
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) {
+    return raw.toUpperCase()
+  }
+  return DEFAULT_COLOR
 }
 
 export default function TextFrameEditorModal({
@@ -69,6 +80,7 @@ export default function TextFrameEditorModal({
   const [content, setContent] = useState(initial?.content ?? '')
   const [typography, setTypography] = useState(initial?.typography ?? '')
   const [fontSize, setFontSize] = useState(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
+  const [colorHex, setColorHex] = useState(normalizeColor(initial?.color_hex))
   const [modeValue, setModeValue] = useState<'range' | 'specific'>(
     initial?.specific_frames?.length ? 'specific' : 'range'
   )
@@ -151,6 +163,7 @@ export default function TextFrameEditorModal({
     setContent(initial?.content ?? '')
     setTypography(initial?.typography ?? '')
     setFontSize(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
+    setColorHex(normalizeColor(initial?.color_hex))
     setModeValue(initial?.specific_frames?.length ? 'specific' : 'range')
     const startIndex = msToStartIndex(initial?.frame_start ?? null)
     const endIndex = msToEndIndex(initial?.frame_end ?? null)
@@ -215,11 +228,13 @@ export default function TextFrameEditorModal({
       if (!accessToken) throw new Error('Inicia sesión para continuar.')
 
       const typographyVal = typography.trim() || null
+      const colorValue = normalizeColor(colorHex)
       const body: Record<string, any> = {
         project: projectId,
         content: contentVal,
         typography: typographyVal,
         font_size: fontSize,
+        color_hex: colorValue,
         frame_start,
         frame_end,
         specific_frames,
@@ -308,10 +323,17 @@ export default function TextFrameEditorModal({
             onChange={(e) => setFontSize(clampFontSize(Number(e.target.value)))}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
           />
-          <p className="mt-1 text-xs text-gray-500">
-            Ajusta el tamaño visible del texto (entre {FONT_SIZE_MIN}px y {FONT_SIZE_MAX}px).
-          </p>
+        <p className="mt-1 text-xs text-gray-500">
+          Ajusta el tamaño visible del texto (entre {FONT_SIZE_MIN}px y {FONT_SIZE_MAX}px).
+        </p>
         </div>
+
+        <ColorPickerField
+          label="Color del texto"
+          value={colorHex}
+          onChange={setColorHex}
+          helpText="Se aplicará tanto en el visor como en el PDF exportado."
+        />
 
         {mode === 'edit' && initial?.text_id && (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">

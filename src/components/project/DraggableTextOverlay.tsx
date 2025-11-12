@@ -20,6 +20,7 @@ export type DraggableTextItem = {
   x: number
   y: number
   fontSize?: number | null
+  color?: string | null
 }
 
 /** Acepta tanto RefObject como MutableRefObject y siempre como nullable */
@@ -239,6 +240,7 @@ export default function DraggableTextOverlay({
           <TextFrame
             typography={it.typography}
             fontSize={it.fontSize ?? undefined}
+            colorHex={it.color ?? undefined}
             editable={Boolean(onEdit || onDeleteText)}
             onEdit={onEdit ? () => onEdit(it.id) : undefined}
             dragging={draggingId === it.id}

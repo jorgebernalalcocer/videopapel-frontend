@@ -19,9 +19,18 @@ const clampFontSize = (value?: number | null) => {
   return Math.min(60, Math.max(5, parsed))
 }
 
+const normalizeColor = (value?: string | null) => {
+  const raw = (value || '#FFFFFF').trim()
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) {
+    return raw.toUpperCase()
+  }
+  return '#FFFFFF'
+}
+
 type Props = {
   typography?: string | null
   fontSize?: number | null
+  colorHex?: string | null
   editable?: boolean
   onEdit?: () => void
   dragging?: boolean
@@ -37,6 +46,7 @@ type Props = {
 export default function TextFrame({
   typography,
   fontSize,
+  colorHex,
   editable = true,
   onEdit,
   dragging = false,
@@ -48,6 +58,7 @@ export default function TextFrame({
   const fontFamily = fontInfo?.stack || (typography || undefined)
   const extraClass = fontInfo?.className ?? ''
   const resolvedFontSize = clampFontSize(fontSize)
+  const resolvedColor = normalizeColor(colorHex)
 
   
 
@@ -59,6 +70,7 @@ export default function TextFrame({
         fontFamily,
         fontSize: `${resolvedFontSize}px`,
         lineHeight: 1.25,
+        color: resolvedColor,
         userSelect: 'none',
         touchAction: 'none',
         // width auto por defecto; el max-width lo controla el contenedor exterior

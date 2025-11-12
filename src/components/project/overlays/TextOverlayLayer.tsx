@@ -9,6 +9,7 @@ type Item = {
   content: string
   typography: string | null
   font_size?: number | null
+  color_hex?: string | null
   x: number
   y: number
 }
@@ -35,6 +36,7 @@ export default function TextOverlayLayer(props: {
         content: tf.content,
         typography: tf.typography,
         fontSize: tf.font_size ?? undefined,
+        color: tf.color_hex ?? undefined,
         x: clamp01(tf.x),
         y: clamp01(tf.y),
       }))}

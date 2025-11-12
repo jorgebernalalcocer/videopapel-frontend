@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Modal } from '@/components/ui/Modal'
+import ColorPickerField from '@/components/project/ColorPickerField'
 import type { FramePosition, FrameSettingClient } from '@/types/frame'
 
 export type FrameOption = {
@@ -409,17 +410,12 @@ export default function FrameModal({
           </div>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Color del marco
-          </label>
-          <input
-            type="color"
-            className="h-10 w-16 rounded border border-gray-300"
-            value={colorHex}
-            onChange={(e) => setColorHex(e.target.value)}
-          />
-        </div>
+        <ColorPickerField
+          label="Color del marco"
+          value={colorHex}
+          onChange={setColorHex}
+          helpText="Puedes escribir un valor hex o usar el selector."
+        />
       </form>
     </Modal>
   )
