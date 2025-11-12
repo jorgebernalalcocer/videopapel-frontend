@@ -16,6 +16,7 @@ type ActiveTextItem = {
   text_id?: number
   content: string
   typography: string | null
+  font_size?: number | null
   position_x: number
   position_y: number
 }
@@ -353,6 +354,7 @@ export default function BigFrameViewer(props: {
             textId: tf.text_id,
             content: tf.content,
             typography: tf.typography ?? null,
+            font_size: tf.font_size ?? null,
             x: Number(tf.position_x ?? 0.5),
             y: Number(tf.position_y ?? 0.5),
           }))}

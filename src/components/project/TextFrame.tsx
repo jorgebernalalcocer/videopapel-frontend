@@ -13,8 +13,15 @@ const FONT_CLASS_MAP: Record<string, { className: string; stack: string }> = {
   'borel-regular': { className: borel.className, stack: borelFontStack },
 }
 
+const clampFontSize = (value?: number | null) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return 18
+  return Math.min(60, Math.max(5, parsed))
+}
+
 type Props = {
   typography?: string | null
+  fontSize?: number | null
   editable?: boolean
   onEdit?: () => void
   dragging?: boolean
@@ -29,6 +36,7 @@ type Props = {
 
 export default function TextFrame({
   typography,
+  fontSize,
   editable = true,
   onEdit,
   dragging = false,
@@ -39,6 +47,7 @@ export default function TextFrame({
   const fontInfo = FONT_CLASS_MAP[fontKey]
   const fontFamily = fontInfo?.stack || (typography || undefined)
   const extraClass = fontInfo?.className ?? ''
+  const resolvedFontSize = clampFontSize(fontSize)
 
   
 
@@ -48,6 +57,8 @@ export default function TextFrame({
                   ${dragging ? 'cursor-grabbing' : 'cursor-grab'} ${extraClass}`}
       style={{
         fontFamily,
+        fontSize: `${resolvedFontSize}px`,
+        lineHeight: 1.25,
         userSelect: 'none',
         touchAction: 'none',
         // width auto por defecto; el max-width lo controla el contenedor exterior

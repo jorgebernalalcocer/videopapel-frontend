@@ -360,8 +360,8 @@ export default function FrameModal({
           </label>
           <input
             type="range"
-            min={0.1}
-            max={50}
+            min={2}
+            max={12}
             step={0.1}
             className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
             value={Number((thicknessPct * 100).toFixed(2))}
@@ -372,7 +372,7 @@ export default function FrameModal({
             }}
           />
           <p className="text-xs text-gray-500 mt-1">
-            Entre 0.1% y 50% del alto/ancho visible. Actual: {(thicknessPct * 100).toFixed(2)}%
+            Entre 2% y 14% del alto/ancho visible. Actual: {(thicknessPct * 100).toFixed(2)}%
           </p>
         </div>
 

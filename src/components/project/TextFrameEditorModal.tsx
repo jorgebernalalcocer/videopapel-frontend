@@ -11,6 +11,7 @@ export type TextFrameModel = {
   project_id?: string
   content: string
   typography: string | null
+  font_size?: number | null
   frame_start: number | null
   frame_end: number | null
   specific_frames: number[]
@@ -39,6 +40,16 @@ type Props = {
   onSaved: () => void
 }
 
+const FONT_SIZE_MIN = 8
+const FONT_SIZE_MAX = 28
+const DEFAULT_FONT_SIZE = 12
+
+const clampFontSize = (value: number | null | undefined) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_FONT_SIZE
+  return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, parsed))
+}
+
 export default function TextFrameEditorModal({
   open,
   mode,
@@ -57,6 +68,7 @@ export default function TextFrameEditorModal({
 
   const [content, setContent] = useState(initial?.content ?? '')
   const [typography, setTypography] = useState(initial?.typography ?? '')
+  const [fontSize, setFontSize] = useState(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
   const [modeValue, setModeValue] = useState<'range' | 'specific'>(
     initial?.specific_frames?.length ? 'specific' : 'range'
   )
@@ -138,6 +150,7 @@ export default function TextFrameEditorModal({
     setError(null)
     setContent(initial?.content ?? '')
     setTypography(initial?.typography ?? '')
+    setFontSize(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
     setModeValue(initial?.specific_frames?.length ? 'specific' : 'range')
     const startIndex = msToStartIndex(initial?.frame_start ?? null)
     const endIndex = msToEndIndex(initial?.frame_end ?? null)
@@ -206,6 +219,7 @@ export default function TextFrameEditorModal({
         project: projectId,
         content: contentVal,
         typography: typographyVal,
+        font_size: fontSize,
         frame_start,
         frame_end,
         specific_frames,
@@ -278,6 +292,25 @@ export default function TextFrameEditorModal({
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             placeholder="Ej. Open Sans Bold"
           />
+        </div>
+
+        <div>
+          <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
+            <span>Tamaño de la tipografía</span>
+            <span className="text-xs text-gray-500">{fontSize}px</span>
+          </label>
+          <input
+            type="range"
+            min={FONT_SIZE_MIN}
+            max={FONT_SIZE_MAX}
+            step={1}
+            value={fontSize}
+            onChange={(e) => setFontSize(clampFontSize(Number(e.target.value)))}
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            Ajusta el tamaño visible del texto (entre {FONT_SIZE_MIN}px y {FONT_SIZE_MAX}px).
+          </p>
         </div>
 
         {mode === 'edit' && initial?.text_id && (

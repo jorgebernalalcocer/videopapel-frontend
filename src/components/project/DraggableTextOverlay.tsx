@@ -19,6 +19,7 @@ export type DraggableTextItem = {
   /** 0..1 normalizado respecto al VIDEO (no el wrapper) */
   x: number
   y: number
+  fontSize?: number | null
 }
 
 /** Acepta tanto RefObject como MutableRefObject y siempre como nullable */
@@ -237,6 +238,7 @@ export default function DraggableTextOverlay({
         >
           <TextFrame
             typography={it.typography}
+            fontSize={it.fontSize ?? undefined}
             editable={Boolean(onEdit || onDeleteText)}
             onEdit={onEdit ? () => onEdit(it.id) : undefined}
             dragging={draggingId === it.id}

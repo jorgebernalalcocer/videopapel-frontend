@@ -3,7 +3,15 @@
 import DraggableTextOverlay from '@/components/project/DraggableTextOverlay'
 import { clamp01 } from '@/utils/time'
 
-type Item = { id: number; textId?: number; content: string; typography: string | null; x: number; y: number }
+type Item = {
+  id: number
+  textId?: number
+  content: string
+  typography: string | null
+  font_size?: number | null
+  x: number
+  y: number
+}
 
 export default function TextOverlayLayer(props: {
   disabled: boolean
@@ -26,6 +34,7 @@ export default function TextOverlayLayer(props: {
         textId: tf.textId,
         content: tf.content,
         typography: tf.typography,
+        fontSize: tf.font_size ?? undefined,
         x: clamp01(tf.x),
         y: clamp01(tf.y),
       }))}
