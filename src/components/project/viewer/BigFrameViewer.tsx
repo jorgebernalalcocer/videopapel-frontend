@@ -419,7 +419,7 @@ export default function BigFrameViewer(props: {
           aria-pressed={showPrintArea}
         >
           <Crop className="h-3.5 w-3.5" />
-          {showPrintArea ? 'Ocultar zona imp.' : 'Zona de impresión'}
+          {showPrintArea ? 'Ocultar zona imp.' : 'Ver zona impresión'}
         </button>
       </div>
 
