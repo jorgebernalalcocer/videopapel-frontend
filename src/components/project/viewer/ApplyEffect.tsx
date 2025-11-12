@@ -45,7 +45,7 @@ const KEYWORD_MAP: Record<EffectKey, string[]> = {
   vintage: ['vintage'],
   negative: ['negative', 'negativo'],
   bright: ['bright', 'brillo'],
-  dark: ['dark', 'apagado'],
+  dark: ['dark', 'noche'],
   contrast: ['contrast', 'contraste'],
   desaturate: ['desaturate', 'desaturado', 'desaturada'],
   blur: ['blur', 'desenfoque', 'desenfocado'],
