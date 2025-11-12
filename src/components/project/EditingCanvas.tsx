@@ -278,10 +278,22 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const [subtitleProgressModal, setSubtitleProgressModal] = useState(false)
   const [frameModalOpen, setFrameModalOpen] = useState(false)
   const [frameModalMode, setFrameModalMode] = useState<'create' | 'edit'>('create')
+  const selectedFrameIndex = useMemo(() => {
+    if (!combinedThumbs.length) return -1
+    if (selectedId) {
+      const idx = combinedThumbs.findIndex((t) => t.id === selectedId)
+      if (idx >= 0) return idx
+    }
+    const globals = combinedThumbs.map((t) => t.tGlobal)
+    return nearestIndex(globals, selectedGlobalMs)
+  }, [combinedThumbs, selectedGlobalMs, selectedId])
+  const shouldConfirmFrameDeletion =
+    selectedFrameIndex > 0 && selectedFrameIndex < combinedThumbs.length - 1
 
   function deleteSelectedFrame() {
     if (!combinedThumbs.length) return
-    const idx = selectedId ? combinedThumbs.findIndex(t => t.id === selectedId)
+    const idx = selectedFrameIndex >= 0
+      ? selectedFrameIndex
       : nearestIndex(combinedThumbs.map(t => t.tGlobal), selectedGlobalMs)
 
     const next = combinedThumbs.slice(0, idx).concat(combinedThumbs.slice(idx + 1))
@@ -510,7 +522,11 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   printQualityPpi={printQualityPpi ?? undefined}
   leftHud={
     <div className="flex items-center gap-3">
-      <DeleteFrameButton onClick={deleteSelectedFrame} disabled={!combinedThumbs.length || generating} />
+      <DeleteFrameButton
+        onClick={deleteSelectedFrame}
+        disabled={!combinedThumbs.length || generating}
+        shouldConfirm={shouldConfirmFrameDeletion}
+      />
       <p className="text-white font-bold text-sm">{combinedThumbs.length} Páginas</p>
       <label className="flex items-center gap-1 text-[11px] text-white/90">
         Fotos / Seg

@@ -1,15 +1,44 @@
 'use client'
 
+import { useCallback } from 'react'
+import { useConfirm } from '@/components/ui/ConfirmProvider'
+
 type DeleteFrameButtonProps = {
   onClick: () => void
   disabled?: boolean
+  shouldConfirm?: boolean
+  confirmMessage?: string
 }
 
-export default function DeleteFrameButton({ onClick, disabled }: DeleteFrameButtonProps) {
+export default function DeleteFrameButton({
+  onClick,
+  disabled,
+  shouldConfirm = false,
+  confirmMessage = '¿Estas seguro que quieres borrar un fotograma intermedio? Lo normal es borrar un fotogramas del inicio o del final.',
+}: DeleteFrameButtonProps) {
+  const confirm = useConfirm()
+
+  const handleClick = useCallback(async () => {
+    if (disabled) return
+
+    if (shouldConfirm) {
+      const ok = await confirm({
+        title: 'Eliminar fotograma',
+        description: confirmMessage,
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        variant: 'danger',
+      })
+      if (!ok) return
+    }
+
+    onClick()
+  }, [confirm, confirmMessage, disabled, onClick, shouldConfirm])
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       aria-label="Eliminar fotograma seleccionado"
       className={`inline-flex items-center justify-center rounded-full h-9 w-9 border
