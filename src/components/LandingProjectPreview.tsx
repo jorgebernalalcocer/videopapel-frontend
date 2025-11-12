@@ -31,6 +31,7 @@ export default function LandingProjectPreview() {
   const [clips, setClips] = useState<PublicClip[]>([])
   const [projectName, setProjectName] = useState<string | null>(null)
   const [printAspect, setPrintAspect] = useState<string | null>(null)
+  const [printEffectName, setPrintEffectName] = useState<string | null>(null)
   const [thumbsPerSecond, setThumbsPerSecond] = useState<number>(1)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +60,7 @@ export default function LandingProjectPreview() {
         setProjectName(data.project?.name ?? null)
         setPrintAspect(data.project?.print_aspect_slug ?? 'fill')
         setThumbsPerSecond(data.project?.thumbs_per_second ?? 1)
+        setPrintEffectName(data.project?.print_effect_label ?? null)
       } catch (err: any) {
         if (err?.name === 'AbortError') return
         setError(err?.message || 'No se pudo cargar el proyecto de ejemplo.')
@@ -120,6 +122,7 @@ export default function LandingProjectPreview() {
             playbackFps={2}
             printAspectSlug={printAspect ?? 'fill'}
             thumbsPerSecond={thumbsPerSecond}
+            printEffectName={printEffectName}
           />
         </div>
       )}

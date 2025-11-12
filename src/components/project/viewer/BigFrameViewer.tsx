@@ -7,6 +7,7 @@ import { Maximize2, Minimize2, Crop } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
 import FrameStyleOverlay from '@/components/project/viewer/FrameStyleOverlay'
+import ApplyEffect from '@/components/project/viewer/ApplyEffect'
 import { cloudinaryPreviewVideoUrl } from '@/utils/cloudinary'
 import { paintFrameToCanvas, seekVideo, setVideoSrcAndWait } from '@/utils/video'
 import type { FrameSettingClient } from '@/types/frame'
@@ -65,6 +66,7 @@ export default function BigFrameViewer(props: {
   printWidthMm?: number | null
   printHeightMm?: number | null
   printQualityPpi?: number | null
+  printEffectName?: string | null
 }) {
   const {
     current,
@@ -85,6 +87,7 @@ export default function BigFrameViewer(props: {
     printWidthMm,
     printHeightMm,
     printQualityPpi,
+    printEffectName,
   } = props
 
   // 👇 te faltaban estos
@@ -253,11 +256,13 @@ export default function BigFrameViewer(props: {
         ref={wrapperRef}
         className="flex h-full w-full items-center justify-center max-h-full max-w-full overflow-hidden relative"
       >
-        <canvas
-          ref={canvasRef}
-          className={canvasClassName}
-          style={{ display: paintError ? 'none' : 'block' }}
-        />
+        <ApplyEffect effectName={printEffectName}>
+          <canvas
+            ref={canvasRef}
+            className={canvasClassName}
+            style={{ display: paintError ? 'none' : 'block' }}
+          />
+        </ApplyEffect>
         {activeFrameSetting && !showPrintArea && !paintError && printFrame && (
           <FrameStyleOverlay
             setting={activeFrameSetting}

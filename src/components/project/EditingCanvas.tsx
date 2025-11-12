@@ -36,6 +36,7 @@ type EditingCanvasProps = {
   printWidthMm?: number | null;
   printHeightMm?: number | null;
   printQualityPpi?: number | null;
+  printEffectName?: string | null;
 }
 
 /* ===== Componente ===== */
@@ -52,6 +53,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     printWidthMm = null,
     printHeightMm = null,
     printQualityPpi = null,
+    printEffectName = null,
   } = props
   const { onFrameChange } = props
 
@@ -534,6 +536,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   printWidthMm={printWidthMm ?? undefined}
   printHeightMm={printHeightMm ?? undefined}
   printQualityPpi={printQualityPpi ?? undefined}
+  printEffectName={printEffectName ?? undefined}
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton

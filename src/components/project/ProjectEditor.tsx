@@ -52,6 +52,8 @@ type Project = {
   print_orientation_id?: number | null
   print_orientation_label?: string | null
   print_orientation_type?: 'vertical' | 'horizontal' | 'cuadrado' | null
+  print_effect_id?: number | null
+  print_effect_label?: string | null
   primary_clip?: ProjectClipPayload | null
   is_public?: boolean
   print_aspect_id?: number | null
@@ -433,6 +435,7 @@ async function handleExportPdf() {
                 printWidthMm={project.print_size_width_mm ?? null}
                 printHeightMm={project.print_size_height_mm ?? null}
                 printQualityPpi={project.print_quality_ppi ?? null}
+                printEffectName={project.print_effect_label ?? null}
                 onFrameChange={() => void fetchProject()}
                 playbackFps={2}
                 onChange={() => {}}
