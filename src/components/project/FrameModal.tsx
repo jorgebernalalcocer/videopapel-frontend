@@ -359,11 +359,11 @@ export default function FrameModal({
             Grosor del marco
           </label>
           <input
-            type="number"
+            type="range"
             min={0.1}
             max={50}
             step={0.1}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-emerald-600"
             value={Number((thicknessPct * 100).toFixed(2))}
             onChange={(e) => {
               const value = Number(e.target.value)
@@ -381,7 +381,7 @@ export default function FrameModal({
             Posición en el lienzo
           </p>
           <div className="flex items-center gap-3">
-            <div className="relative w-40 aspect-square border rounded-xl bg-slate-50">
+            <div className="relative w-full h-40 border rounded-xl bg-slate-50">
               {ALL_POSITIONS.map((pos) => {
                 const active = positions.includes(pos)
                 return (
@@ -406,7 +406,6 @@ export default function FrameModal({
               })}
               <div className="absolute inset-6 border border-dashed border-gray-300 rounded-lg pointer-events-none" />
             </div>
-  
           </div>
         </div>
 
