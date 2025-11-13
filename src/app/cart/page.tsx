@@ -46,6 +46,8 @@ type CartItem = {
 type CartResponse = {
   id: number
   is_active: boolean
+  subtotal_amount: string
+  tax_amount: string
   total_amount: string
   items_count: number
   updated_at: string
@@ -92,8 +94,19 @@ export default function CartPage() {
 
   const totalFormatted = useMemo(() => {
     if (!cart) return '0.00'
-    console.log('cart', cart)
     const parsed = parseFloat(cart.total_amount || '0')
+    return parsed.toFixed(2)
+  }, [cart])
+
+  const subtotalFormatted = useMemo(() => {
+    if (!cart) return '0.00'
+    const parsed = parseFloat(cart.subtotal_amount || '0')
+    return parsed.toFixed(2)
+  }, [cart])
+
+  const taxFormatted = useMemo(() => {
+    if (!cart) return '0.00'
+    const parsed = parseFloat(cart.tax_amount || '0')
     return parsed.toFixed(2)
   }, [cart])
 
@@ -261,10 +274,20 @@ export default function CartPage() {
             </div>
           )}
         </div>
-        <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
-          <div>
-            <p className="text-sm text-gray-500">Precio final (Incluye IVA)</p>
-            <p className="text-2xl font-semibold text-gray-900">{totalFormatted} €</p>
+        <div className="flex flex-wrap items-center justify-between border-t border-gray-100 px-6 py-4 gap-4">
+          <div className="flex-1 min-w-[220px] space-y-1 text-sm text-gray-600">
+            <div className="flex items-center justify-between">
+              <span>Subtotal</span>
+              <span>{subtotalFormatted} €</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>IVA (21%)</span>
+              <span>{taxFormatted} €</span>
+            </div>
+            <div className="flex items-center justify-between text-base font-semibold text-gray-900 pt-1">
+              <span>Precio final (incluye IVA)</span>
+              <span>{totalFormatted} €</span>
+            </div>
           </div>
           <button
             type="button"
@@ -275,7 +298,7 @@ export default function CartPage() {
             }}
             disabled={!cart || cart.items.length === 0}
           >
-            Continuar
+            Continuar con la compra
           </button>
         </div>
       </div>
