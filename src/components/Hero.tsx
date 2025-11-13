@@ -13,9 +13,9 @@ export default function Hero() {
           VideoPapel · impresión personalizada
         </p>
         <h1 className="mt-4 text-balance text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
-          Impresión personalizada de alta calidad
+          Impresión de videos en papel
           <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
-            en minutos, lista para enviar
+            personalizados, listos para enviar
           </span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-neutral-700 dark:text-neutral-300">

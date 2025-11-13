@@ -2,6 +2,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import EditingCanvas from '@/components/project/EditingCanvas'
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
@@ -18,8 +19,8 @@ import ProjectPrivacyBadge from '@/components/project/ProjectPrivacyBadge'
 import PrivacySelector from '@/components/project/PrivacySelector'
 import PrintAspectBadge from '@/components/project/PrintAspectBadge'
 import AspectSelector from '@/components/project/AspectSelector'
-import { text } from 'stream/consumers'
 import type { FrameSettingClient } from '@/types/frame'
+import { toast } from 'sonner'
 
 /* =========================
    Tipos
@@ -96,6 +97,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
 
 const [exporting, setExporting] = useState(false)
 const [exportError, setExportError] = useState<string | null>(null)
+const [addingToCart, setAddingToCart] = useState(false)
 
 
   /* --------- fetch proyecto --------- */
@@ -215,6 +217,35 @@ async function handleExportPdf() {
       setCreatingClip(false)
     }
   }, [API_BASE, accessToken, projectId, fetchClips])
+
+  const handleAddToCart = useCallback(async () => {
+    if (!project) return
+    if (!accessToken) {
+      toast.error('Debes iniciar sesión para añadir al carrito.')
+      return
+    }
+    setAddingToCart(true)
+    try {
+      const res = await fetch(`${API_BASE}/cart/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ project_id: project.id, quantity: 1 }),
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status} al añadir al carrito`)
+      }
+      toast.success('Proyecto añadido al carrito.')
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo añadir al carrito.')
+    } finally {
+      setAddingToCart(false)
+    }
+  }, [API_BASE, accessToken, project])
 
   /* --------- Render: estados --------- */
 
@@ -607,10 +638,33 @@ async function handleExportPdf() {
 
             </div>
           </div>
+
+          <div className="bg-white rounded-xl shadow p-4 border space-y-3">
+            <h2 className="text-lg font-semibold text-gray-900">Acciones rápidas</h2>
+            <p className="text-sm text-gray-500">
+              Guarda este proyecto en tu carrito para finalizar la compra más adelante.
+            </p>
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                disabled={!project || addingToCart}
+                className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {addingToCart ? 'Añadiendo…' : 'Añadir al carrito'}
+              </button>
+              <Link
+                href="/cart"
+                className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Ver carrito
+              </Link>
+            </div>
+          </div>
           
           {/* Contenedor de Exportar y Comprar */}
           <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
-            <h2 className="text-xl font-semibold mb-3 text-green-800">Exportar y Comprar</h2>
+            <h2 className="text-xl font-semibold mb-3 text-green-800">Añadir al carrito</h2>
             <button
               className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
               onClick={handleExportPdf}
