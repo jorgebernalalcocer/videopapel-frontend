@@ -262,7 +262,7 @@ export default function CartPage() {
         </div>
         <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
           <div>
-            <p className="text-sm text-gray-500">Total estimado</p>
+            <p className="text-sm text-gray-500">Precio final</p>
             <p className="text-2xl font-semibold text-gray-900">{totalFormatted} €</p>
           </div>
           <button

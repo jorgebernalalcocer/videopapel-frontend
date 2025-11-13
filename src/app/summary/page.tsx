@@ -189,7 +189,7 @@ export default function SummaryPage() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-4">
           <div>
-            <p className="text-sm text-gray-500">Total estimado</p>
+            <p className="text-sm text-gray-500">Precio final</p>
             <p className="text-2xl font-semibold text-gray-900">{totalFormatted} €</p>
           </div>
           <div className="flex flex-wrap gap-2">
