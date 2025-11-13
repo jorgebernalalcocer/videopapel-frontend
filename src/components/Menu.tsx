@@ -54,6 +54,7 @@ export default function Menu() {
             <ClipsButton />
             <ProjectsButton />
             <ProfileButton />
+            <CartButton />
             <LogoutButton />
           </>
         ) : (

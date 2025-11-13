@@ -3,6 +3,8 @@
 
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { ShoppingCart } from 'lucide-react'
+
 
 export default function CartButton() {
   const router = useRouter()
@@ -12,8 +14,9 @@ export default function CartButton() {
   }
 
   return (
-    <Button variant="secondary" onClick={handleCart}>
-      Carrito
-    </Button>
+            <div className="rounded-full bg-emerald-50 p-2 text-emerald-600" onClick={handleCart}>
+            <ShoppingCart className="h-5 w-5" />
+          </div>
+    
   )
 }

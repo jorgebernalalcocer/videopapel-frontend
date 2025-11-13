@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
 import { ShoppingCart, ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -37,6 +38,7 @@ type CartResponse = {
 export default function CartPage() {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+  const router = useRouter()
 
   const [cart, setCart] = useState<CartResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -249,7 +251,10 @@ export default function CartPage() {
           <button
             type="button"
             className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
-            onClick={() => toast.info('Pronto podrás finalizar la compra desde aquí.')}
+            onClick={() => {
+              if (!cart || cart.items.length === 0) return
+              router.push('/summary')
+            }}
             disabled={!cart || cart.items.length === 0}
           >
             Continuar con la compra

@@ -16,7 +16,7 @@ export default function LogoutButton() {
   }, [doLogout, router])
 
   return (
-    <Button variant="outline" onClick={handleLogout}>
+    <Button variant="default" onClick={handleLogout}>
       Cerrar sesión
     </Button>
   )
