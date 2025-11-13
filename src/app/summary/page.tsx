@@ -5,6 +5,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
+import { Plus } from 'lucide-react'
+
+import ShippingAddressModal, { type ShippingAddressResponse } from '@/components/profile/ShippingAddressModal'
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -69,6 +73,8 @@ const describePriceLine = (line: PriceLine): string => {
 }
 
 export default function SummaryPage() {
+    const [isModalOpen, setModalOpen] = useState(false)
+
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
   const router = useRouter()
@@ -111,6 +117,10 @@ export default function SummaryPage() {
       void fetchCart()
     }
   }, [canRequest, fetchCart])
+
+    const handleCreated = (address: ShippingAddressResponse) => {
+      setAddresses((prev) => [address as ShippingAddress, ...prev])
+    }
 
   const fetchAddresses = useCallback(async () => {
     if (!canRequest) return
@@ -224,7 +234,7 @@ export default function SummaryPage() {
   return (
     <section className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       <header className="space-y-2">
-        <p className="text-sm text-gray-500">Paso 1 de 3</p>
+        <p className="text-sm text-gray-500">Paso 2 de 3</p>
         <h1 className="text-3xl font-semibold text-gray-900">Resumen del pedido</h1>
         <p className="text-gray-600">Revisa cada proyecto y el subtotal antes de facilitar la dirección de envío.</p>
       </header>
@@ -273,6 +283,15 @@ export default function SummaryPage() {
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Dirección de entrega</h2>
             <p className="text-sm text-gray-500">Selecciona una dirección guardada o añade una nueva.</p>
+                      <button
+            type="button"
+            onClick={() => setModalOpen(true)}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+            disabled={!canRequest}
+          >
+            <Plus className="h-4 w-4" />
+            Añadir nueva dirección
+          </button>
           </div>
           <Link
             href="/shipping"
@@ -353,7 +372,7 @@ export default function SummaryPage() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-4">
           <div>
-            <p className="text-sm text-gray-500">Total estimado</p>
+            <p className="text-sm text-gray-500">Precio final (Incluye IVA)</p>
             <p className="text-2xl font-semibold text-gray-900">{totalFormatted} €</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -383,6 +402,13 @@ export default function SummaryPage() {
           </div>
         </div>
       </div>
+            <ShippingAddressModal
+              open={isModalOpen}
+              onClose={() => setModalOpen(false)}
+              apiBase={API_BASE}
+              accessToken={accessToken}
+              onCreated={handleCreated}
+            />
     </section>
   )
 }

@@ -92,6 +92,7 @@ export default function CartPage() {
 
   const totalFormatted = useMemo(() => {
     if (!cart) return '0.00'
+    console.log('cart', cart)
     const parsed = parseFloat(cart.total_amount || '0')
     return parsed.toFixed(2)
   }, [cart])
@@ -262,7 +263,7 @@ export default function CartPage() {
         </div>
         <div className="flex items-center justify-between border-t border-gray-100 px-6 py-4">
           <div>
-            <p className="text-sm text-gray-500">Precio final</p>
+            <p className="text-sm text-gray-500">Precio final (Incluye IVA)</p>
             <p className="text-2xl font-semibold text-gray-900">{totalFormatted} €</p>
           </div>
           <button
@@ -274,7 +275,7 @@ export default function CartPage() {
             }}
             disabled={!cart || cart.items.length === 0}
           >
-            Continuar con la compra
+            Continuar
           </button>
         </div>
       </div>
