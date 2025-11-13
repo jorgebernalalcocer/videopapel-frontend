@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -43,6 +45,19 @@ type CartResponse = {
   items: CartItem[]
 }
 
+type ShippingAddress = {
+  id: number
+  line1: string
+  line2?: string | null
+  city: string
+  state_province: string
+  postal_code: string
+  country: string
+  phone?: string | null
+  instructions?: string | null
+  created_at?: string
+}
+
 const describePriceLine = (line: PriceLine): string => {
   if (line.kind === 'per_page') {
     return `${line.qty} pág × ${line.unit} €`
@@ -56,10 +71,17 @@ const describePriceLine = (line: PriceLine): string => {
 export default function SummaryPage() {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+  const router = useRouter()
 
   const [cart, setCart] = useState<CartResponse | null>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isCheckingOut, setIsCheckingOut] = useState(false)
+
+  const [addresses, setAddresses] = useState<ShippingAddress[]>([])
+  const [addressesLoading, setAddressesLoading] = useState(false)
+  const [addressesError, setAddressesError] = useState<string | null>(null)
+  const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
 
   const canRequest = Boolean(accessToken)
 
@@ -90,11 +112,95 @@ export default function SummaryPage() {
     }
   }, [canRequest, fetchCart])
 
+  const fetchAddresses = useCallback(async () => {
+    if (!canRequest) return
+    setAddressesLoading(true)
+    setAddressesError(null)
+    try {
+      const res = await fetch(`${API_BASE}/shipping-addresses/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const payload = await res.json()
+      const list: ShippingAddress[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.results)
+        ? payload.results
+        : []
+      setAddresses(list)
+    } catch (err: any) {
+      setAddressesError(err?.message || 'No se pudieron cargar tus direcciones.')
+    } finally {
+      setAddressesLoading(false)
+    }
+  }, [accessToken, canRequest])
+
+  useEffect(() => {
+    if (canRequest) {
+      void fetchAddresses()
+    }
+  }, [canRequest, fetchAddresses])
+
+  useEffect(() => {
+    if (addresses.length > 0 && !selectedAddressId) {
+      setSelectedAddressId(addresses[0].id)
+    }
+  }, [addresses, selectedAddressId])
+
+  const selectedAddress = useMemo(() => {
+    if (!selectedAddressId) return null
+    return addresses.find((address) => address.id === selectedAddressId) ?? null
+  }, [addresses, selectedAddressId])
+
   const totalFormatted = useMemo(() => {
     if (!cart) return '0.00'
     const parsed = parseFloat(cart.total_amount || '0')
     return parsed.toFixed(2)
   }, [cart])
+
+  const canFinalize = Boolean(
+    cart && cart.items.length > 0 && selectedAddressId && !isCheckingOut
+  )
+
+  const finalizePurchase = useCallback(async () => {
+    if (!accessToken) return
+    if (!selectedAddressId) {
+      toast.error('Selecciona una dirección de envío.')
+      return
+    }
+    if (!cart || cart.items.length === 0) {
+      toast.error('Tu carrito está vacío.')
+      return
+    }
+    setIsCheckingOut(true)
+    try {
+      const res = await fetch(`${API_BASE}/checkout/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ shipping_address_id: selectedAddressId }),
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const data = await res.json()
+      toast.success(`Pedido creado correctamente (#${data.id}).`)
+      await fetchCart()
+      router.push('/cart')
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo finalizar la compra.')
+    } finally {
+      setIsCheckingOut(false)
+    }
+  }, [accessToken, selectedAddressId, cart, fetchCart, router])
 
   if (!hasHydrated) {
     return (
@@ -159,8 +265,66 @@ export default function SummaryPage() {
                       <div className="text-right">
                         <p className="text-base font-semibold text-gray-900">{item.line_total} €</p>
                         <p className="text-xs text-gray-500">{item.unit_price} € / unidad</p>
-                      </div>
-                    </div>
+      </div>
+    </div>
+
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Dirección de entrega</h2>
+            <p className="text-sm text-gray-500">Selecciona una dirección guardada o añade una nueva.</p>
+          </div>
+          <Link
+            href="/shipping"
+            className="text-sm font-medium text-purple-600 hover:text-purple-700"
+          >
+            Gestionar direcciones
+          </Link>
+        </div>
+        <div className="px-6 py-5 space-y-3">
+          {addressesLoading ? (
+            <p className="text-sm text-gray-500">Cargando direcciones…</p>
+          ) : addressesError ? (
+            <p className="text-sm text-red-600">{addressesError}</p>
+          ) : addresses.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Aún no tienes direcciones guardadas. Añade una en la página de envío para poder finalizar tu compra.
+            </p>
+          ) : (
+            <>
+              <label className="block text-sm font-medium text-gray-700">
+                Escoge una dirección
+                <select
+                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  value={selectedAddressId ?? ''}
+                  onChange={(event) => setSelectedAddressId(Number(event.target.value))}
+                >
+                  {addresses.map((address) => (
+                    <option key={address.id} value={address.id}>
+                      {address.line1} · {address.city}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedAddress && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                  <p className="font-semibold text-gray-900">
+                    {selectedAddress.line1}
+                    {selectedAddress.line2 ? `, ${selectedAddress.line2}` : ''}
+                  </p>
+                  <p>
+                    {selectedAddress.postal_code} {selectedAddress.city} · {selectedAddress.state_province} · {selectedAddress.country}
+                  </p>
+                  {selectedAddress.phone && <p className="text-gray-500">Teléfono: {selectedAddress.phone}</p>}
+                  {selectedAddress.instructions && (
+                    <p className="text-gray-500">Instrucciones: {selectedAddress.instructions}</p>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
                     {breakdown && breakdown.line_items.length > 0 && (
                       <div className="rounded-lg border border-gray-200 bg-white/80 px-3 py-2">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Desglose</p>
@@ -189,7 +353,7 @@ export default function SummaryPage() {
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-6 py-4">
           <div>
-            <p className="text-sm text-gray-500">Precio final</p>
+            <p className="text-sm text-gray-500">Total estimado</p>
             <p className="text-2xl font-semibold text-gray-900">{totalFormatted} €</p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -206,6 +370,16 @@ export default function SummaryPage() {
             >
               Dirección de entrega
             </Link>
+            <button
+              type="button"
+              className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${canFinalize ? 'bg-purple-600 hover:bg-purple-700' : 'bg-gray-400 cursor-not-allowed'}`}
+              disabled={!canFinalize}
+              onClick={() => {
+                void finalizePurchase()
+              }}
+            >
+              {isCheckingOut ? 'Procesando…' : 'Finalizar compra'}
+            </button>
           </div>
         </div>
       </div>
