@@ -9,6 +9,22 @@ import { toast } from 'sonner'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
+type PriceLine = {
+  label: string
+  qty: number
+  unit: string
+  amount: string
+  kind: string
+}
+
+type PriceBreakdown = {
+  currency: string
+  pages: number
+  subtotal: string
+  total: string
+  line_items: PriceLine[]
+}
+
 type CartItem = {
   id: number
   project_id: number
@@ -24,6 +40,7 @@ type CartItem = {
   print_effect_label_snapshot?: string | null
   print_aspect_name_snapshot?: string | null
   print_aspect_slug_snapshot?: string | null
+  price_breakdown?: PriceBreakdown | null
 }
 
 type CartResponse = {
