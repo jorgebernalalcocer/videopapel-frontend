@@ -642,7 +642,7 @@ async function handleExportPdf() {
           <div className="bg-white rounded-xl shadow p-4 border space-y-3">
             <h2 className="text-lg font-semibold text-gray-900">Acciones rápidas</h2>
             <p className="text-sm text-gray-500">
-              Guarda este proyecto en tu carrito para finalizar la compra más adelante.
+              Añade el proyecto al carrito para proceder a la compra
             </p>
             <div className="flex flex-wrap gap-3">
               <button
