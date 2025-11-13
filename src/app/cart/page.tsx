@@ -15,9 +15,14 @@ type CartItem = {
   quantity: number
   unit_price: string
   line_total: string
+  total_pages: number
   print_size_label_snapshot?: string | null
   orientation_snapshot?: string | null
   frame_name_snapshot?: string | null
+  print_quality_label_snapshot?: string | null
+  print_effect_label_snapshot?: string | null
+  print_aspect_name_snapshot?: string | null
+  print_aspect_slug_snapshot?: string | null
 }
 
 type CartResponse = {
@@ -155,8 +160,8 @@ export default function CartPage() {
             <ShoppingCart className="h-5 w-5" />
           </div>
           <div>
-            <h2 className="text-lg font-semibold text-gray-900">Tus proyectos guardados</h2>
-            <p className="text-sm text-gray-500">Añade tus favoritos y completa la compra más adelante.</p>
+            <h2 className="text-lg font-semibold text-gray-900">Proyectos en la cesta</h2>
+            <p className="text-sm text-gray-500">Si quieres el mismo proyecto con otro tipo de caracterísitcas, dúplicalo y añade otra configuración.</p>
           </div>
         </div>
         <div className="px-6 py-6">
@@ -179,6 +184,21 @@ export default function CartPage() {
                       {item.frame_name_snapshot && (
                         <p className="text-xs text-gray-500">Marco: {item.frame_name_snapshot}</p>
                       )}
+                      <div className="mt-1 space-y-0.5 text-xs text-gray-500">
+                        <p>Páginas: {item.total_pages}</p>
+                        {item.print_quality_label_snapshot && (
+                          <p>Calidad: {item.print_quality_label_snapshot}</p>
+                        )}
+                        {item.print_effect_label_snapshot && (
+                          <p>Efecto: {item.print_effect_label_snapshot}</p>
+                        )}
+                        {item.print_aspect_name_snapshot && (
+                          <p>
+                            Aspecto: {item.print_aspect_name_snapshot}
+                            {item.print_aspect_slug_snapshot ? ` (${item.print_aspect_slug_snapshot})` : ''}
+                          </p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex flex-col items-end gap-3">
                       <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white shadow-sm">
