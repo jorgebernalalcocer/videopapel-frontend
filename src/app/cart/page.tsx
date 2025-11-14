@@ -187,7 +187,7 @@ export default function CartPage() {
         </Link>
       </header>
 
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+      <div className="rounded-2xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
           <div className="rounded-full bg-emerald-50 p-2 text-emerald-600">
             <ShoppingCart className="h-5 w-5" />
@@ -294,7 +294,10 @@ export default function CartPage() {
               <span>{totalFormatted} €</span>
             </div>
           </div>
-          <button
+        </div>
+                <div className="flex flex-wrap gap-2 justify-end md:ml-auto md:self-end m-4">
+
+                  <button
             type="button"
             className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
             onClick={() => {
@@ -305,7 +308,7 @@ export default function CartPage() {
           >
             Continuar con la compra
           </button>
-        </div>
+          </div>
       </div>
     </section>
   )

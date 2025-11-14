@@ -5,11 +5,15 @@ import { useIsFetching, useIsMutating } from '@tanstack/react-query'
 import { useLoading } from '@/store/loading'
 import { useEffect, useState } from 'react'
 
-export default function GlobalSpinner() {
+type GlobalSpinnerProps = {
+  force?: boolean
+}
+
+export default function GlobalSpinner({ force = false }: GlobalSpinnerProps) {
   const isFetching = useIsFetching()           // queries (GETs)
   const isMutating = useIsMutating()           // mutations (POST/PUT/DELETE) si usas React Query
   const manual = useLoading((s) => s.pending)  // fetch manual con apiFetch
-  const active = isFetching + isMutating + manual > 0
+  const active = force || isFetching + isMutating + manual > 0
 
   // para transiciones suaves (evita “blink” en requests ultracortas)
   const [visible, setVisible] = useState(false)

@@ -312,7 +312,7 @@ export default function SummaryPage() {
             </div>
           )}
         </div>
-        <div className="flex flex-wrap items-center justify-between gap-4 border-t border-gray-100 px-6 py-4">
+        <div className="flex flex-col gap-4 border-t border-gray-100 px-6 py-4 md:flex-row md:items-end">
           <div className="flex-1 min-w-[220px] space-y-1 text-sm text-gray-600">
             <div className="flex items-center justify-between">
               <span>Subtotal</span>
@@ -327,7 +327,9 @@ export default function SummaryPage() {
               <span>{totalFormatted} €</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
+          
+        </div>
+        <div className="flex flex-wrap gap-2 justify-end md:ml-auto md:self-end m-4">
             <Link
               href="/cart"
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
@@ -352,7 +354,6 @@ export default function SummaryPage() {
               {isCheckingOut ? 'Procesando…' : 'Finalizar compra'}
             </button>
           </div>
-        </div>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
