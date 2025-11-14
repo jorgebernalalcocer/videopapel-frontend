@@ -212,7 +212,7 @@ export default function CartPage() {
                     <div>
                         <Link
                           href={`/projects/${item.project_id}`}
-                          className="font-semibold text-gray-900 hover:text-purple-600"
+                          className="font-semibold text-gray-900 text-purple-600 hover:text-purple-400"
                         >
                           {item.project_name}
                         </Link>

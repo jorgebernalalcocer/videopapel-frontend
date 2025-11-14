@@ -90,6 +90,7 @@ export default function Menu() {
                 </span>
                 <ClipsButton />
                 <ProjectsButton />
+                <ProfileButton />
                 <CartButton />
                 <LogoutButton />
               </>
