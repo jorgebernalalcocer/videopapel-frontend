@@ -27,7 +27,7 @@ type PriceBreakdown = {
 
 type CartItem = {
   id: number
-  project_id: number
+  project_id: string
   project_name: string
   quantity: number
   unit_price: string
@@ -210,7 +210,12 @@ export default function CartPage() {
                 <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-gray-900">{item.project_name}</p>
+                        <Link
+                          href={`/projects/${item.project_id}`}
+                          className="font-semibold text-gray-900 hover:text-purple-600"
+                        >
+                          {item.project_name}
+                        </Link>
                       <p className="text-sm text-gray-600">
                         {item.print_size_label_snapshot || 'Tamaño sin definir'} · {item.orientation_snapshot || 'Orientación'}
                       </p>

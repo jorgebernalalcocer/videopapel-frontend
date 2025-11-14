@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from 'react'
 import { MapPin, Plus } from 'lucide-react'
 import { useAuth } from '@/store/auth'
 import ShippingAddressModal, { type ShippingAddressResponse } from '@/components/profile/ShippingAddressModal'
+import { MyOrders } from '@/components/orders/MyOrders'
+import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -150,6 +153,9 @@ export default function ProfilePage() {
         accessToken={accessToken}
         onCreated={handleCreated}
       />
+<MyOrdersHeader />
+      {/* <MyOrders compact embed /> versión resumida de MyProjects.tsx */} 
+      <MyOrders />
     </section>
   )
 }
