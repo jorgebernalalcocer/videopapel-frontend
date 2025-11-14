@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
+import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -84,6 +85,7 @@ export default function SummaryPage() {
   const [addressesLoading, setAddressesLoading] = useState(false)
   const [addressesError, setAddressesError] = useState<string | null>(null)
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
+  const { exportPdf, exporting: exportingPdf } = useProjectPdfExport()
 
   const canRequest = Boolean(accessToken)
 
@@ -177,7 +179,7 @@ export default function SummaryPage() {
   }, [cart])
 
   const canFinalize = Boolean(
-    cart && cart.items.length > 0 && selectedAddressId && !isCheckingOut
+    cart && cart.items.length > 0 && selectedAddressId && !isCheckingOut && !exportingPdf
   )
 
   const finalizePurchase = useCallback(async () => {
@@ -192,6 +194,12 @@ export default function SummaryPage() {
     }
     setIsCheckingOut(true)
     try {
+      if (cart?.items?.length) {
+        for (const item of cart.items) {
+          if (!item.project_id) continue
+          await exportPdf(item.project_id)
+        }
+      }
       const res = await fetch(`${API_BASE}/checkout/`, {
         method: 'POST',
         headers: {
@@ -214,7 +222,7 @@ export default function SummaryPage() {
     } finally {
       setIsCheckingOut(false)
     }
-  }, [accessToken, selectedAddressId, cart, fetchCart, router])
+  }, [accessToken, selectedAddressId, cart, exportPdf, fetchCart, router])
 
   if (!hasHydrated) {
     return (
@@ -327,9 +335,7 @@ export default function SummaryPage() {
               <span>{totalFormatted} €</span>
             </div>
           </div>
-          
-        </div>
-        <div className="flex flex-wrap gap-2 justify-end md:ml-auto md:self-end m-4">
+          <div className="flex flex-wrap gap-2 justify-end md:ml-auto md:self-end">
             <Link
               href="/cart"
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
@@ -351,9 +357,10 @@ export default function SummaryPage() {
                 void finalizePurchase()
               }}
             >
-              {isCheckingOut ? 'Procesando…' : 'Finalizar compra'}
+              {exportingPdf ? 'Generando PDF…' : isCheckingOut ? 'Procesando…' : 'Finalizar compra'}
             </button>
           </div>
+        </div>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">

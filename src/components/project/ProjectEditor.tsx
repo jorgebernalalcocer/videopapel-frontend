@@ -21,6 +21,7 @@ import PrintAspectBadge from '@/components/project/PrintAspectBadge'
 import AspectSelector from '@/components/project/AspectSelector'
 import type { FrameSettingClient } from '@/types/frame'
 import { toast } from 'sonner'
+import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
 
 /* =========================
    Tipos
@@ -95,9 +96,8 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
 
-const [exporting, setExporting] = useState(false)
-const [exportError, setExportError] = useState<string | null>(null)
-const [addingToCart, setAddingToCart] = useState(false)
+  const [addingToCart, setAddingToCart] = useState(false)
+  const { exportPdf, exporting, error: exportError } = useProjectPdfExport()
 
 
   /* --------- fetch proyecto --------- */
@@ -119,42 +119,6 @@ const [addingToCart, setAddingToCart] = useState(false)
       setLoading(false)
     }
   }, [API_BASE, accessToken, projectId])
-
-  // dentro del componente ProjectEditor
-
-
-
-async function handleExportPdf() {
-  if (!accessToken) return
-  setExporting(true)
-  setExportError(null)
-  try {
-    const res = await fetch(`${API_BASE}/projects/${project.id}/export-pdf/`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      credentials: 'include',
-    })
-    const data = await res.json()
-    if (!res.ok) throw new Error(data?.detail || `Export ${res.status}`)
-
-    let url = data?.file // 👈 usa la pública
-    if (!url) throw new Error('Respuesta sin URL de archivo')
-
-    // Si viniera relativa, normalízala al API_BASE
-    if (url.startsWith('/')) {
-      url = `${API_BASE.replace(/\/+$/, '')}${url}`
-    }
-
-    window.open(url, '_blank', 'noopener,noreferrer')
-  } catch (e: any) {
-    setExportError(e.message || 'No se pudo generar el PDF')
-  } finally {
-    setExporting(false)
-  }
-}
-
-
-
 
   /* --------- fetch clips --------- */
   const fetchClips = useCallback(async () => {
@@ -667,7 +631,11 @@ async function handleExportPdf() {
             <h2 className="text-xl font-semibold mb-3 text-green-800">Añadir al carrito</h2>
             <button
               className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
-              onClick={handleExportPdf}
+              onClick={() => {
+                if (project) {
+                  void exportPdf(project.id)
+                }
+              }}
               disabled={exporting}
             >
               {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
