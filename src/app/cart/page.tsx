@@ -172,6 +172,8 @@ export default function CartPage() {
     }
   }
 
+  const hasItems = Boolean(cart && cart.items.length > 0)
+
   return (
     <section className="max-w-5xl mx-auto px-4 py-12 space-y-8">
       <header className="flex flex-wrap items-center justify-between gap-4">
@@ -295,20 +297,19 @@ export default function CartPage() {
             </div>
           </div>
         </div>
-                <div className="flex flex-wrap gap-2 justify-end md:ml-auto md:self-end m-4">
-
-                  <button
-            type="button"
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
-            onClick={() => {
-              if (!cart || cart.items.length === 0) return
-              router.push('/summary')
-            }}
-            disabled={!cart || cart.items.length === 0}
-          >
-            Continuar con la compra
-          </button>
+        {hasItems && (
+          <div className="flex flex-wrap gap-2 justify-end md:ml-auto md:self-end m-4">
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+              onClick={() => {
+                router.push('/summary')
+              }}
+            >
+              Continuar con la compra
+            </button>
           </div>
+        )}
       </div>
     </section>
   )
