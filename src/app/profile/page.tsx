@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { MapPin, Plus } from 'lucide-react'
+import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import ShippingAddressModal, { type ShippingAddressResponse } from '@/components/profile/ShippingAddressModal'
 import { MyOrders } from '@/components/orders/MyOrders'
@@ -58,8 +59,37 @@ export default function ProfilePage() {
     }
   }, [canRequest, fetchAddresses])
 
-  const handleCreated = (address: ShippingAddressResponse) => {
-    setAddresses((prev) => [address as ShippingAddress, ...prev])
+  const handleCreated = (_address: ShippingAddressResponse) => {
+    void fetchAddresses()
+  }
+
+  const handleMarkDefault = async (addressId: number) => {
+    if (!accessToken) return
+    try {
+      const res = await fetch(`${API_BASE}/shipping-addresses/${addressId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ is_default: true }),
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const updated = (await res.json()) as ShippingAddress
+      setAddresses((prev) =>
+        prev.map((addr) => ({
+          ...addr,
+          is_default: addr.id === updated.id,
+        }))
+      )
+      toast.success('Dirección predeterminada actualizada.')
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo actualizar la dirección predeterminada.')
+    }
   }
 
   if (!hasHydrated) {
@@ -118,7 +148,15 @@ export default function ProfilePage() {
                     <div className="mt-1 rounded-full bg-white p-2 shadow-sm">
                       <MapPin className="h-4 w-4 text-emerald-600" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 space-y-1 text-sm text-gray-700">
+                      <div className="flex items-center gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {address.label || 'Dirección'}
+                        </p>
+                        {address.is_default && (
+                          <span className="text-xs font-semibold text-emerald-600">Predeterminada</span>
+                        )}
+                      </div>
                       <p className="font-semibold text-gray-900">
                         {address.line1}
                         {address.line2 ? `, ${address.line2}` : ''}
@@ -133,12 +171,23 @@ export default function ProfilePage() {
                         <p className="text-sm text-gray-500">Instrucciones: {address.instructions}</p>
                       )}
                       {address.created_at && (
-                        <p className="text-xs text-gray-400 mt-1">
+                        <p className="text-xs text-gray-400">
                           Añadida el {new Date(address.created_at).toLocaleDateString()}
                         </p>
                       )}
                     </div>
                   </div>
+                  {!address.is_default && (
+                    <div className="mt-3 text-right">
+                      <button
+                        type="button"
+                        onClick={() => handleMarkDefault(address.id)}
+                        className="text-xs font-medium text-purple-600 hover:text-purple-700"
+                      >
+                        Marcar como predeterminada
+                      </button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

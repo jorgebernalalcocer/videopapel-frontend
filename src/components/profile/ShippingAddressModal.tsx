@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
 
 export type ShippingAddressPayload = {
+  label: string
   line1: string
   line2?: string | null
   city: string
@@ -13,11 +14,13 @@ export type ShippingAddressPayload = {
   country: string
   phone?: string | null
   instructions?: string | null
+  is_default: boolean
 }
 
 export type ShippingAddressResponse = ShippingAddressPayload & {
   id: number
   created_at?: string
+  updated_at?: string
 }
 
 type ShippingAddressModalProps = {
@@ -29,6 +32,7 @@ type ShippingAddressModalProps = {
 }
 
 const EMPTY_FORM: ShippingAddressPayload = {
+  label: '',
   line1: '',
   line2: '',
   city: '',
@@ -37,6 +41,7 @@ const EMPTY_FORM: ShippingAddressPayload = {
   country: 'ES',
   phone: '',
   instructions: '',
+  is_default: false,
 }
 
 export default function ShippingAddressModal({
@@ -50,7 +55,7 @@ export default function ShippingAddressModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const updateField = (key: keyof ShippingAddressPayload, value: string) => {
+  const updateField = <K extends keyof ShippingAddressPayload>(key: K, value: ShippingAddressPayload[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -67,7 +72,14 @@ export default function ShippingAddressModal({
       toast.error('Debes iniciar sesión para guardar una dirección.')
       return
     }
-    if (!form.line1.trim() || !form.city.trim() || !form.state_province.trim() || !form.postal_code.trim() || !form.country.trim()) {
+    if (
+      !form.label.trim() ||
+      !form.line1.trim() ||
+      !form.city.trim() ||
+      !form.state_province.trim() ||
+      !form.postal_code.trim() ||
+      !form.country.trim()
+    ) {
       setError('Completa los campos obligatorios.')
       return
     }
@@ -86,6 +98,7 @@ export default function ShippingAddressModal({
           line2: form.line2?.trim() || null,
           phone: form.phone?.trim() || null,
           instructions: form.instructions?.trim() || null,
+          is_default: Boolean(form.is_default),
         }),
       })
       if (!res.ok) {
@@ -109,6 +122,17 @@ export default function ShippingAddressModal({
   return (
     <Modal open={open} onClose={handleClose} title="Añadir nueva dirección" size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Etiqueta</label>
+          <input
+            type="text"
+            value={form.label}
+            onChange={(e) => updateField('label', e.target.value)}
+            required
+            placeholder="Casa, Oficina, etc."
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          />
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Dirección (línea 1)</label>
           <input
@@ -194,6 +218,15 @@ export default function ShippingAddressModal({
             />
           </label>
         </div>
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={form.is_default}
+            onChange={(e) => updateField('is_default', e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+          />
+          Usar como dirección predeterminada
+        </label>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

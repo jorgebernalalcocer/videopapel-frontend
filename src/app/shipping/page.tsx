@@ -13,6 +13,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 type ShippingAddress = ShippingAddressResponse & { created_at?: string }
 
 const EMPTY_FORM: ShippingAddressPayload = {
+  label: '',
   line1: '',
   line2: '',
   city: '',
@@ -21,6 +22,7 @@ const EMPTY_FORM: ShippingAddressPayload = {
   country: 'ES',
   phone: '',
   instructions: '',
+  is_default: false,
 }
 
 export default function ShippingPage() {
@@ -73,7 +75,8 @@ export default function ShippingPage() {
 
   const canSubmit = useMemo(() => {
     return Boolean(
-      form.line1.trim() &&
+      form.label.trim() &&
+        form.line1.trim() &&
         form.city.trim() &&
         form.state_province.trim() &&
         form.postal_code.trim() &&
@@ -81,7 +84,7 @@ export default function ShippingPage() {
     )
   }, [form])
 
-  const updateField = (key: keyof ShippingAddressPayload, value: string) => {
+  const updateField = <K extends keyof ShippingAddressPayload>(key: K, value: ShippingAddressPayload[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
@@ -112,6 +115,7 @@ export default function ShippingPage() {
           line2: form.line2?.trim() || null,
           phone: form.phone?.trim() || null,
           instructions: form.instructions?.trim() || null,
+          is_default: Boolean(form.is_default),
         }),
       })
       if (!res.ok) {
@@ -122,7 +126,12 @@ export default function ShippingPage() {
       setSuccessMessage('Dirección guardada correctamente. Puedes continuar con el pago cuando estés listo/a.')
       toast.success('Dirección guardada correctamente.')
       setForm(EMPTY_FORM)
-      setAddresses((prev) => [created, ...prev])
+      setAddresses((prev) => {
+        const filtered = prev.filter((addr) => addr.id !== created.id)
+        const normalized = created.is_default ? filtered.map((addr) => ({ ...addr, is_default: false })) : filtered
+        return [created, ...normalized]
+      })
+      void fetchAddresses()
       router.prefetch('/summary')
     } catch (err: any) {
       const msg = err?.message || 'No se pudo guardar la dirección.'
@@ -130,6 +139,35 @@ export default function ShippingPage() {
       toast.error(msg)
     } finally {
       setIsSubmitting(false)
+    }
+  }
+
+  const handleMarkDefault = async (addressId: number) => {
+    if (!accessToken) return
+    try {
+      const res = await fetch(`${API_BASE}/shipping-addresses/${addressId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ is_default: true }),
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const updated = (await res.json()) as ShippingAddress
+      setAddresses((prev) =>
+        prev.map((addr) => ({
+          ...addr,
+          is_default: addr.id === updated.id,
+        }))
+      )
+      toast.success('Dirección predeterminada actualizada.')
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo actualizar la dirección predeterminada.')
     }
   }
 
@@ -189,7 +227,15 @@ export default function ShippingPage() {
                       <div className="mt-1 rounded-full bg-white p-2 shadow-sm">
                         <MapPin className="h-4 w-4 text-emerald-600" />
                       </div>
-                      <div className="flex-1 text-sm text-gray-700">
+                      <div className="flex-1 space-y-1 text-sm text-gray-700">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                            {address.label || 'Dirección'}
+                          </p>
+                          {address.is_default && (
+                            <span className="text-xs font-semibold text-emerald-600">Predeterminada</span>
+                          )}
+                        </div>
                         <p className="font-semibold text-gray-900">
                           {address.line1}
                           {address.line2 ? `, ${address.line2}` : ''}
@@ -200,10 +246,21 @@ export default function ShippingPage() {
                         {address.phone && <p className="text-gray-500">Teléfono: {address.phone}</p>}
                         {address.instructions && <p className="text-gray-500">Instrucciones: {address.instructions}</p>}
                         {address.created_at && (
-                          <p className="text-xs text-gray-400 mt-1">Guardada el {new Date(address.created_at).toLocaleDateString()}</p>
+                          <p className="text-xs text-gray-400">Guardada el {new Date(address.created_at).toLocaleDateString()}</p>
                         )}
                       </div>
                     </div>
+                    {!address.is_default && (
+                      <div className="mt-3 text-right">
+                        <button
+                          type="button"
+                          onClick={() => handleMarkDefault(address.id)}
+                          className="text-xs font-medium text-purple-600 hover:text-purple-700"
+                        >
+                          Marcar como predeterminada
+                        </button>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -213,6 +270,17 @@ export default function ShippingPage() {
 
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Etiqueta</label>
+            <input
+              type="text"
+              value={form.label}
+              onChange={(e) => updateField('label', e.target.value)}
+              required
+              placeholder="Casa, Oficina…"
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Dirección (línea 1)</label>
             <input
@@ -286,18 +354,27 @@ export default function ShippingPage() {
                 value={form.phone ?? ''}
                 onChange={(e) => updateField('phone', e.target.value)}
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </label>
-            <label className="text-sm font-medium text-gray-700">
-              Instrucciones (opcional)
-              <input
+            />
+          </label>
+          <label className="text-sm font-medium text-gray-700">
+            Instrucciones (opcional)
+            <input
                 type="text"
                 value={form.instructions ?? ''}
                 onChange={(e) => updateField('instructions', e.target.value)}
-                className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </label>
-          </div>
+              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+            />
+          </label>
+        </div>
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={form.is_default}
+              onChange={(e) => updateField('is_default', e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+            />
+            Usar como dirección predeterminada
+          </label>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
           {successMessage && <p className="text-sm text-emerald-600">{successMessage}</p>}

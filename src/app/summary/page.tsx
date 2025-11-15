@@ -50,6 +50,7 @@ type CartResponse = {
 
 type ShippingAddress = {
   id: number
+  label: string
   line1: string
   line2?: string | null
   city: string
@@ -59,6 +60,7 @@ type ShippingAddress = {
   phone?: string | null
   instructions?: string | null
   created_at?: string
+  is_default?: boolean
 }
 
 const describePriceLine = (line: PriceLine): string => {
@@ -150,9 +152,15 @@ export default function SummaryPage() {
   }, [canRequest, fetchAddresses])
 
   useEffect(() => {
-    if (addresses.length > 0 && !selectedAddressId) {
-      setSelectedAddressId(addresses[0].id)
+    if (addresses.length === 0) {
+      setSelectedAddressId(null)
+      return
     }
+    if (selectedAddressId && addresses.some((addr) => addr.id === selectedAddressId)) {
+      return
+    }
+    const preferred = addresses.find((addr) => addr.is_default) ?? addresses[0]
+    setSelectedAddressId(preferred.id)
   }, [addresses, selectedAddressId])
 
   const selectedAddress = useMemo(() => {
@@ -396,13 +404,20 @@ export default function SummaryPage() {
                 >
                   {addresses.map((address) => (
                     <option key={address.id} value={address.id}>
+                      {address.label ? `${address.label} · ` : ''}
                       {address.line1} · {address.city}
                     </option>
                   ))}
                 </select>
               </label>
               {selectedAddress && (
-                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700">
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700 space-y-1">
+                  <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
+                    <span>{selectedAddress.label || 'Dirección seleccionada'}</span>
+                    {selectedAddress.is_default && (
+                      <span className="text-emerald-600">Predeterminada</span>
+                    )}
+                  </div>
                   <p className="font-semibold text-gray-900">
                     {selectedAddress.line1}
                     {selectedAddress.line2 ? `, ${selectedAddress.line2}` : ''}
