@@ -16,6 +16,7 @@ type OrderItem = {
   effect_name_snapshot: string | null
   aspect_name_snapshot: string | null
   quality_label_snapshot: string | null
+  number_pages_snapshot: number | null
   pdf_snapshot: string | null
   quantity: number
   unit_price: string
@@ -177,6 +178,10 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
                             {item.quality_label_snapshot && (
                               <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
                             )}
+                            {item.number_pages_snapshot && (
+                              <p className="text-xs text-gray-500">Número de páginas: {item.number_pages_snapshot}</p>
+                            )}
+
                             <Link
                               href={`${item.pdf_snapshot}`}
                               className="font-medium text-gray-900 text-green-600 hover:text-green-400"
