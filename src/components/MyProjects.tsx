@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import DeleteProjectButton from '@/components/DeleteProjectButton'
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Share2 } from "lucide-react";
+import { CheckCircle2, XCircle, Share2, ExternalLink, Layers2 } from "lucide-react";
 import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 // import { Modal } from '@/components/ui/Modal' // Ya no se necesita aquí si solo se usa en los modales hijos
 import { ShareConfirmationModal } from '@/components/ShareConfirmationModal'
@@ -266,16 +266,17 @@ export default function MyProjects() {
               <div className="mt-4 flex gap-2">
                 <Link
                   href={`/projects/${p.id}`}
-                  className="px-3 py-1.5 text-xs rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+                  className="px-3 py-1.5 text-xs rounded-lg bg-blue-200 text-black hover:bg-blue-700 flex items-center justify-center gap-1"
                 >
+                  <ExternalLink className="w-3 h-3" />
                   Abrir
                 </Link>
-                <Link
+                {/* <Link
                   href={`/projects/${p.id}/export`}
                   className="px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50"
                 >
                   Exportar
-                </Link>
+                </Link> */}
 
                 <button
                   type="button"
@@ -283,10 +284,12 @@ export default function MyProjects() {
                   disabled={duplicatingId === p.id}
                   title="Duplicar proyecto"
                   className="
-                    px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50
-                    disabled:opacity-60 disabled:cursor-not-allowed
-                  "
+    px-3 py-1.5 text-xs rounded-lg hover:bg-gray-50
+    disabled:opacity-60 disabled:cursor-not-allowed bg-yellow-100 text-black
+    flex items-center justify-center gap-1  // ⭐️ Añadimos Flexbox aquí
+  "
                 >
+                  <Layers2 className="w-3 h-3" />
                   {duplicatingId === p.id ? 'Duplicando…' : 'Duplicar'}
                 </button>
                 <button
@@ -295,9 +298,9 @@ export default function MyProjects() {
                   disabled={sharingId === p.id}
                   title="Compartir proyecto"
                   className="
-                    px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50
+                    px-3 py-1.5 text-xs rounded-lg bg-purple-100 text-black hover:bg-gray-50
                     disabled:opacity-60 disabled:cursor-not-allowed
-                    flex items-center gap-1
+                    flex items-center justify-center gap-1
                   "
                 >
                     <Share2 className="w-3 h-3" />

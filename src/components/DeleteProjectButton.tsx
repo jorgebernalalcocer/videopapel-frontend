@@ -84,7 +84,7 @@ export default function DeleteProjectButton({
         type="button"
         onClick={handleDelete}
         disabled={isDeleting}
-        className="px-3 py-1 text-xs font-medium text-white bg-red-600 rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-400 disabled:cursor-not-allowed"
+        className="px-3 py-1 text-xs font-medium bg-red-200 text-black rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-400 disabled:cursor-not-allowed"
       >
         {isDeleting ? 'Eliminando…' : 'Eliminar proyecto'}
       </button>
