@@ -1,7 +1,7 @@
 // src/components/ProjectEditor.tsx
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import EditingCanvas from '@/components/project/EditingCanvas'
@@ -14,7 +14,7 @@ import SelectableBadgeWrapper from '@/components/ui/SelectableBadgeWrapper'
 import PrintOrientationBadge from '@/components/project/PrintOrientationBadge'
 import OrientationSelector from '@/components/project/OrientationSelector'
 import PrintEffectBadge from '@/components/project/PrintEffectBadge'
-import EffectsTile from '@/components/project/EffectsTile'
+import EffectsTile, { type EffectPreviewClip } from '@/components/project/EffectsTile'
 import ProjectPrivacyBadge from '@/components/project/ProjectPrivacyBadge'
 import PrivacySelector from '@/components/project/PrivacySelector'
 import PrintAspectBadge from '@/components/project/PrintAspectBadge'
@@ -67,6 +67,20 @@ type Project = {
   frame_description?: string | null
   frame_setting?: FrameSettingClient
   print_quality_ppi?: number | null
+}
+
+const resolveClipPreview = (clip?: ProjectClipPayload | null): EffectPreviewClip | null => {
+  if (!clip || !clip.video_url) return null
+  const frames = Array.isArray(clip.frames) ? clip.frames.filter((value): value is number => typeof value === 'number' && Number.isFinite(value)) : []
+  const orderedFrames = frames.length ? [...frames].sort((a, b) => a - b) : []
+  const secondFrame = orderedFrames[1]
+  const firstFrame = orderedFrames[0]
+  const frameCandidate = secondFrame ?? firstFrame ?? clip.time_start_ms ?? 0
+  const frameTimeMs = Math.max(0, typeof frameCandidate === 'number' ? frameCandidate : 0)
+  return {
+    videoUrl: clip.video_url,
+    frameTimeMs,
+  }
 }
 
 const STATUS_LABELS: Record<Project['status'], string> = {
@@ -158,6 +172,10 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const handleEffectSaved = useCallback(() => {
     void fetchProject()
   }, [fetchProject])
+
+  const effectsPreviewClip = useMemo<EffectPreviewClip | null>(() => {
+    return resolveClipPreview(clips[0]) ?? resolveClipPreview(project?.primary_clip ?? null)
+  }, [clips, project?.primary_clip])
 
   /* --------- insertar video (crear clip) --------- */
   const handleSelectVideo = useCallback(async (video: VideoItem) => {
@@ -643,6 +661,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           value={project.print_effect_id ?? null}
           onClose={closeEffectsModal}
           onSaved={handleEffectSaved}
+          previewClip={effectsPreviewClip}
         />
       )}
 

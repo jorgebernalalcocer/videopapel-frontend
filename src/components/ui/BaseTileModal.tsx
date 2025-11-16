@@ -24,6 +24,7 @@ type BaseTileModalProps = {
   onSelect?: (option: TileOption) => void
   emptyState?: ReactNode
   gridClassName?: string
+  renderPreview?: (tile: TileOption, state: { isSelected: boolean }) => ReactNode
   modalProps?: Partial<Omit<ModalProps, 'open' | 'onClose' | 'children'>>
 }
 
@@ -39,6 +40,7 @@ export function BaseTileModal({
   onSelect,
   emptyState,
   gridClassName,
+  renderPreview,
   modalProps,
 }: BaseTileModalProps) {
   const gridClasses = useMemo(() => {
@@ -76,6 +78,23 @@ export function BaseTileModal({
           {tiles.map((tile) => {
             const isSelected =
               selectedId !== null && selectedId !== undefined && tile.id === selectedId
+            const previewContent = renderPreview
+              ? renderPreview(tile, { isSelected })
+              : (
+                tile.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={tile.imageUrl}
+                    alt={tile.label}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+                    Vista previa
+                  </div>
+                )
+              )
             return (
               <button
                 key={tile.id}
@@ -94,19 +113,7 @@ export function BaseTileModal({
                   .join(' ')}
               >
                 <div className="h-28 w-full overflow-hidden rounded-xl bg-gray-100">
-                  {tile.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={tile.imageUrl}
-                      alt={tile.label}
-                      className="h-full w-full object-cover"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-xs text-gray-400">
-                      Vista previa
-                    </div>
-                  )}
+                  {previewContent}
                 </div>
                 <span className="mt-3 text-sm font-medium text-gray-800">
                   {tile.label}

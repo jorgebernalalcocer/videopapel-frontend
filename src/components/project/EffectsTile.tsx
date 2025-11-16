@@ -2,12 +2,19 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BaseTileModal, type TileOption } from '@/components/ui/BaseTileModal'
+import ApplyEffect from '@/components/project/viewer/ApplyEffect'
+import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 
 type PrintEffect = {
   id: number
   name: string
   description?: string | null
   preview_url?: string | null
+}
+
+export type EffectPreviewClip = {
+  videoUrl: string
+  frameTimeMs: number
 }
 
 type EffectsTileProps = {
@@ -18,6 +25,7 @@ type EffectsTileProps = {
   value?: number | null
   onClose: () => void
   onSaved?: (effect: PrintEffect | null) => void
+  previewClip?: EffectPreviewClip | null
 }
 
 const PREVIEW_PLACEHOLDER = '/samples/sample-1.jpg'
@@ -30,6 +38,7 @@ export default function EffectsTile({
   value,
   onClose,
   onSaved,
+  previewClip,
 }: EffectsTileProps) {
   const [effects, setEffects] = useState<PrintEffect[]>([])
   const [loading, setLoading] = useState(false)
@@ -90,6 +99,15 @@ export default function EffectsTile({
     }))
   }, [effects, savingId])
 
+  const previewImage = useMemo(() => {
+    if (!previewClip) return null
+    try {
+      return cloudinaryFrameUrlFromVideoUrl(previewClip.videoUrl, previewClip.frameTimeMs, 360)
+    } catch {
+      return null
+    }
+  }, [previewClip])
+
   const handleSelect = useCallback(async (option: TileOption) => {
     if (!accessToken) return
     const nextId = typeof option.id === 'number' ? option.id : Number(option.id)
@@ -121,6 +139,21 @@ export default function EffectsTile({
     }
   }, [accessToken, apiBase, projectId, effects, onClose, onSaved])
 
+  const renderPreview = useCallback(
+    (tile: TileOption) => (
+      <ApplyEffect effectName={tile.label}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={previewImage ?? PREVIEW_PLACEHOLDER}
+          alt={`Vista previa con ${tile.label}`}
+          className="h-full w-full object-cover"
+          loading="lazy"
+        />
+      </ApplyEffect>
+    ),
+    [previewImage],
+  )
+
   return (
     <BaseTileModal
       open={open}
@@ -134,6 +167,7 @@ export default function EffectsTile({
       loading={loading}
       error={error}
       onSelect={handleSelect}
+      renderPreview={renderPreview}
       modalProps={{ size: 'lg' }}
     />
   )
