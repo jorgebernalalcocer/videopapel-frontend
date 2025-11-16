@@ -6,8 +6,11 @@ import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import DeleteProjectButton from '@/components/DeleteProjectButton'
 import { toast } from "sonner";
-import { CheckCircle2, XCircle } from "lucide-react";
+import { CheckCircle2, XCircle, Share2 } from "lucide-react";
 import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
+// import { Modal } from '@/components/ui/Modal' // Ya no se necesita aquí si solo se usa en los modales hijos
+import { ShareConfirmationModal } from '@/components/ShareConfirmationModal'
+import { ShareModal } from '@/components/ShareModal' // ⭐️ Importar la nueva modal de compartir
 
 type Project = {
   id: string
@@ -15,6 +18,7 @@ type Project = {
   status: 'draft' | 'ready' | 'exported'
   created_at: string
   updated_at: string
+  is_public: boolean
   clip_count: number
   print_size_label?: string | null
   orientation_name?: string | null
@@ -27,15 +31,28 @@ type Project = {
   } | null
 }
 
+export type { Project } 
+
 export default function MyProjects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+  
+  // Estado para la modal de CONFIRMACIÓN (hacer público)
+  const [shareConfirmationProject, setShareConfirmationProject] = useState<Project | null>(null)
+  
+  // ⭐️ Estado para la modal de COMPARTIR (redes sociales)
+  const [sharePublicProject, setSharePublicProject] = useState<Project | null>(null)
+  
+  const [sharingId, setSharingId] = useState<string | null>(null)
+  const [updatingPrivacy, setUpdatingPrivacy] = useState(false)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+
+  // ... (fetchProjects, useEffects, duplicateProject sin cambios) ...
 
   const fetchProjects = useCallback(async () => {
     setLoading(true)
@@ -47,6 +64,7 @@ export default function MyProjects() {
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
       const data = await res.json()
+    console.log('Fetched projects:', data)
       setProjects(data?.results ?? data)
     } catch (e: any) {
       setError(e.message || 'Error al cargar tus proyectos')
@@ -84,28 +102,101 @@ export default function MyProjects() {
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
       toast.success("¡Proyecto duplicado con éxito!", {
         icon: <CheckCircle2 className="text-green-500" />,
-        duration: 5000, // ⏱ duración en ms (configurable)
+        duration: 5000,
       });
       const clone: Project = await res.json()
 
-      // Opción A: refrescar toda la lista
-      // await fetchProjects()
-
-      // Opción B: insertar el clon sin esperar a recargar
       setProjects((prev) => [clone, ...prev])
 
-      // dispara evento por si otros componentes escuchan
       window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
     } catch (e: any) {
       setError(e.message || 'No se pudo duplicar el proyecto')
       toast.error("Error. No se pudo duplicar el proyecto", {
         icon: <XCircle className="text-red-500" />,
-        duration: 5000, // ⏱ también configurable
+        duration: 5000,
       });
     } finally {
       setDuplicatingId(null)
     }
   }
+
+
+  // Función anterior que gestionaba el "Compartir Nativo/Copiar Enlace". 
+  // Ahora se mantiene para ser usada al hacer público un proyecto.
+  const shareProject = useCallback(async (project: Project) => {
+    if (typeof window === 'undefined') return
+    const shareUrl = `${window.location.origin}/clips/${project.id}`
+    setSharingId(project.id)
+    try {
+      // ⭐️ Abrir la modal de redes sociales después de un intento de compartir nativo fallido, 
+      // o directamente si no es compatible.
+      if (navigator.share) {
+        await navigator.share({
+          title: project.name || 'Proyecto de VideoPapel',
+          text: 'Mira este proyecto en VideoPapel',
+          url: shareUrl,
+        })
+        toast.success('Proyecto compartido correctamente (vía nativa).')
+      } else {
+        setSharePublicProject(project) // Si falla o no existe, abrimos la modal de redes
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return
+      
+      // Si hay error (p. ej. en desktop) o no es compatible, abrimos la modal
+      setSharePublicProject(project) 
+      toast.info('Abriendo opciones de compartición...')
+
+    } finally {
+      setSharingId(null)
+    }
+  }, [])
+
+
+  const handleShareClick = useCallback((project: Project) => {
+    if (!project.is_public) {
+      setShareConfirmationProject(project) // ⭐️ Abrir modal de confirmación
+      return
+    }
+    setSharePublicProject(project) // ⭐️ Abrir modal de redes sociales
+  }, [])
+
+  const handleMakePublic = useCallback(async (project: Project) => {
+    if (!accessToken) return
+    const projectId = project.id
+    setUpdatingPrivacy(true)
+    try {
+      const res = await fetch(`${API_BASE}/projects/${projectId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ is_public: true }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status}`)
+      }
+      const updated = (await res.json()) as Project
+      setProjects((prev) =>
+        prev.map((proj) => (proj.id === projectId ? { ...proj, is_public: true } : proj)),
+      )
+      toast.success('El proyecto ahora es público. Abriendo opciones para compartir.')
+      
+      setShareConfirmationProject(null) // Cierra el modal de confirmación
+      setUpdatingPrivacy(false) // Necesario para evitar conflictos en el siguiente paso
+      
+      // ⭐️ Ahora que es público, abre directamente la modal de compartir
+      setSharePublicProject(updated)
+
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo actualizar la privacidad.')
+    } finally {
+      setUpdatingPrivacy(false)
+    }
+  }, [API_BASE, accessToken])
 
   if (!hasHydrated) return <p className="text-gray-500">Preparando…</p>
   if (!accessToken) return <p className="text-gray-500">Inicia sesión para ver tus proyectos.</p>
@@ -114,11 +205,13 @@ export default function MyProjects() {
   if (!projects.length) return <p className="text-gray-500">Aún no tienes proyectos.</p>
 
   return (
-    <section className="w-full">
+    <>
+      <section className="w-full">
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((p) => (
           <li key={p.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
             {p.primary_clip && p.primary_clip.video_url && (
+              // ... (código de miniaturas sin cambios) ...
               <div className="bg-gray-100">
                 <div className="grid grid-cols-2 gap-0.5 aspect-video overflow-hidden">
                   {(p.primary_clip.thumbnails?.length
@@ -166,6 +259,9 @@ export default function MyProjects() {
               <p className="text-xs text-gray-400 mt-1">
                 Creado: {new Date(p.created_at).toLocaleString()}
               </p>
+              <p className="text-xs text-gray-400 mt-1">
+                Proyecto {p.is_public ? 'Público' : 'Privado'}
+              </p>
 
               <div className="mt-4 flex gap-2">
                 <Link
@@ -181,7 +277,6 @@ export default function MyProjects() {
                   Exportar
                 </Link>
 
-                {/* Nuevo botón: Duplicar */}
                 <button
                   type="button"
                   onClick={() => duplicateProject(p.id)}
@@ -193,6 +288,20 @@ export default function MyProjects() {
                   "
                 >
                   {duplicatingId === p.id ? 'Duplicando…' : 'Duplicar'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleShareClick(p)}
+                  disabled={sharingId === p.id}
+                  title="Compartir proyecto"
+                  className="
+                    px-3 py-1.5 text-xs rounded-lg border hover:bg-gray-50
+                    disabled:opacity-60 disabled:cursor-not-allowed
+                    flex items-center gap-1
+                  "
+                >
+                    <Share2 className="w-3 h-3" />
+                    Compartir
                 </button>
               </div>
               <DeleteProjectButton
@@ -206,7 +315,22 @@ export default function MyProjects() {
           </li>
         ))}
       </ul>
-    </section>
+      </section>
+
+      {/* ⭐️ Modal de Confirmación (Privado -> Público) */}
+      <ShareConfirmationModal
+        project={shareConfirmationProject}
+        onClose={() => (updatingPrivacy ? undefined : setShareConfirmationProject(null))}
+        onMakePublic={handleMakePublic}
+        isUpdating={updatingPrivacy}
+      />
+      
+      {/* ⭐️ Nueva Modal de Compartir (Público -> Redes Sociales) */}
+      <ShareModal
+        project={sharePublicProject}
+        onClose={() => setSharePublicProject(null)}
+      />
+    </>
   )
 }
 
