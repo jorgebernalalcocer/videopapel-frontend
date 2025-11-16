@@ -33,6 +33,20 @@ type Order = {
   order_date: string
   delivery_date?: string | null
   items: OrderItem[]
+  shipping_address?: ShippingAddress | null
+}
+
+type ShippingAddress = {
+  id: number
+  line1: string
+  line2?: string | null
+  city: string
+  state_province: string
+  postal_code: string
+  country: string
+  phone?: string | null
+  instructions?: string | null
+  created_at: string
 }
 
 const formatAmount = (value: string | number) => {
@@ -107,7 +121,7 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
         <div>
           <p className="text-sm text-gray-500">Historial</p>
           <h2 className="text-lg font-semibold text-gray-900">
-            {compact ? 'Últimos pedidos' : 'Pedidos recientes'}
+            {compact ? 'Últimos pedidos' : 'Pedidos realizados'}
           </h2>
           {!compact && <p className="text-sm text-gray-500">Ordenados de más reciente a más antiguo.</p>}
         </div>
@@ -196,6 +210,22 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
                       ))}
                     </ul>
                   </div>
+                  <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dirección de envío</p>
+                    {order.shipping_address ? (
+                      <div className="text-sm text-gray-700">
+                        <p>{formatShippingAddress(order.shipping_address)}</p>
+                        {order.shipping_address.phone && (
+                          <p className="text-xs text-gray-500 mt-1">Teléfono: {order.shipping_address.phone}</p>
+                        )}
+                        {order.shipping_address.instructions && (
+                          <p className="text-xs text-gray-500 mt-1">Notas: {order.shipping_address.instructions}</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">No se registró una dirección de envío.</p>
+                    )}
+                  </div>
                 </div>
               )
             })}
@@ -204,4 +234,15 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
       </div>
     </div>
   )
+}
+
+function formatShippingAddress(address: ShippingAddress): string {
+  const parts = [
+    address.line1,
+    address.line2,
+    [address.postal_code, address.city].filter(Boolean).join(' ').trim(),
+    address.state_province,
+    address.country,
+  ]
+  return parts.filter((part) => part && part.trim()).join(', ')
 }
