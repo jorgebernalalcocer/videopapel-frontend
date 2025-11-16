@@ -310,15 +310,55 @@ function resolveTileIcon(slug?: string | null): LucideIcon | null {
   if (!slug) return null
   const normalized = slug.trim()
   if (!normalized) return null
-  const pascal = toPascalCase(normalized)
-  const candidates = Array.from(
-    new Set([normalized, normalized.toLowerCase(), normalized.toUpperCase(), pascal])
-  )
   const pool = LucideIcons as Record<string, LucideIcon | undefined>
+  const pascal = toPascalCase(normalized)
+  const inferred = inferShapeName(normalized)
+  const candidates = Array.from(
+    new Set(
+      [
+        normalized,
+        normalized.toLowerCase(),
+        normalized.toUpperCase(),
+        pascal,
+        inferred,
+        inferred ? inferred.toLowerCase() : null,
+      ].filter(Boolean) as string[],
+    ),
+  )
   for (const key of candidates) {
     const icon = pool[key]
     if (icon) return icon
   }
+  return null
+}
+
+function inferShapeName(value: string): string | null {
+  const key = value.trim().toLowerCase()
+  if (!key) return null
+  if (key.includes('heart') || key.includes('corazon')) return 'Heart'
+  if (
+    key.includes('star') ||
+    key.includes('estrella') ||
+    key.includes('spark') ||
+    key.includes('sparkle') ||
+    key.includes('sol')
+  )
+    return 'Star'
+  if (
+    key.includes('flower') ||
+    key.includes('flor') ||
+    key.includes('clover') ||
+    key.includes('trebol') ||
+    key.includes('petal')
+  )
+    return 'Flower'
+  if (key.includes('hex')) return 'Hexagon'
+  if (key.includes('diamond') || key.includes('rombo') || key.includes('shield') || key.includes('badge'))
+    return 'Diamond'
+  if (key.includes('triangle') || key.includes('bolt') || key.includes('rayo') || key.includes('lightning'))
+    return 'Triangle'
+  if (key.includes('circle') || key.includes('circulo')) return 'Circle'
+  if (key.includes('square') || key.includes('cuadrado')) return 'Square'
   return null
 }
 
