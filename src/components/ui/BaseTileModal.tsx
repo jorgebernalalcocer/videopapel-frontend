@@ -113,7 +113,7 @@ export function BaseTileModal({
                   .filter(Boolean)
                   .join(' ')}
               >
-                <div className="h-28 w-full overflow-hidden rounded-xl bg-gray-100">
+                <div className="h-28 w-full overflow-hidden rounded-xl bg-gray-100 flex items-center justify-center">
                   {previewContent}
                 </div>
                 <span className="mt-3 text-sm font-medium text-gray-800">
