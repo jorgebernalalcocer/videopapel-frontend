@@ -10,6 +10,7 @@ export type TileOption = {
   imageUrl?: string | null
   description?: string | null
   disabled?: boolean
+  meta?: Record<string, unknown>
 }
 
 type BaseTileModalProps = {

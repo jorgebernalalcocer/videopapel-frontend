@@ -1,9 +1,10 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import type { CSSProperties } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import ColorPickerField from '@/components/project/ColorPickerField'
+import IconsTiles from '@/components/project/IconsTiles'
 import type { FramePosition, FrameSettingClient } from '@/types/frame'
 
 export type FrameOption = {
@@ -80,6 +81,7 @@ export default function FrameModal({
   const [colorHex, setColorHex] = useState('#000000')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [tilePickerOpen, setTilePickerOpen] = useState(false)
 
   useEffect(() => {
     if (!open || !accessToken) return
@@ -155,6 +157,10 @@ export default function FrameModal({
       : undefined
   const selectedFrameStyle = (selectedFrame?.style || '').toLowerCase()
   const requiresTile = selectedFrameStyle === 'tile'
+  const selectedTile = useMemo(
+    () => (typeof tileId === 'number' ? tiles.find((tile) => tile.id === tileId) ?? null : null),
+    [tileId, tiles]
+  )
 
   useEffect(() => {
     if (frameId === '') {
@@ -212,6 +218,11 @@ export default function FrameModal({
       setIsSubmitting(false)
     }
   }
+
+  const handleTileSelected = useCallback((tile: FrameTileOption) => {
+    setTileId(tile.id)
+    setTilePickerOpen(false)
+  }, [])
 
   const handleDelete = async () => {
     if (!onDelete) return
@@ -317,18 +328,38 @@ export default function FrameModal({
                 No hay iconos disponibles. Agrégalos desde el panel de administración.
               </p>
             ) : (
-              <select
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                value={tileId}
-                onChange={(e) => setTileId(e.target.value ? Number(e.target.value) : '')}
-              >
-                <option value="">Seleccionar icono…</option>
-                {tiles.map((tile) => (
-                  <option key={tile.id} value={tile.id}>
-                    {tile.name} — {tile.slug}
-                  </option>
-                ))}
-              </select>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setTilePickerOpen(true)}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-left flex items-center justify-between gap-3 hover:border-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                >
+                  <span>
+                    {selectedTile
+                      ? `${selectedTile.name} (${selectedTile.slug})`
+                      : 'Seleccionar icono…'}
+                  </span>
+                  <svg
+                    className="w-4 h-4 text-gray-400"
+                    viewBox="0 0 20 20"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M6 8l4 4 4-4"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </button>
+                <p className="text-xs text-gray-500 mt-1">
+                  {selectedTile
+                    ? `Seleccionado: ${selectedTile.name} (${selectedTile.slug})`
+                    : 'Pulsa para elegir el icono que se repetirá en el mosaico.'}
+                </p>
+              </>
             )}
             <div className="flex items-center justify-between mt-3">
               <div>
@@ -417,6 +448,17 @@ export default function FrameModal({
           helpText="Puedes escribir un valor hex o usar el selector."
         />
       </form>
+      {requiresTile && (
+        <IconsTiles
+          open={tilePickerOpen}
+          tiles={tiles}
+          selectedId={typeof tileId === 'number' ? tileId : null}
+          onClose={() => setTilePickerOpen(false)}
+          onSelect={handleTileSelected}
+          color={colorHex}
+          filled={filledIcon}
+        />
+      )}
     </Modal>
   )
 }
