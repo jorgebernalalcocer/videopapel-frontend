@@ -100,7 +100,9 @@ export default async function PublicClipsPage({ params }: PageProps) {
     <main className="mx-auto flex min-h-screen max-w-4xl flex-col gap-10 px-6 py-14">
       <header className="text-center">
         <p className="text-sm font-medium uppercase tracking-[0.3em] text-emerald-600">VideoPapel</p>
-        <h1 className="mt-3 text-balance text-3xl sm:text-4xl font-bold tracking-tight">{projectName}</h1>
+        <Link href={`/projects/${data.project.id}`} className="font-semibold text-emerald-600 hover:underline">
+            <h1 className="mt-3 text-balance text-3xl sm:text-4xl font-bold tracking-tight text-purple-600 hover:text-purple-400">{projectName}</h1>
+        </Link>
         <p className="mt-3 text-neutral-600">
           Este proyecto contiene {data.project.clip_count === 1 ? '1 clip' : `${data.project.clip_count} clips`} de vídeo.
           Pulsa sobre cualquiera para reproducirlo.

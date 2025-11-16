@@ -153,7 +153,7 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
                           <div>
                             <Link
                               href={`/projects/${item.project_id}`}
-                              className="font-medium text-gray-900 text-purple-600 hover:text-purple-400"
+                              className="font-medium text-purple-600 hover:text-purple-400"
                             >
                               {item.project_name_snapshot}
                             </Link>

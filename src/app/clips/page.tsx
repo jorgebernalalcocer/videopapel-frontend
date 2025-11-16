@@ -3,7 +3,7 @@
 
 import UploadVideo from '@/components/UploadVideo'
 import MyClips from '@/components/MyClips'
-import MyProjects from '@/components/MyProjects'
+// import MyProjects from '@/components/MyProjects'
 
 export default function ClipsPage() {
   return (
@@ -16,7 +16,7 @@ export default function ClipsPage() {
       </div>
       <UploadVideo />
             <MyClips />
-            <MyProjects />
+            {/* <MyProjects /> */}
     </main>
   )
 }

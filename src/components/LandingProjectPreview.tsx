@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import EditingCanvas from '@/components/project/EditingCanvas'
+import ProjectEditorGate from '@/components/project/ProjectEditorGate'
+
 
 type PublicClip = {
   id: number
@@ -24,7 +26,7 @@ type PublicProjectResponse = {
   clips: PublicClip[]
 }
 
-const PREVIEW_PROJECT_ID = 'd563cd62-d1fb-4c91-ab94-1ff3a75b809a'
+const PREVIEW_PROJECT_ID = '049c7743-e327-45d9-8d67-25970839bbc6'
 
 export default function LandingProjectPreview() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? ''
@@ -112,7 +114,9 @@ export default function LandingProjectPreview() {
         </div>
       ) : (
         <div className="h-[70vh] min-h-[480px] rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <EditingCanvas
+          <ProjectEditorGate projectId={PREVIEW_PROJECT_ID} />
+          
+          {/* <EditingCanvas
             projectId={PREVIEW_PROJECT_ID}
             apiBase={apiBase}
             accessToken={null}
@@ -123,7 +127,7 @@ export default function LandingProjectPreview() {
             printAspectSlug={printAspect ?? 'fill'}
             thumbsPerSecond={thumbsPerSecond}
             printEffectName={printEffectName}
-          />
+          /> */}
         </div>
       )}
     </section>
