@@ -13,6 +13,10 @@ type OrderItem = {
   print_size_label_snapshot: string | null
   orientation_snapshot: string | null
   frame_name_snapshot: string | null
+  effect_name_snapshot: string | null
+  aspect_name_snapshot: string | null
+  quality_label_snapshot: string | null
+  pdf_snapshot: string | null
   quantity: number
   unit_price: string
   created_at: string
@@ -65,6 +69,7 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
         throw new Error(detail || `Error ${res.status}`)
       }
       const data = await res.json()
+      console.log('Fetched orders:', data)
       setOrders(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err?.message || 'No se pudieron cargar tus pedidos.')
@@ -157,6 +162,27 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
                             {item.print_size_label_snapshot && (
                               <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
                             )}
+                            {item.frame_name_snapshot && (
+                              <p className="text-xs text-gray-500">Orientación: {item.orientation_snapshot}</p>
+                            )}
+                            {item.orientation_snapshot && (
+                              <p className="text-xs text-gray-500">Marco decorativo: {item.frame_name_snapshot}</p>
+                            )}
+                            {item.aspect_name_snapshot && (
+                              <p className="text-xs text-gray-500">Aspecto: {item.aspect_name_snapshot}</p>
+                            )}
+                            {item.effect_name_snapshot && (
+                              <p className="text-xs text-gray-500">Efecto: {item.effect_name_snapshot}</p>
+                            )}
+                            {item.quality_label_snapshot && (
+                              <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
+                            )}
+                            <Link
+                              href={`${item.pdf_snapshot}`}
+                              className="font-medium text-gray-900 text-green-600 hover:text-green-400"
+                            >
+                              Link PDF
+                            </Link>
                           </div>
                           <span className="text-sm font-semibold text-gray-900">
                             {formatAmount(parseFloat(item.unit_price) * item.quantity)} €
