@@ -14,7 +14,7 @@ import SelectableBadgeWrapper from '@/components/ui/SelectableBadgeWrapper'
 import PrintOrientationBadge from '@/components/project/PrintOrientationBadge'
 import OrientationSelector from '@/components/project/OrientationSelector'
 import PrintEffectBadge from '@/components/project/PrintEffectBadge'
-import EffectSelector from '@/components/project/EffectSelector'
+import EffectsTile from '@/components/project/EffectsTile'
 import ProjectPrivacyBadge from '@/components/project/ProjectPrivacyBadge'
 import PrivacySelector from '@/components/project/PrivacySelector'
 import PrintAspectBadge from '@/components/project/PrintAspectBadge'
@@ -89,6 +89,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [effectsModalOpen, setEffectsModalOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [creatingClip, setCreatingClip] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
@@ -151,6 +152,12 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const handleThumbsDensityChange = useCallback(async () => {
     await fetchClips()
   }, [fetchClips])
+
+  const openEffectsModal = useCallback(() => setEffectsModalOpen(true), [])
+  const closeEffectsModal = useCallback(() => setEffectsModalOpen(false), [])
+  const handleEffectSaved = useCallback(() => {
+    void fetchProject()
+  }, [fetchProject])
 
   /* --------- insertar video (crear clip) --------- */
   const handleSelectVideo = useCallback(async (video: VideoItem) => {
@@ -340,26 +347,16 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
                 />    
-                <SelectableBadgeWrapper
-                  BadgeComponent={PrintEffectBadge}
-                  SelectorComponent={EffectSelector}
-                  badgeProps={{
-                    name: project.print_effect_label,
-                    compact: true,
-                  }}
-                  selectorProps={({ closeModal }) => ({
-                    apiBase: API_BASE,
-                    accessToken,
-                    projectId: project.id,
-                    value: project.print_effect_id ?? null,
-                    onSaved: () => {
-                      void fetchProject()
-                      closeModal()
-                    },
-                  })}
-                  modalTitle="Seleccionar efecto de impresión"
-                  modalDescription="Elige el efecto que se aplicará al proyecto."
-                />
+                <button
+                  type="button"
+                  onClick={openEffectsModal}
+                  className="inline-block rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
+                  <PrintEffectBadge
+                    name={project.print_effect_label}
+                    compact={true}
+                  />
+                </button>
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintAspectBadge}
                   SelectorComponent={AspectSelector}
@@ -537,26 +534,16 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
                 />    
-                <SelectableBadgeWrapper
-                  BadgeComponent={PrintEffectBadge}
-                  SelectorComponent={EffectSelector}
-                  badgeProps={{
-                    name: project.print_effect_label,
-                    compact: true,
-                  }}
-                  selectorProps={({ closeModal }) => ({
-                    apiBase: API_BASE,
-                    accessToken,
-                    projectId: project.id,
-                    value: project.print_effect_id ?? null,
-                    onSaved: () => {
-                      void fetchProject()
-                      closeModal()
-                    },
-                  })}
-                  modalTitle="Seleccionar efecto de impresión"
-                  modalDescription="Elige el efecto que se aplicará al proyecto."
-                />
+                <button
+                  type="button"
+                  onClick={openEffectsModal}
+                  className="inline-block rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                >
+                  <PrintEffectBadge
+                    name={project.print_effect_label}
+                    compact={true}
+                  />
+                </button>
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintAspectBadge}
                   SelectorComponent={AspectSelector}
@@ -646,6 +633,18 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
         </div>
 
       </div>
+
+      {project && (
+        <EffectsTile
+          open={effectsModalOpen}
+          apiBase={API_BASE}
+          accessToken={accessToken}
+          projectId={project.id}
+          value={project.print_effect_id ?? null}
+          onClose={closeEffectsModal}
+          onSaved={handleEffectSaved}
+        />
+      )}
 
       {/* Modal de selección de video */}
       <VideoPickerModal
