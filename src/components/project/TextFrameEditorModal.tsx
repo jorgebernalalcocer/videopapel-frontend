@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import ColorPickerField from '@/components/project/ColorPickerField'
 import { toast } from 'sonner'
-import TypographyTiles from '@/components/project/TypographyTiles'
+import TypographyTiles, { type TypographyOption } from '@/components/project/TypographyTiles'
 
 export type TextFrameModel = {
   id: number
@@ -43,9 +43,9 @@ type Props = {
   onSaved: () => void
 }
 
-const FONT_SIZE_MIN = 5
+const FONT_SIZE_MIN = 10
 const FONT_SIZE_MAX = 30
-const DEFAULT_FONT_SIZE = 18
+const DEFAULT_FONT_SIZE = 14
 const DEFAULT_COLOR = '#FFFFFF'
 
 const clampFontSize = (value: number | null | undefined) => {
@@ -81,6 +81,7 @@ export default function TextFrameEditorModal({
   const [content, setContent] = useState(initial?.content ?? '')
   const [typography, setTypography] = useState(initial?.typography ?? '')
   const [typographyName, setTypographyName] = useState(initial?.typography ?? '')
+  const [typographyFontPreview, setTypographyFontPreview] = useState('')
   const [fontSize, setFontSize] = useState(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
   const [colorHex, setColorHex] = useState(normalizeColor(initial?.color_hex))
   const [modeValue, setModeValue] = useState<'range' | 'specific'>(
@@ -166,6 +167,7 @@ export default function TextFrameEditorModal({
     setContent(initial?.content ?? '')
     setTypography(initial?.typography ?? '')
     setTypographyName(initial?.typography ?? '')
+    setTypographyFontPreview(initial?.typography ?? '')
     setFontSize(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
     setColorHex(normalizeColor(initial?.color_hex))
     setModeValue(initial?.specific_frames?.length ? 'specific' : 'range')
@@ -304,6 +306,7 @@ export default function TextFrameEditorModal({
                 onClick={() => {
                   setTypography('')
                   setTypographyName('')
+                  setTypographyFontPreview('')
                 }}
                 className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
               >
@@ -316,11 +319,16 @@ export default function TextFrameEditorModal({
           <label className="block text-sm font-medium text-gray-700 mb-1">Contenido del texto</label>
           <textarea
             required
-            rows={4}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             placeholder="Escribe aquí el texto…"
+            style={{
+              fontFamily: typographyFontPreview || undefined,
+              fontSize: `${fontSize}px`,
+              minHeight: '120px',
+              maxHeight: '120px',
+            }}
           />
         </div>
 
@@ -431,13 +439,15 @@ export default function TextFrameEditorModal({
         accessToken={accessToken}
         selectedSlug={typography ?? null}
         onClose={() => setTypographyModalOpen(false)}
-        onSelect={(option) => {
+        onSelect={(option: TypographyOption | null) => {
           if (!option) {
             setTypography('')
             setTypographyName('')
+            setTypographyFontPreview('')
           } else {
             setTypography(option.slug)
             setTypographyName(option.display_name || option.slug)
+            setTypographyFontPreview(option.font_family_css || option.display_name || '')
           }
           setTypographyModalOpen(false)
         }}
