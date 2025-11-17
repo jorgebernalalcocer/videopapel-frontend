@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import ColorPickerField from '@/components/project/ColorPickerField'
 import { toast } from 'sonner'
+import TypographyTiles from '@/components/project/TypographyTiles'
 
 export type TextFrameModel = {
   id: number
@@ -79,11 +80,13 @@ export default function TextFrameEditorModal({
 
   const [content, setContent] = useState(initial?.content ?? '')
   const [typography, setTypography] = useState(initial?.typography ?? '')
+  const [typographyName, setTypographyName] = useState(initial?.typography ?? '')
   const [fontSize, setFontSize] = useState(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
   const [colorHex, setColorHex] = useState(normalizeColor(initial?.color_hex))
   const [modeValue, setModeValue] = useState<'range' | 'specific'>(
     initial?.specific_frames?.length ? 'specific' : 'range'
   )
+  const [typographyModalOpen, setTypographyModalOpen] = useState(false)
   const safeFrameCount = Math.max(frameCount, 1)
 
   const clampIndex = (index: number) => {
@@ -162,6 +165,7 @@ export default function TextFrameEditorModal({
     setError(null)
     setContent(initial?.content ?? '')
     setTypography(initial?.typography ?? '')
+    setTypographyName(initial?.typography ?? '')
     setFontSize(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
     setColorHex(normalizeColor(initial?.color_hex))
     setModeValue(initial?.specific_frames?.length ? 'specific' : 'range')
@@ -284,6 +288,30 @@ export default function TextFrameEditorModal({
       size="lg"
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+         <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Tipografía (opcional)</label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setTypographyModalOpen(true)}
+              className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm text-left hover:border-purple-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              {typographyName ? `Seleccionada: ${typographyName}` : 'Seleccionar tipografía'}
+            </button>
+            {typography && (
+              <button
+                type="button"
+                onClick={() => {
+                  setTypography('')
+                  setTypographyName('')
+                }}
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Quitar
+              </button>
+            )}
+          </div>
+        </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Contenido del texto</label>
           <textarea
@@ -298,16 +326,7 @@ export default function TextFrameEditorModal({
 
         <p className="text-xs text-gray-500">Total de frames: {frameCount}. El primero es 1.</p>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Tipografía (opcional)</label>
-          <input
-            type="text"
-            value={typography}
-            onChange={(e) => setTypography(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            placeholder="Ej. Open Sans Bold"
-          />
-        </div>
+       
 
         <div>
           <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
@@ -406,6 +425,23 @@ export default function TextFrameEditorModal({
           </button>
         </div>
       </form>
+      <TypographyTiles
+        open={typographyModalOpen}
+        apiBase={apiBase}
+        accessToken={accessToken}
+        selectedSlug={typography ?? null}
+        onClose={() => setTypographyModalOpen(false)}
+        onSelect={(option) => {
+          if (!option) {
+            setTypography('')
+            setTypographyName('')
+          } else {
+            setTypography(option.slug)
+            setTypographyName(option.display_name || option.slug)
+          }
+          setTypographyModalOpen(false)
+        }}
+      />
     </Modal>
   )
 }

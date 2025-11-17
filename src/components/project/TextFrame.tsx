@@ -4,6 +4,7 @@ import { Pencil } from 'lucide-react'
 import { PropsWithChildren } from 'react'
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
 import { borel, borelFontStack } from '@/fonts/borel'
+import { cookie, cookieFontStack } from '@/fonts/cookie'
 import DeleteTextButton from '@/components/project/DeleteTextButton'
 
 const FONT_CLASS_MAP: Record<string, { className: string; stack: string }> = {
@@ -11,6 +12,8 @@ const FONT_CLASS_MAP: Record<string, { className: string; stack: string }> = {
   'pacifico-regular': { className: pacifico.className, stack: pacificoFontStack },
   borel: { className: borel.className, stack: borelFontStack },
   'borel-regular': { className: borel.className, stack: borelFontStack },
+  cookie: { className: cookie.className, stack: cookieFontStack },
+  'cookie-regular': { className: cookie.className, stack: cookieFontStack },
 }
 
 const clampFontSize = (value?: number | null) => {
