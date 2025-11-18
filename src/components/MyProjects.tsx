@@ -6,11 +6,12 @@ import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import DeleteProjectButton from '@/components/DeleteProjectButton'
 import { toast } from "sonner";
-import { CheckCircle2, XCircle, Share2, ExternalLink, Layers2 } from "lucide-react";
+import { Share2, ExternalLink } from "lucide-react";
 import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 // import { Modal } from '@/components/ui/Modal' // Ya no se necesita aquí si solo se usa en los modales hijos
 import { ShareConfirmationModal } from '@/components/ShareConfirmationModal'
 import { ShareModal } from '@/components/ShareModal' // ⭐️ Importar la nueva modal de compartir
+import DuplicateProjectButton from '@/components/DuplicateProjectButton'
 
 type Project = {
   id: string
@@ -37,8 +38,6 @@ export default function MyProjects() {
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
-  
   // Estado para la modal de CONFIRMACIÓN (hacer público)
   const [shareConfirmationProject, setShareConfirmationProject] = useState<Project | null>(null)
   
@@ -85,41 +84,6 @@ export default function MyProjects() {
       window.removeEventListener('videopapel:project:changed', handler)
     }
   }, [fetchProjects])
-
-  async function duplicateProject(id: string) {
-    if (!accessToken) return
-    setDuplicatingId(id)
-    setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/projects/${id}/duplicate/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
-      toast.success("¡Proyecto duplicado con éxito!", {
-        icon: <CheckCircle2 className="text-green-500" />,
-        duration: 5000,
-      });
-      const clone: Project = await res.json()
-
-      setProjects((prev) => [clone, ...prev])
-
-      window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
-    } catch (e: any) {
-      setError(e.message || 'No se pudo duplicar el proyecto')
-      toast.error("Error. No se pudo duplicar el proyecto", {
-        icon: <XCircle className="text-red-500" />,
-        duration: 5000,
-      });
-    } finally {
-      setDuplicatingId(null)
-    }
-  }
-
 
   // Función anterior que gestionaba el "Compartir Nativo/Copiar Enlace". 
   // Ahora se mantiene para ser usada al hacer público un proyecto.
@@ -278,20 +242,14 @@ export default function MyProjects() {
                   Exportar
                 </Link> */}
 
-                <button
-                  type="button"
-                  onClick={() => duplicateProject(p.id)}
-                  disabled={duplicatingId === p.id}
+                <DuplicateProjectButton
+                  projectId={p.id}
+                  onDuplicated={(clone) => {
+                    setProjects((prev) => [clone as Project, ...prev])
+                  }}
+                  onError={setError}
                   title="Duplicar proyecto"
-                  className="
-    px-3 py-1.5 text-xs rounded-lg hover:bg-gray-50
-    disabled:opacity-60 disabled:cursor-not-allowed bg-yellow-100 text-black
-    flex items-center justify-center gap-1  // ⭐️ Añadimos Flexbox aquí
-  "
-                >
-                  <Layers2 className="w-3 h-3" />
-                  {duplicatingId === p.id ? 'Duplicando…' : 'Duplicar'}
-                </button>
+                />
                 <button
                   type="button"
                   onClick={() => handleShareClick(p)}

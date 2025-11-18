@@ -22,6 +22,7 @@ import AspectSelector from '@/components/project/AspectSelector'
 import type { FrameSettingClient } from '@/types/frame'
 import { toast } from 'sonner'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
+import DuplicateProjectButton from '@/components/DuplicateProjectButton'
 
 /* =========================
    Tipos
@@ -272,23 +273,30 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
 
   return (
     <div className="w-full h-full p-4 bg-gray-50">
-      <header className="mb-6 border-b pb-4 flex justify-between items-center">
+      <header className="mb-6 border-b pb-4 flex flex-wrap gap-4 justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">
           {project.name || 'Proyecto sin nombre'}
         </h1>
-        <div className="text-sm text-gray-500">
-          Estado:{' '}
-<span
-  className={`font-medium ${
-    project.status === 'ready'
-      ? 'text-blue-500' // Si es 'ready', azul
-      : project.status === 'draft'
-      ? 'text-orange-600' // Si es 'draft', naranja (usaremos 'text-orange-500' de Tailwind)
-      : 'text-green-600' // Cualquier otro caso, verde
-  }`}
->
-  {statusLabel}
-</span>
+        <div className="flex items-center gap-3 text-sm text-gray-500">
+          <span>
+            Estado:{' '}
+            <span
+              className={`font-medium ${
+                project.status === 'ready'
+                  ? 'text-blue-500'
+                  : project.status === 'draft'
+                  ? 'text-orange-600'
+                  : 'text-green-600'
+              }`}
+            >
+              {statusLabel}
+            </span>
+          </span>
+          <DuplicateProjectButton
+            projectId={project.id}
+            className="px-3 py-1 text-xs rounded-lg"
+            title="Duplicar proyecto"
+          />
         </div>
       </header>
 
