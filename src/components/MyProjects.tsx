@@ -11,7 +11,9 @@ import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 // import { Modal } from '@/components/ui/Modal' // Ya no se necesita aquí si solo se usa en los modales hijos
 import { ShareConfirmationModal } from '@/components/ShareConfirmationModal'
 import { ShareModal } from '@/components/ShareModal' // ⭐️ Importar la nueva modal de compartir
+import { DateFormat} from '@/components/DateFormat'
 import DuplicateProjectButton from '@/components/DuplicateProjectButton'
+
 
 type Project = {
   id: string
@@ -20,6 +22,7 @@ type Project = {
   created_at: string
   updated_at: string
   is_public: boolean
+  duplicate_of: string | null
   clip_count: number
   print_size_label?: string | null
   orientation_name?: string | null
@@ -220,12 +223,25 @@ export default function MyProjects() {
                 {p.effect_name ? ` • efecto: ${p.effect_name}` : ''}
               </p>
 
-              <p className="text-xs text-gray-400 mt-1">
-                Creado: {new Date(p.created_at).toLocaleString()}
-              </p>
+              {/* <p className="text-xs text-gray-400 mt-1">
+{p.duplicate_of ? "Duplicado el dia" : "Creado el dia"} {new Date(p.created_at).toLocaleString()}              </p> */}
+<DateFormat
+  date={p.created_at}
+  isDuplicated={!!p.duplicate_of} // Convierte a booleano
+/>
               <p className="text-xs text-gray-400 mt-1">
                 Proyecto {p.is_public ? 'Público' : 'Privado'}
               </p>
+{p.duplicate_of && (
+  <p className="text-xs text-gray-400 mt-1">
+    <Link
+      href={`/projects/${p.duplicate_of}`}
+      className="font-medium text-purple-600 hover:text-purple-400"
+    >
+      Este proyecto fue copiado de {p.duplicate_of}
+    </Link>
+  </p>
+)}
 
               <div className="mt-4 flex gap-2">
                 <Link
@@ -244,6 +260,7 @@ export default function MyProjects() {
 
                 <DuplicateProjectButton
                   projectId={p.id}
+                  size="compact"
                   onDuplicated={(clone) => {
                     setProjects((prev) => [clone as Project, ...prev])
                   }}
