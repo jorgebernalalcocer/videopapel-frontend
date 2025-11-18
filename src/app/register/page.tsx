@@ -53,11 +53,11 @@ type RegisterResponse =
       // caso: la API crea usuario y devuelve tokens
       access: string;
       refresh: string;
-      user?: { id: number; email: string; is_active: boolean };
+      user?: { id: number; email: string; username?: string | null; phone?: string | null; is_active: boolean };
     }
   | {
       // caso: la API solo devuelve info/usuario
-      user: { id: number; email: string; is_active: boolean };
+      user: { id: number; email: string; username?: string | null; phone?: string | null; is_active: boolean };
       detail?: string;
     };
 

@@ -191,7 +191,7 @@ export default function ShippingPage() {
   return (
     <section className="max-w-5xl mx-auto px-4 py-12 space-y-8">
       <header className="space-y-2">
-        <p className="text-sm text-gray-500">Paso 2 de 3</p>
+        {/* <p className="text-sm text-gray-500">Paso 2 de 3</p> */}
         <h1 className="text-3xl font-semibold text-gray-900">Dirección de entrega</h1>
         <p className="text-gray-600">Indica la dirección donde quieres recibir tu álbum impreso.</p>
       </header>
@@ -270,6 +270,10 @@ export default function ShippingPage() {
 
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm p-6">
         <form onSubmit={handleSubmit} className="space-y-4">
+                      <div>
+              <h2 className="text-lg font-semibold text-gray-900">Nueva dirección</h2>
+              <p className="text-sm text-gray-500">Añade una dirección de envío.</p>
+            </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Etiqueta</label>
             <input
@@ -335,12 +339,13 @@ export default function ShippingPage() {
               />
             </label>
             <label className="text-sm font-medium text-gray-700">
-              País (ISO 2 letras)
+              País
               <input
                 type="text"
                 value={form.country}
                 onChange={(e) => updateField('country', e.target.value.toUpperCase())}
                 required
+                disabled
                 maxLength={2}
                 className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-purple-500"
               />

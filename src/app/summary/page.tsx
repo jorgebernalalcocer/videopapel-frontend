@@ -254,7 +254,7 @@ export default function SummaryPage() {
   return (
     <section className="max-w-4xl mx-auto px-4 py-12 space-y-8">
       <header className="space-y-2">
-        <p className="text-sm text-gray-500">Paso 2 de 3</p>
+        {/* <p className="text-sm text-gray-500">Paso 2 de 3</p> */}
         <h1 className="text-3xl font-semibold text-gray-900">Resumen del pedido</h1>
         <p className="text-gray-600">Revisa cada proyecto, el subtotal y el IVA antes de facilitar la dirección de envío.</p>
       </header>

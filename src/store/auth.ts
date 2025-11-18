@@ -5,12 +5,20 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { API_URL } from '@/lib/env'
 
+type AuthUser = {
+  id: number
+  email: string
+  username?: string | null
+  phone?: string | null
+  is_active?: boolean
+}
+
 interface AuthState {
   accessToken: string | null
   refreshToken: string | null
-  user: { id: number; email: string } | null
+  user: AuthUser | null
   hasHydrated: boolean
-  login: (tokens: { access: string; refresh: string; user?: any }) => void
+  login: (tokens: { access: string; refresh: string; user?: AuthUser | null }) => void
   logout: () => Promise<void>
   setHasHydrated: (v: boolean) => void
   setTokens: (tokens: { access?: string | null; refresh?: string | null }) => void // 👈 NEW

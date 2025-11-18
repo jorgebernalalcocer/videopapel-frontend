@@ -274,7 +274,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
     <div className="w-full h-full p-4 bg-gray-50">
       <header className="mb-6 border-b pb-4 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-800">
-          Editor: {project.name || 'Proyecto sin nombre'}
+          {project.name || 'Proyecto sin nombre'}
         </h1>
         <div className="text-sm text-gray-500">
           Estado:{' '}
