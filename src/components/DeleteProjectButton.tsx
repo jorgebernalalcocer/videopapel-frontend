@@ -10,12 +10,14 @@ type DeleteProjectButtonProps = {
   projectId: string
   projectName?: string | null
   onDeleted?: () => void
+  disabled?: boolean
 }
 
 export default function DeleteProjectButton({
   projectId,
   projectName,
   onDeleted,
+  disabled = false,
 }: DeleteProjectButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -25,7 +27,7 @@ export default function DeleteProjectButton({
   const confirm = useConfirm()
 
   const handleDelete = async () => {
-    if (!accessToken || isDeleting) return
+    if (!accessToken || isDeleting || disabled) return
 
     const ok = await confirm({
       title: 'Eliminar proyecto',
@@ -83,8 +85,8 @@ export default function DeleteProjectButton({
       <button
         type="button"
         onClick={handleDelete}
-        disabled={isDeleting}
-        className="px-3 py-1 text-xs font-medium bg-red-200 text-black rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-400 disabled:cursor-not-allowed"
+        disabled={isDeleting || disabled}
+        className="px-3 py-1 text-xs font-medium bg-red-200 text-black rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-200 disabled:text-white disabled:cursor-not-allowed"
       >
         {isDeleting ? 'Eliminando…' : 'Eliminar proyecto'}
       </button>

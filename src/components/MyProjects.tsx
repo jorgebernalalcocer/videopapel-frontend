@@ -310,6 +310,7 @@ export default function MyProjects() {
               <DeleteProjectButton
                 projectId={p.id}
                 projectName={p.name}
+                disabled={p.status === 'exported'}
                 onDeleted={() => {
                   setProjects((prev) => prev.filter((proj) => proj.id !== p.id))
                 }}
