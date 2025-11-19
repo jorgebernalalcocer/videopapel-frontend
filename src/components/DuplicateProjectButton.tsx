@@ -145,7 +145,7 @@ const finalLabel = label ?? defaultLabel // Usar la prop 'label' si existe, sino
         }
       >
         <p className="text-sm text-gray-600">
-          Se ha creado una copia del proyecto actual. Puedes continuar donde estabas o abrir la nueva copia en otra pestaña.
+          Se ha creado una copia del proyecto actual. Puedes continuar donde estabas o ir a la nueva copia.
         </p>
       </Modal>
     </>

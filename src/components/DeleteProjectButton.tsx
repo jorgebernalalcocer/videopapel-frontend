@@ -88,7 +88,7 @@ export default function DeleteProjectButton({
         disabled={isDeleting || disabled}
         className="px-3 py-1 text-xs font-medium bg-red-200 text-black rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-200 disabled:text-white disabled:cursor-not-allowed"
       >
-        {isDeleting ? 'Eliminando…' : 'Eliminar proyecto'}
+        {isDeleting ? 'Eliminando…' : 'Eliminar'}
       </button>
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>

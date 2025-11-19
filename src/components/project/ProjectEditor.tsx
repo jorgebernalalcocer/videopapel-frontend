@@ -23,6 +23,8 @@ import type { FrameSettingClient } from '@/types/frame'
 import { toast } from 'sonner'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
 import DuplicateProjectButton from '@/components/DuplicateProjectButton'
+import EditTitleModal from '@/components/project/EditTitleModal'
+import { SquarePen } from 'lucide-react'
 
 /* =========================
    Tipos
@@ -107,6 +109,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [effectsModalOpen, setEffectsModalOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
   const [creatingClip, setCreatingClip] = useState(false)
+  const [editTitleOpen, setEditTitleOpen] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -173,6 +176,35 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const handleEffectSaved = useCallback(() => {
     void fetchProject()
   }, [fetchProject])
+  const handleSaveTitle = useCallback(
+    async (nextTitle: string) => {
+      if (!accessToken) {
+        throw new Error('Debes iniciar sesión para editar el título.')
+      }
+      const normalized = nextTitle.trim()
+      const payload = normalized.length ? normalized : null
+      const res = await fetch(`${API_BASE}/projects/${projectId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ name: payload }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status} al actualizar el título.`)
+      }
+      const updated = await res.json()
+      setProject(updated)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
+      }
+      toast.success('Título actualizado correctamente.')
+    },
+    [API_BASE, accessToken, projectId],
+  )
 
   const effectsPreviewClip = useMemo<EffectPreviewClip | null>(() => {
     return resolveClipPreview(clips[0]) ?? resolveClipPreview(project?.primary_clip ?? null)
@@ -274,9 +306,19 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   return (
     <div className="w-full h-full p-4 bg-gray-50">
       <header className="mb-6 border-b pb-4 flex flex-wrap gap-4 justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-800">
-          {project.name || 'Proyecto sin nombre'}
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-gray-800">
+            {project.name || 'Proyecto sin nombre'}
+          </h1>
+          <button
+            type="button"
+            aria-label="Editar título del proyecto"
+            onClick={() => setEditTitleOpen(true)}
+            className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
+          >
+            <SquarePen className="h-5 w-5" />
+          </button>
+        </div>
         <div className="flex items-center gap-3 text-sm text-gray-500">
           <span>
             Estado:{' '}
@@ -683,6 +725,12 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
         onSelect={handleSelectVideo}
         busy={creatingClip}
         error={actionError || undefined}
+      />
+      <EditTitleModal
+        open={editTitleOpen}
+        currentTitle={project.name}
+        onClose={() => setEditTitleOpen(false)}
+        onSave={handleSaveTitle}
       />
     </div>
   )
