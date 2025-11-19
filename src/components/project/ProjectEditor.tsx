@@ -19,6 +19,7 @@ import ProjectPrivacyBadge from '@/components/project/ProjectPrivacyBadge'
 import PrivacySelector from '@/components/project/PrivacySelector'
 import PrintAspectBadge from '@/components/project/PrintAspectBadge'
 import AspectSelector from '@/components/project/AspectSelector'
+import StatusBadge from '@/components/project/StatusBadge'
 import type { FrameSettingClient } from '@/types/frame'
 import { toast } from 'sonner'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
@@ -44,7 +45,7 @@ type Project = {
   id: string
   name: string | null
   owner_id: number
-  status: string
+  status: 'draft' | 'ready' | 'exported'
   created_at: string
   updated_at?: string
   print_quality_id?: number | null
@@ -320,20 +321,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           </button>
         </div>
         <div className="flex items-center gap-3 text-sm text-gray-500">
-          <span>
-            Estado:{' '}
-            <span
-              className={`font-medium ${
-                project.status === 'ready'
-                  ? 'text-blue-500'
-                  : project.status === 'draft'
-                  ? 'text-orange-600'
-                  : 'text-green-600'
-              }`}
-            >
-              {statusLabel}
-            </span>
-          </span>
+          <StatusBadge status={project.status} compact/>
           <DuplicateProjectButton
             projectId={project.id}
             size="large"

@@ -1,6 +1,7 @@
 'use client'
 
 import { Sparkles } from 'lucide-react'
+import MainBadge from '@/components/project/MainBadge'
 
 type Props = {
   /** Nombre comercial: Draft / Standard / Photo ... */
@@ -34,16 +35,15 @@ export default function PrintQualityBadge({
     : hasValue ? 'bg-amber-50 text-amber-700 ring-amber-200'
     : 'bg-gray-100 text-gray-500 ring-gray-200'
 
-  const size = compact ? 'text-xs px-2 py-0.5' : 'text-sm px-2.5 py-1'
-
   return (
-    <span
+    <MainBadge
+      label={label}
       title={title}
-      className={`inline-flex items-center gap-1 rounded-full ring-1 ${tone} ${size} ${className}`}
-      aria-label={title}
-    >
-      <Sparkles className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
-      <span className="font-medium">{label}</span>
-    </span>
+      ariaLabel={title}
+      toneClassName={tone}
+      size={compact ? 'compact' : 'large'}
+      icon={<Sparkles className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
+      className={className}
+    />
   )
 }

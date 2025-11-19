@@ -14,6 +14,7 @@ import { ShareModal } from "@/components/ShareModal"; // ⭐️ Importar la nuev
 import { DateFormat } from "@/components/DateFormat";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
 import ProjectPrivacyBadge from "@/components/project/ProjectPrivacyBadge";
+import StatusBadge from "@/components/project/StatusBadge";
 
 type Project = {
   id: string;
@@ -238,12 +239,10 @@ export default function MyProjects() {
                   <h3 className="text-base font-semibold truncate">
                     {p.name || `Proyecto #${p.id}`}
                   </h3>
-                  {/* <ProjectPrivacyBadge isPublic={p.is_public} compact />
-                  <StatusBadge status={p.status} /> */}
                 </div>
-                                            <div className="flex items-center justify-start gap-3">
+                <div className="mt-2 flex items-center gap-3">
                   <ProjectPrivacyBadge isPublic={p.is_public} compact />
-                  <StatusBadge status={p.status} />
+                  <StatusBadge status={p.status} compact />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   {p.clip_count} {p.clip_count === 1 ? "clip" : "clips"}
@@ -346,25 +345,5 @@ export default function MyProjects() {
         onClose={() => setSharePublicProject(null)}
       />
     </>
-  );
-}
-
-function StatusBadge({ status }: { status: Project["status"] }) {
-  const map: Record<Project["status"], string> = {
-    draft: "bg-gray-100 text-gray-700",
-    ready: "bg-amber-100 text-amber-800",
-    exported: "bg-green-100 text-green-700",
-  };
-  const label: Record<Project["status"], string> = {
-    draft: "Elaborando",
-    ready: "Listo",
-    exported: "Comprado",
-  };
-  return (
-    <span
-      className={`inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded ${map[status]}`}
-    >
-      {label[status]}
-    </span>
   );
 }

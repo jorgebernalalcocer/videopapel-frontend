@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
+import MainBadge from '@/components/project/MainBadge'
 
 type PrintOrientation = 'vertical' | 'horizontal' | 'cuadrado'
 
@@ -46,12 +47,10 @@ export default function PrintOrientationBadge({
     ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
     : 'bg-gray-100 text-gray-500 ring-gray-200'
 
-  const size = compact ? 'text-xs px-2 py-0.5' : 'text-sm px-2.5 py-1'
-
   if (!hasMounted) {
     return (
       <span
-        className={`inline-flex items-center gap-1 rounded-full ring-1 ${tone} ${size} ${className}`}
+        className={`inline-flex items-center gap-1 rounded-full ring-1 ${tone} ${compact ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1'} ${className}`}
       >
         <span className="h-4 w-4 animate-pulse rounded-full bg-gray-300" />
         <span className="h-4 w-16 animate-pulse rounded-full bg-gray-300" />
@@ -59,21 +58,26 @@ export default function PrintOrientationBadge({
     )
   }
 
-  return (
+  const icon = (
     <span
+      className={
+        orientation === 'vertical' ? 'h-5 w-3.5 rounded-sm border-2 border-current bg-white'
+        : orientation === 'horizontal' ? 'h-3.5 w-5 rounded-sm border-2 border-current bg-white'
+        : orientation === 'cuadrado' ? 'h-4.5 w-4.5 rounded-sm border-2 border-current bg-white'
+        : 'h-4 w-4 rounded-full bg-gray-300'
+      }
+    />
+  )
+
+  return (
+    <MainBadge
+      label={label ?? 'Sin orientación'}
       title={title}
-      className={`inline-flex items-center gap-1 rounded-full ring-1 ${tone} ${size} ${className}`}
-      aria-label={title}
-    >
-      <span
-        className={
-          orientation === 'vertical' ? 'h-5 w-3.5 rounded-sm border-2 border-current bg-white'
-          : orientation === 'horizontal' ? 'h-3.5 w-5 rounded-sm border-2 border-current bg-white'
-          : orientation === 'cuadrado' ? 'h-4.5 w-4.5 rounded-sm border-2 border-current bg-white'
-          : 'h-4 w-4 rounded-full bg-gray-300'
-        }
-      />
-      <span className="font-medium">{label}</span>
-    </span>
+      ariaLabel={title}
+      toneClassName={tone}
+      size={compact ? 'compact' : 'large'}
+      icon={icon}
+      className={className}
+    />
   )
 }
