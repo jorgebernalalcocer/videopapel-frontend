@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 import { buildSig, loadThumbsFromCache, saveThumbsToCache, Thumbnail } from '@/utils/thumbCache'
-import { generateTimesFromDuration } from '@/utils/time'
 
 export type ClipState = {
   clipId: number; videoSrc: string; durationMs: number; frames: number[];
@@ -13,11 +12,62 @@ export type CombinedThumb = {
   id: string; clipId: number; tLocal: number; tGlobal: number; videoSrc: string; url?: string
 }
 
-function framesCountFor(durationMs: number, suggestedCount?: number, pps?: number) {
-  if (suggestedCount && suggestedCount > 1) return suggestedCount
-  if (pps && pps > 0) return Math.max(2, Math.round((durationMs / 1000) * pps) + 1)
-  return Math.max(2, Math.round(durationMs / 1000) + 1)
+const BASE_GRID_DENSITY = 10
+
+function resolveDensity(value?: number | null) {
+  return Math.max(1, Math.round(value ?? 1))
 }
+
+function gridStepMsForDensity(density: number) {
+  return Math.max(1, Math.round(1000 / density))
+}
+
+function buildGridTimes(durationMs: number, density: number): number[] {
+  const duration = Math.max(0, Math.round(durationMs))
+  const step = gridStepMsForDensity(density)
+  if (duration === 0) return [0]
+  const totalSteps = Math.max(1, Math.round(duration / step))
+  const times: number[] = []
+  for (let idx = 0; idx <= totalSteps; idx++) {
+    const value = Math.min(duration, idx * step)
+    times.push(value)
+  }
+  times[0] = 0
+  times[times.length - 1] = duration
+  return Array.from(new Set(times)).sort((a, b) => a - b)
+}
+
+function selectTimesFromGrid(gridTimes: number[], desiredCount: number): number[] {
+  if (!gridTimes.length) return []
+  if (!desiredCount || desiredCount >= gridTimes.length) return gridTimes.slice()
+  const lastIndex = gridTimes.length - 1
+  const segments = Math.max(1, desiredCount - 1)
+  const step = lastIndex / segments
+  const picked: number[] = []
+  for (let i = 0; i < desiredCount; i++) {
+    const idx = Math.min(lastIndex, Math.round(i * step))
+    picked.push(gridTimes[idx])
+  }
+  picked[picked.length - 1] = gridTimes[lastIndex]
+  return Array.from(new Set(picked)).sort((a, b) => a - b)
+}
+
+function snapTimesToGrid(values: number[], stepMs: number, durationMs: number): number[] {
+  const snapped = values.map((value) => {
+    const clamped = Math.min(Math.max(0, Math.round(value)), durationMs)
+    const snappedValue = Math.round(clamped / stepMs) * stepMs
+    return Math.max(0, Math.min(durationMs, snappedValue))
+  })
+  return Array.from(new Set(snapped)).sort((a, b) => a - b)
+}
+
+function framesCountForDuration(durationMs: number, density: number): number {
+  const durationSec = Math.max(0, durationMs) / 1000
+  const raw = Math.round(durationSec * density)
+  return Math.max(2, raw + 1)
+}
+
+
 
 export function useCombinedThumbs(params: {
   projectId: string
@@ -47,35 +97,48 @@ export function useCombinedThumbs(params: {
 
         for (const c of clipsOrdered) {
           const { offset, start, end } = clipOffsets[c.clipId]
-          const targetCount = framesCountFor(c.durationMs, thumbnailsCount, thumbsPerSecond)
+          const baseGridTimes = buildGridTimes(c.durationMs, BASE_GRID_DENSITY)
+          const density = resolveDensity(thumbsPerSecond)
+          const fallbackCount = framesCountForDuration(c.durationMs, density)
+          const desiredCount =
+            thumbnailsCount && thumbnailsCount > 1 ? thumbnailsCount : fallbackCount
+          const targetTimes = selectTimesFromGrid(baseGridTimes, desiredCount)
+          const targetTimeSet = new Set(targetTimes)
+          const stepMs = gridStepMsForDensity(BASE_GRID_DENSITY)
           const sig = buildSig({
             clipId: c.clipId, videoSrc: c.videoSrc, durationMs: c.durationMs,
-            targetCount, thumbnailHeight, framesVersion: c.frames?.join(',') ?? null,
+            targetCount: targetTimes.length, thumbnailHeight, framesVersion: c.frames?.join(',') ?? null,
           })
 
           let items = loadThumbsFromCache(projectId, c.clipId, sig)
 
-          const backendFrames = Array.isArray(c.frames)
+          const backendFramesRaw = Array.isArray(c.frames)
             ? c.frames
                 .map((value) => Number(value))
                 .filter((value) => Number.isFinite(value) && value >= 0)
                 .sort((a, b) => a - b)
             : []
 
-          if ((!items || items.length === 0) && backendFrames.length) {
-            items = backendFrames.map((t) => ({ t, url: '' }))
+          const snappedBackendFrames = backendFramesRaw.length
+            ? snapTimesToGrid(backendFramesRaw, stepMs, c.durationMs)
+            : []
+
+          if ((!items || items.length === 0) && snappedBackendFrames.length) {
+            const filtered = snappedBackendFrames.filter((t) => targetTimeSet.has(t))
+            const baseTimes = filtered.length ? filtered : targetTimes
+            items = baseTimes.map((t) => ({ t, url: '' }))
           }
 
-          const legacy39 = backendFrames.length === 39 && thumbnailsCount == null
+          const legacy39 = snappedBackendFrames.length === 39 && thumbnailsCount == null
           const missingAny = !items || items.length === 0
-
-          if (missingAny && backendFrames.length === 0) {
-            const seedsTimes = generateTimesFromDuration(c.durationMs, targetCount)
+          if (missingAny && snappedBackendFrames.length === 0) {
+            const seedsTimes = targetTimes
             items = seedsTimes.map((t) => ({ t, url: '' }))
           } else if (legacy39) {
-            const seedsTimes = generateTimesFromDuration(c.durationMs, targetCount)
+            const seedsTimes = targetTimes
             items = seedsTimes.map((t) => ({ t, url: '' }))
           }
+
 
           if (!items || items.length === 0) continue
 
@@ -120,7 +183,7 @@ export function useCombinedThumbs(params: {
 
     return () => { canceled = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectId, clipsOrdered, clipOffsets, thumbnailsCount, thumbnailHeight, disableAutoThumbnails, thumbsPerSecond])
+}, [projectId, clipsOrdered, clipOffsets, thumbnailsCount, thumbnailHeight, disableAutoThumbnails, thumbsPerSecond])
 
   return { combinedThumbs, ...state, setCombinedThumbs }
 }
