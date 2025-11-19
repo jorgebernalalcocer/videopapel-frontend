@@ -147,7 +147,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
   const frameIndexMs = useMemo(() => globalFrames.map((f) => f.globalMs), [globalFrames])
   const totalFrameCount = useMemo(() => Math.max(0, globalFrames.length), [globalFrames])
-
+const CUSTOM_DENSITIES = [5, 7, 9];
   const indexToStartMs = useCallback((index: number) => {
     if (!globalFrames.length) return 0
     const clamped = Math.min(Math.max(Math.round(index), 1), globalFrames.length)
@@ -547,18 +547,20 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       <p className="text-white font-bold text-sm">{combinedThumbs.length} Páginas</p>
       <label className="flex items-center gap-1 text-[11px] text-white/90">
         Fotos / Seg
-        <select
-          value={thumbsDensity}
-          onChange={(e) => setThumbsDensity(Number(e.target.value))}
-          className="rounded border border-white/40 bg-black/40 text-white text-[11px] px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-          disabled={!accessToken}
-        >
-          {Array.from({ length: 15 }, (_, i) => i + 1).map((value) => (
-            <option key={value} value={value}>
-              {value}
-            </option>
-          ))}
-        </select>
+
+<select
+  value={thumbsDensity}
+  onChange={(e) => setThumbsDensity(Number(e.target.value))}
+  className="rounded border border-white/40 bg-black/40 text-white text-[11px] px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+  disabled={!accessToken}
+>
+  {/* 2. Mapea la constante para generar las opciones */}
+  {CUSTOM_DENSITIES.map((value) => (
+    <option key={value} value={value}>
+      {value}
+    </option>
+  ))}
+</select>
       </label>
     </div>
   }
