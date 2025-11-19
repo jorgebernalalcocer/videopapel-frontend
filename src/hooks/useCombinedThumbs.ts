@@ -97,12 +97,10 @@ export function useCombinedThumbs(params: {
 
         for (const c of clipsOrdered) {
           const { offset, start, end } = clipOffsets[c.clipId]
-          const baseGridTimes = buildGridTimes(c.durationMs, BASE_GRID_DENSITY)
-          const density = resolveDensity(thumbsPerSecond)
-          const fallbackCount = framesCountForDuration(c.durationMs, density)
-          const desiredCount =
-            thumbnailsCount && thumbnailsCount > 1 ? thumbnailsCount : fallbackCount
-          const targetTimes = selectTimesFromGrid(baseGridTimes, desiredCount)
+          
+  const baseGridTimes = buildGridTimes(c.durationMs, BASE_GRID_DENSITY)
+const targetTimes = baseGridTimes // rejilla maestra completa
+
           const targetTimeSet = new Set(targetTimes)
           const stepMs = gridStepMsForDensity(BASE_GRID_DENSITY)
           const sig = buildSig({

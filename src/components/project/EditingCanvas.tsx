@@ -147,7 +147,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
   const frameIndexMs = useMemo(() => globalFrames.map((f) => f.globalMs), [globalFrames])
   const totalFrameCount = useMemo(() => Math.max(0, globalFrames.length), [globalFrames])
-const CUSTOM_DENSITIES = [5, 7, 9];
+const CUSTOM_DENSITIES = [5,6,7,8,9,10];
   const indexToStartMs = useCallback((index: number) => {
     if (!globalFrames.length) return 0
     const clamped = Math.min(Math.max(Math.round(index), 1), globalFrames.length)
@@ -180,21 +180,28 @@ const CUSTOM_DENSITIES = [5, 7, 9];
     thumbnailsCount, thumbsPerSecond: thumbsDensity, thumbnailHeight, disableAutoThumbnails,
   })
 
+  const visibleThumbs = useMemo(
+  () => applyDensityToThumbs(combinedThumbs, thumbsDensity),
+  [combinedThumbs, thumbsDensity]
+)
+
+
   const currentFrameIndex = useMemo(() => {
     if (!frameIndexMs.length) return null
     const idx = nearestIndex(frameIndexMs, selectedGlobalMs)
     return idx >= 0 ? idx + 1 : null
   }, [frameIndexMs, selectedGlobalMs])
 
-  const currentThumb = useMemo(() => {
-    if (!combinedThumbs.length) return null
-    if (selectedId) {
-      const hit = combinedThumbs.find(t => t.id === selectedId)
-      if (hit) return hit
-    }
-    const idx = nearestIndex(combinedThumbs.map(t => t.tGlobal), selectedGlobalMs)
-    return combinedThumbs[idx] ?? null
-  }, [combinedThumbs, selectedId, selectedGlobalMs])
+const currentThumb = useMemo(() => {
+  if (!visibleThumbs.length) return null
+  if (selectedId) {
+    const hit = visibleThumbs.find(t => t.id === selectedId)
+    if (hit) return hit
+  }
+  const idx = nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
+  return visibleThumbs[idx] ?? null
+}, [visibleThumbs, selectedId, selectedGlobalMs])
+
 
   // Textos del proyecto
   const [textsVersion, setTextsVersion] = useState(0)
@@ -228,45 +235,55 @@ const CUSTOM_DENSITIES = [5, 7, 9];
     })
   }, [textFramesByClip, currentThumb])
 
-  const textPresenceLookup = useMemo(() => {
-    const map = new Map<string, boolean>()
-    for (const thumb of combinedThumbs) {
-      const framesForClip = textFramesByClip[thumb.clipId] ?? []
-      const hasText = framesForClip.some((tf) => {
-        const start = tf.frame_start
-        const end = tf.frame_end
-        const specific = tf.specific_frames ?? []
-        const inRange =
-          start != null &&
-          end != null &&
-          start <= thumb.tLocal &&
-          thumb.tLocal < end
-        const inSpecific =
-          Array.isArray(specific) &&
-          specific.includes(Math.round(thumb.tLocal))
-        return inRange || inSpecific
-      })
-      map.set(thumb.id, hasText)
-    }
-    return map
-  }, [combinedThumbs, textFramesByClip])
+const textPresenceLookup = useMemo(() => {
+  const map = new Map<string, boolean>()
+  for (const thumb of visibleThumbs) {
+    const framesForClip = textFramesByClip[thumb.clipId] ?? []
+    const hasText = framesForClip.some((tf) => {
+      const start = tf.frame_start
+      const end = tf.frame_end
+      const specific = tf.specific_frames ?? []
+      const inRange =
+        start != null &&
+        end != null &&
+        start <= thumb.tLocal &&
+        thumb.tLocal < end
+      const inSpecific =
+        Array.isArray(specific) &&
+        specific.includes(Math.round(thumb.tLocal))
+      return inRange || inSpecific
+    })
+    map.set(thumb.id, hasText)
+  }
+  return map
+}, [visibleThumbs, textFramesByClip])
+
 
   // Play/Step
   const [isPlaying, setIsPlaying] = useState(false)
   const togglePlay = () => setIsPlaying((p) => !p)
 
-  const stepForward = useCallback(() => {
-    if (!combinedThumbs.length) return
-    const idx = selectedId ? combinedThumbs.findIndex(t => t.id === selectedId)
-      : nearestIndex(combinedThumbs.map(t => t.tGlobal), selectedGlobalMs)
+ const stepForward = useCallback(() => {
+  if (!visibleThumbs.length) return
+  const idx = selectedId ? visibleThumbs.findIndex(t => t.id === selectedId)
+    : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
 
-    const nextIdx = idx + 1
-    if (nextIdx < combinedThumbs.length) {
-      const n = combinedThumbs[nextIdx]; setSelectedId(n.id); setSelectedGlobalMs(n.tGlobal); scrollThumbIntoView(n.id)
-    } else if (loop) {
-      const n = combinedThumbs[0]; setSelectedId(n.id); setSelectedGlobalMs(n.tGlobal); scrollThumbIntoView(n.id)
-    } else { setIsPlaying(false) }
-  }, [combinedThumbs, loop, selectedId, selectedGlobalMs])
+  const nextIdx = idx + 1
+  if (nextIdx < visibleThumbs.length) {
+    const n = visibleThumbs[nextIdx]
+    setSelectedId(n.id)
+    setSelectedGlobalMs(n.tGlobal)
+    scrollThumbIntoView(n.id)
+  } else if (loop) {
+    const n = visibleThumbs[0]
+    setSelectedId(n.id)
+    setSelectedGlobalMs(n.tGlobal)
+    scrollThumbIntoView(n.id)
+  } else {
+    setIsPlaying(false)
+  }
+}, [visibleThumbs, loop, selectedId, selectedGlobalMs])
+
 
   usePlaybackStepper(isPlaying, playbackFps, [selectedGlobalMs, loop, combinedThumbs.length, selectedId], stepForward)
 
@@ -281,24 +298,24 @@ const CUSTOM_DENSITIES = [5, 7, 9];
   const [frameModalOpen, setFrameModalOpen] = useState(false)
   const [frameModalMode, setFrameModalMode] = useState<'create' | 'edit'>('create')
   const selectedFrameIndex = useMemo(() => {
-    if (!combinedThumbs.length) return -1
+    if (!visibleThumbs.length) return -1
     if (selectedId) {
-      const idx = combinedThumbs.findIndex((t) => t.id === selectedId)
+      const idx = visibleThumbs.findIndex((t) => t.id === selectedId)
       if (idx >= 0) return idx
     }
-    const globals = combinedThumbs.map((t) => t.tGlobal)
+    const globals = visibleThumbs.map((t) => t.tGlobal)
     return nearestIndex(globals, selectedGlobalMs)
-  }, [combinedThumbs, selectedGlobalMs, selectedId])
+  }, [visibleThumbs, selectedGlobalMs, selectedId])
   const shouldConfirmFrameDeletion =
-    selectedFrameIndex > 0 && selectedFrameIndex < combinedThumbs.length - 1
+    selectedFrameIndex > 0 && selectedFrameIndex < visibleThumbs.length - 1
 
   function deleteSelectedFrame() {
-    if (!combinedThumbs.length) return
+    if (!visibleThumbs.length) return
     const idx = selectedFrameIndex >= 0
       ? selectedFrameIndex
-      : nearestIndex(combinedThumbs.map(t => t.tGlobal), selectedGlobalMs)
+      : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
 
-    const next = combinedThumbs.slice(0, idx).concat(combinedThumbs.slice(idx + 1))
+    const next = visibleThumbs.slice(0, idx).concat(visibleThumbs.slice(idx + 1))
     setCombinedThumbs(next)
 
     if (next[idx]) { const n = next[idx]; setSelectedId(n.id); setSelectedGlobalMs(n.tGlobal) }
@@ -508,13 +525,14 @@ const CUSTOM_DENSITIES = [5, 7, 9];
   }, [accessToken, apiBase, projectId, onFrameChange])
 
   // Keyboard handler
-  const onTimelineKeyDown = makeTimelineKeydownHandler(
-    combinedThumbs,
-    selectedId,
-    (n) => { setSelectedId(n.id); setSelectedGlobalMs(n.tGlobal) },
-    scrollThumbIntoView,
-    togglePlay
-  )
+const onTimelineKeyDown = makeTimelineKeydownHandler(
+  visibleThumbs,
+  selectedId,
+  (n) => { setSelectedId(n.id); setSelectedGlobalMs(n.tGlobal) },
+  scrollThumbIntoView,
+  togglePlay
+)
+
 
   return (
     <div className="w-full flex flex-col gap-4 h-[90vh] min-h-0">
@@ -544,7 +562,8 @@ const CUSTOM_DENSITIES = [5, 7, 9];
         disabled={!combinedThumbs.length || generating}
         shouldConfirm={shouldConfirmFrameDeletion}
       />
-      <p className="text-white font-bold text-sm">{combinedThumbs.length} Páginas</p>
+      <p className="text-white font-bold text-sm">{visibleThumbs.length} Páginas</p>
+
       <label className="flex items-center gap-1 text-[11px] text-white/90">
         Fotos / Seg
 
@@ -581,11 +600,13 @@ const CUSTOM_DENSITIES = [5, 7, 9];
       {/* HUD inferior izquierdo y derecho sobre viewer (encapsulados arriba excepto estos botones) */}
       <div className="absolute pointer-events-none inset-0 hidden" />
 
-
+<p className="text-white text-xs">
+  master: {combinedThumbs.length} • visibles: {visibleThumbs.length} • densidad: {thumbsDensity}
+</p>
 
       {/* Timeline */}
 <GlobalTimeline
-  items={combinedThumbs}
+  items={visibleThumbs}
   selectedId={selectedId}
   onSelect={(it) => { setSelectedId(it.id); setSelectedGlobalMs(it.tGlobal) }}
   isReady={isCacheLoaded && !generating}
@@ -660,3 +681,43 @@ function scrollThumbIntoView(combinedId: string) {
   const el = document.getElementById(`thumb-${combinedId}`)
   el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
 }
+
+function applyDensityToThumbs(
+  thumbs: { tGlobal: number }[],
+  density: number
+) {
+  const d = Math.max(1, Math.round(density || 1))
+  if (thumbs.length <= d) return thumbs
+
+  // Queremos ~d "fotos" por segundo → calculamos un paso en ms
+  const totalMs = thumbs[thumbs.length - 1]?.tGlobal ?? 0
+  if (totalMs <= 0) return thumbs
+
+  const totalSec = totalMs / 1000
+  const targetCount = Math.max(2, Math.round(totalSec * d) + 1)
+
+  const lastIndex = thumbs.length - 1
+  const segments = Math.max(1, targetCount - 1)
+  const step = lastIndex / segments
+
+  const picked: typeof thumbs = []
+  for (let i = 0; i < targetCount; i++) {
+    const idx = Math.min(lastIndex, Math.round(i * step))
+    picked.push(thumbs[idx])
+  }
+
+  // aseguramos último
+  if (picked[picked.length - 1] !== thumbs[lastIndex]) {
+    picked[picked.length - 1] = thumbs[lastIndex]
+  }
+
+  // quitamos duplicados por si acaso
+  const seen = new Set<string>()
+  return picked.filter((t) => {
+    const key = String(t.tGlobal)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+}
+
