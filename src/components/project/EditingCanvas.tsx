@@ -309,21 +309,38 @@ const textPresenceLookup = useMemo(() => {
   const shouldConfirmFrameDeletion =
     selectedFrameIndex > 0 && selectedFrameIndex < visibleThumbs.length - 1
 
-  function deleteSelectedFrame() {
-    if (!visibleThumbs.length) return
-    const idx = selectedFrameIndex >= 0
-      ? selectedFrameIndex
-      : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
+function deleteSelectedFrame() {
+  if (!visibleThumbs.length) return
 
-    const next = visibleThumbs.slice(0, idx).concat(visibleThumbs.slice(idx + 1))
-    setCombinedThumbs(next)
+  // 1) localizar índice en la lista visible
+  const idxVisible = selectedFrameIndex >= 0
+    ? selectedFrameIndex
+    : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
 
-    if (next[idx]) { const n = next[idx]; setSelectedId(n.id); setSelectedGlobalMs(n.tGlobal) }
-    else if (next.length) { const last = next[next.length - 1]; setSelectedId(last.id); setSelectedGlobalMs(last.tGlobal) }
-    else { setSelectedId(null); setSelectedGlobalMs(0) }
+  const toDelete = visibleThumbs[idxVisible]
+  if (!toDelete) return
 
-    setHasPendingChanges(true)
+  // 2) eliminar de la rejilla maestra (combinedThumbs), NO de visibleThumbs
+  const nextCombined = combinedThumbs.filter(t => t.id !== toDelete.id)
+  setCombinedThumbs(nextCombined)
+
+  // 3) recalcular visibles con la densidad actual
+  const nextVisible = applyDensityToThumbs(nextCombined, thumbsDensity)
+
+  // 4) mover la selección a un frame cercano
+  if (nextVisible.length) {
+    const idxNext = Math.min(idxVisible, nextVisible.length - 1)
+    const n = nextVisible[idxNext]
+    setSelectedId(n.id)
+    setSelectedGlobalMs(n.tGlobal)
+  } else {
+    setSelectedId(null)
+    setSelectedGlobalMs(0)
   }
+
+  setHasPendingChanges(true)
+}
+
 
   async function handleSaveChanges() {
     if (!hasPendingChanges || !accessToken) return
