@@ -12,7 +12,7 @@ export default function ProjectsButton() {
   }
 
   return (
-    <Button variant="secondary" onClick={handleProjects}>
+    <Button className="rounded-full bg-purple-50 p-2 text-purple-600"  onClick={handleProjects}>
       Biblioteca de proyectos
     </Button>
   )

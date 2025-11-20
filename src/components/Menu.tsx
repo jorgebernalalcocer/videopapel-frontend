@@ -9,6 +9,7 @@ import RegisterButton from '@/components/RegisterButton'
 // import LogoutButton from '@/components/LogoutButton'
 import ClipsButton from '@/components/ClipsButton'
 import ProjectsButton from '@/components/ProjectsButton'
+import OrdersButton from './OrdersButton'
 import ProfileButton from '@/components/ProfileButton'
 import CartButtonIcon from '@/components/CartButtonIcon'
 import CartButtonString from '@/components/CartButtonString'
@@ -52,9 +53,12 @@ export default function Menu() {
             <span className="text-sm text-gray-600">
               Hola {user.email}
             </span>
-            <ClipsButton />
             <ProjectsButton />
-            <CartButtonIcon />
+            <ClipsButton />
+            <OrdersButton />
+            {/* <CartButtonIcon /> */}
+                            <CartButtonString />
+
             <ProfileButton />
             
             {/* <LogoutButton /> */}
@@ -87,11 +91,13 @@ export default function Menu() {
           <MobileMenuWrapper closeMenu={() => setIsMobileMenuOpen(false)}>
             {user ? (
               <>
-                <span className="text-sm text-gray-600 px-4 pt-2">
+                {/* <span className="text-sm text-gray-600 px-4 pt-2">
                   Hola {user.email}
-                </span>
-                <ClipsButton />
+                </span> */}
                 <ProjectsButton />
+                <ClipsButton />
+                
+                <OrdersButton />
                 
                 <CartButtonString />
                 <ProfileButton />

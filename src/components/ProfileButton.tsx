@@ -14,7 +14,7 @@ export default function ProfileButton() {
   }
 
   return (
-    <Button variant="default" onClick={handleProfile}>
+    <Button className="rounded-full bg-pink-50 p-2 text-pink-600" onClick={handleProfile}>
       <CircleUserRound className="w-4 h-4" />
 
       Mi perfil

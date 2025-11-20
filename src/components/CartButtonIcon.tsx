@@ -15,7 +15,8 @@ export default function CartButton() {
 
   return (
             <div className="rounded-full bg-emerald-50 p-2 text-emerald-600" onClick={handleCart}>
-            <ShoppingBasket className="h-5 w-5" />
+            <ShoppingBasket className="h-7 w-7" />
+            {/* Cesta */}
           </div>
     
   )

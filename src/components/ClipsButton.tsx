@@ -12,7 +12,7 @@ export default function VideosButton() {
   }
 
   return (
-    <Button variant="secondary" onClick={handleClips}>
+    <Button className="rounded-full bg-orange-50 p-2 text-orange-600"  onClick={handleClips}>
       Mis Videos
     </Button>
   )
