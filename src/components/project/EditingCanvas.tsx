@@ -12,6 +12,7 @@ import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextF
 import FrameModal, { type FrameFormPayload } from '@/components/project/FrameModal'
 import { Modal } from '@/components/ui/Modal'
 import ProgressIndicator from '@/components/ui/ProgressIndicator'
+import LockDeleteFrameLowDensity from '@/components/project/LockDeleteFrameLowDensity'
 
 import { useCombinedThumbs } from '@/hooks/useCombinedThumbs'
 import { usePlaybackStepper } from '@/hooks/usePlaybackStepper'
@@ -19,6 +20,9 @@ import { useProjectTexts } from '@/hooks/useProjectTexts'
 import { makeTimelineKeydownHandler } from '@/hooks/useKeyboardTimelineNav'
 import { formatTime, nearestIndex } from '@/utils/time'
 import type { FrameSettingClient } from '@/types/frame'
+
+const MAX_DENSITY = 10
+const CUSTOM_DENSITIES = [1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , MAX_DENSITY]
 
 /* ===== Tipos (abrev.) ===== */
 type ClipState = { clipId: number; videoSrc: string; durationMs: number; frames: number[]; timeStartMs?: number; timeEndMs?: number }
@@ -147,7 +151,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 
   const frameIndexMs = useMemo(() => globalFrames.map((f) => f.globalMs), [globalFrames])
   const totalFrameCount = useMemo(() => Math.max(0, globalFrames.length), [globalFrames])
-const CUSTOM_DENSITIES = [5,6,7,8,9,10];
+
   const indexToStartMs = useCallback((index: number) => {
     if (!globalFrames.length) return 0
     const clamped = Math.min(Math.max(Math.round(index), 1), globalFrames.length)
@@ -308,38 +312,58 @@ const textPresenceLookup = useMemo(() => {
   }, [visibleThumbs, selectedGlobalMs, selectedId])
   const shouldConfirmFrameDeletion =
     selectedFrameIndex > 0 && selectedFrameIndex < visibleThumbs.length - 1
+  const [lockLowDensityModal, setLockLowDensityModal] = useState(false)
 
-function deleteSelectedFrame() {
-  if (!visibleThumbs.length) return
+  const deleteSelectedFrame = useCallback(() => {
+    if (!visibleThumbs.length) return
 
-  // 1) localizar índice en la lista visible
-  const idxVisible = selectedFrameIndex >= 0
-    ? selectedFrameIndex
-    : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
+    const idxVisible = selectedFrameIndex >= 0
+      ? selectedFrameIndex
+      : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
 
-  const toDelete = visibleThumbs[idxVisible]
-  if (!toDelete) return
+    const toDelete = visibleThumbs[idxVisible]
+    if (!toDelete) return
 
-  // 2) eliminar de la rejilla maestra (combinedThumbs), NO de visibleThumbs
-  const nextCombined = combinedThumbs.filter(t => t.id !== toDelete.id)
-  setCombinedThumbs(nextCombined)
+    const nextCombined = combinedThumbs.filter(t => t.id !== toDelete.id)
+    setCombinedThumbs(nextCombined)
 
-  // 3) recalcular visibles con la densidad actual
-  const nextVisible = applyDensityToThumbs(nextCombined, thumbsDensity)
+    const nextVisible = applyDensityToThumbs(nextCombined, thumbsDensity)
 
-  // 4) mover la selección a un frame cercano
-  if (nextVisible.length) {
-    const idxNext = Math.min(idxVisible, nextVisible.length - 1)
-    const n = nextVisible[idxNext]
-    setSelectedId(n.id)
-    setSelectedGlobalMs(n.tGlobal)
-  } else {
-    setSelectedId(null)
-    setSelectedGlobalMs(0)
-  }
+    if (nextVisible.length) {
+      const idxNext = Math.min(idxVisible, nextVisible.length - 1)
+      const n = nextVisible[idxNext]
+      setSelectedId(n.id)
+      setSelectedGlobalMs(n.tGlobal)
+    } else {
+      setSelectedId(null)
+      setSelectedGlobalMs(0)
+    }
 
-  setHasPendingChanges(true)
-}
+    setHasPendingChanges(true)
+  }, [
+    combinedThumbs,
+    setCombinedThumbs,
+    setHasPendingChanges,
+    setSelectedGlobalMs,
+    setSelectedId,
+    selectedFrameIndex,
+    selectedGlobalMs,
+    thumbsDensity,
+    visibleThumbs,
+  ])
+
+  const handleDeleteButtonClick = useCallback(() => {
+    if (thumbsDensity < MAX_DENSITY) {
+      setLockLowDensityModal(true)
+      return
+    }
+    deleteSelectedFrame()
+  }, [deleteSelectedFrame, thumbsDensity])
+
+  const handleConfirmDensityChange = useCallback(() => {
+    setThumbsDensity(MAX_DENSITY)
+    setLockLowDensityModal(false)
+  }, [])
 
 
   async function handleSaveChanges() {
@@ -575,12 +599,11 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton
-        onClick={deleteSelectedFrame}
+        onClick={handleDeleteButtonClick}
         disabled={!combinedThumbs.length || generating}
-        shouldConfirm={shouldConfirmFrameDeletion}
+        shouldConfirm={shouldConfirmFrameDeletion && thumbsDensity >= MAX_DENSITY}
       />
       <p className="text-white font-bold text-sm">{visibleThumbs.length} Páginas</p>
-
       <label className="flex items-center gap-1 text-[11px] text-white/90">
         Fotos / Seg
 
@@ -689,6 +712,12 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
       >
         <ProgressIndicator label="Generando subtítulos" progress={isGeneratingSubtitles ? 25 : 100} />
       </Modal>
+      <LockDeleteFrameLowDensity
+        open={lockLowDensityModal}
+        maxDensity={MAX_DENSITY}
+        onClose={() => setLockLowDensityModal(false)}
+        onConfirm={handleConfirmDensityChange}
+      />
     </div>
   )
 }
@@ -737,4 +766,3 @@ function applyDensityToThumbs(
     return true
   })
 }
-
