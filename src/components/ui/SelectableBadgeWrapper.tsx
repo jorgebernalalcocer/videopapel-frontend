@@ -20,6 +20,7 @@ export default function SelectableBadgeWrapper<T extends object, U extends { cla
   modalTitle,
   modalDescription,
   modalProps,
+  disabled = false,
 }: {
   // Componentes
   BadgeComponent: React.ComponentType<T>
@@ -33,10 +34,14 @@ export default function SelectableBadgeWrapper<T extends object, U extends { cla
   modalTitle: ReactNode
   modalDescription: ReactNode
   modalProps?: Partial<Omit<ModalProps, 'open' | 'onClose' | 'children'>>
+  disabled?: boolean
 }) {
   const [isOpen, setIsOpen] = useState(false)
 
-  const openModal = useCallback(() => setIsOpen(true), [])
+  const openModal = useCallback(() => {
+    if (disabled) return
+    setIsOpen(true)
+  }, [disabled])
   const closeModal = useCallback(() => setIsOpen(false), [])
 
   const resolvedSelectorProps = useMemo<U>(() => {
@@ -53,15 +58,24 @@ export default function SelectableBadgeWrapper<T extends object, U extends { cla
   }, [resolvedSelectorProps])
 
   // El Badge se envuelve en un div cliqueable.
-  const badgeElement = useMemo(() => (
-    <button
-      type="button"
-      onClick={openModal}
-      className="inline-block rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-    >
-      <BadgeComponent {...badgeProps} />
-    </button>
-  ), [BadgeComponent, badgeProps, openModal])
+  const badgeElement = useMemo(() => {
+    const buttonClasses = [
+      'inline-block rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500',
+      disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer',
+    ].join(' ')
+
+    return (
+      <button
+        type="button"
+        onClick={openModal}
+        className={buttonClasses}
+        disabled={disabled}
+        aria-disabled={disabled}
+      >
+        <BadgeComponent {...badgeProps} />
+      </button>
+    )
+  }, [BadgeComponent, badgeProps, openModal, disabled])
 
   return (
     <>

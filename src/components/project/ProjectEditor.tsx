@@ -112,6 +112,14 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [creatingClip, setCreatingClip] = useState(false)
   const [editTitleOpen, setEditTitleOpen] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
+  const isProjectExported = project?.status === 'exported'
+  const statusMessage = project
+    ? project.status === 'exported'
+      ? 'Este proyecto ya ha sido comprado. Duplicalo para volver a comprar o modificar.'
+      : project.status === 'draft'
+        ? 'Debes completar el proyecto antes de añadirlo al carrito.'
+        : 'Añade este proyecto a tu carrito para proceder a la compra.'
+    : ''
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
@@ -160,6 +168,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   }, [API_BASE, accessToken, projectId])
 
   /* --------- montar --------- */
+  
   useEffect(() => {
     fetchProject()
   }, [fetchProject])
@@ -339,6 +348,10 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           {/* <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2> */}
 
        <div className="space-y-3 text-sm">
+        {project.status === "exported" && (
+                    <p className="text-sm text-gray-500">{statusMessage}</p> )}
+
+        {project.status !== "exported" && (
               <div className="flex flex-wrap gap-2">
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintQualityBadge}
@@ -360,6 +373,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar calidad de impresión"
                   modalDescription="Elige la calidad con la que se generarán las impresiones."
+                  disabled={isProjectExported}
                 />
 
                 <SelectableBadgeWrapper
@@ -383,6 +397,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar tamaño de impresión"
                   modalDescription="Escoge el tamaño que se aplicará al proyecto."
+                  disabled={isProjectExported}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintOrientationBadge}
@@ -403,11 +418,14 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
+                  disabled={isProjectExported}
                 />    
                 <button
                   type="button"
                   onClick={openEffectsModal}
                   className="inline-block rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  disabled={isProjectExported}
+
                 >
                   <PrintEffectBadge
                     name={project.print_effect_label}
@@ -434,6 +452,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar posición de impresión"
                   modalDescription="Define cómo se ajustará la imagen al área de impresión."
+                  disabled={isProjectExported}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={ProjectPrivacyBadge}
@@ -454,8 +473,10 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
+                  disabled={isProjectExported}
                 />
               </div>
+              )}
 
             </div>
           <div className="aspect-video bg-black rounded-lg mb-4 p-2">
@@ -523,6 +544,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
         <div className="lg:col-span-1 space-y-6 lg:order-2">
           
           {/* Contenedor de Configuración de impresión */}
+          {project.status !== "exported" && (
           <div className="bg-white rounded-xl shadow p-4 border">
             <h2 className="text-xl font-semibold mb-3">Configuración de impresión</h2>
             <div className="space-y-3 text-sm">
@@ -547,6 +569,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar calidad de impresión"
                   modalDescription="Elige la calidad con la que se generarán las impresiones."
+                  disabled={isProjectExported}
                 />
 
                 <SelectableBadgeWrapper
@@ -570,6 +593,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar tamaño de impresión"
                   modalDescription="Escoge el tamaño que se aplicará al proyecto."
+                  disabled={isProjectExported}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintOrientationBadge}
@@ -590,6 +614,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
+                  disabled={isProjectExported}
                 />    
                 <button
                   type="button"
@@ -621,6 +646,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Seleccionar proporción de impresión"
                   modalDescription="Define cómo se ajustará la imagen al área de impresión."
+                  disabled={isProjectExported}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={ProjectPrivacyBadge}
@@ -641,17 +667,17 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
+                  disabled={isProjectExported}
                 />
               </div>
 
             </div>
           </div>
+          )}
 
           <div className="bg-white rounded-xl shadow p-4 border space-y-3">
             <h2 className="text-lg font-semibold text-gray-900">Acciones rápidas</h2>
-            <p className="text-sm text-gray-500">
-              {project.status === 'exported' ? 'Este proyecto ya ha sido comprado. Duplicalo para volver a comprar.' : project.status === 'draft' ? 'Debes completar el proyecto antes de añadirlo al carrito.' : 'Añade este proyecto a tu carrito para proceder a la compra.'}
-            </p>
+            <p className="text-sm text-gray-500">{statusMessage}</p>
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"

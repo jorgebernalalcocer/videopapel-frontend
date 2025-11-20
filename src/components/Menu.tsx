@@ -41,7 +41,7 @@ export default function Menu() {
         className="text-lg font-semibold"
         onClick={() => setIsMobileMenuOpen(false)} // Cerrar menú al ir a Home
       >
-        VideoPapel
+        papel.video
       </Link>
 
       {/* Navegación de ESCRITORIO (visible desde 'md' hacia arriba) */}
