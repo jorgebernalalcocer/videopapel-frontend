@@ -3,6 +3,8 @@
 
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Film } from 'lucide-react'
+
 
 export default function VideosButton() {
   const router = useRouter()
@@ -12,7 +14,18 @@ export default function VideosButton() {
   }
 
   return (
-    <Button className="rounded-full bg-orange-50 p-2 text-orange-600"  onClick={handleClips}>
+    <Button className="
+    inline-flex items-center
+    px-3 py-1.5                  
+    rounded-lg                   
+    bg-orange-100                  
+    text-orange-700
+    font-medium
+    transition-colors
+    hover:bg-orange-700            
+    hover:text-white
+  "  onClick={handleClips}>
+       <Film className="w-4 h-4 mr-1.5" /> 
       Mis Videos
     </Button>
   )

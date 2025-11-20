@@ -3,6 +3,7 @@
 import { ReactNode, useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import UploadVideo from '@/components/UploadVideo'
+import { Upload } from 'lucide-react'
 
 type UploadVideoTriggerButtonProps = {
   onUploaded?: () => void
@@ -14,15 +15,28 @@ type UploadVideoTriggerButtonProps = {
 
 const defaultButtonContent = (
   <>
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      viewBox="0 0 20 20"
-      fill="currentColor"
-      className="w-5 h-5"
-    >
-      <path d="M9.25 13.064l-2.09-2.09a.75.75 0 00-1.06 1.06l3.352 3.353a.75.75 0 001.06 0l4.582-4.581a.75.75 0 10-1.06-1.06l-3.29 3.29V5.75a.75.75 0 00-1.5 0v7.314zM4.75 16.25a.75.75 0 000 1.5h10.5a.75.75 0 000-1.5H4.75z" />
-    </svg>
-    Subir un nuevo video
+<button
+  className="
+    inline-flex             // 1. Usar Flexbox para alinear elementos
+    items-center            // 2. Centrar verticalmente el icono y el texto
+    justify-center          // 3. (Opcional) Si el botón es ancho, centrar el contenido horizontalmente
+    px-4 py-2               // Espaciado interno (padding)
+    bg-indigo-600           // Estilo base
+    text-white
+    font-semibold
+    rounded-lg
+    shadow-md
+    hover:bg-indigo-700
+    transition-colors       // Transición para suavizar el hover
+  "
+ 
+>
+  {/* 4. Icono (usar margin a la derecha del icono) */}
+  <Upload className="w-5 h-5 mr-2" /> 
+
+  {/* 5. Texto del Botón */}
+  <span>Añadir nuevo video</span> 
+</button>
   </>
 )
 

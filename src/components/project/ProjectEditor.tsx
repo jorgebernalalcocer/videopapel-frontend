@@ -408,6 +408,27 @@ const statusMessage = project
 
         {project.status !== "exported" && (
               <div className="flex flex-wrap gap-2">
+                                <SelectableBadgeWrapper
+                  BadgeComponent={ProjectPrivacyBadge}
+                  SelectorComponent={PrivacySelector}
+                  badgeProps={{
+                    isPublic: Boolean(project.is_public),
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.is_public ?? false,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Privacidad del proyecto"
+                  modalDescription="Define si este proyecto es público o privado."
+                  disabled={isProjectExported}
+                />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintQualityBadge}
                   SelectorComponent={QualitySelector}
@@ -509,27 +530,7 @@ const statusMessage = project
                   modalDescription="Define cómo se ajustará la imagen al área de impresión."
                   disabled={isProjectExported}
                 />
-                <SelectableBadgeWrapper
-                  BadgeComponent={ProjectPrivacyBadge}
-                  SelectorComponent={PrivacySelector}
-                  badgeProps={{
-                    isPublic: Boolean(project.is_public),
-                    compact: true,
-                  }}
-                  selectorProps={({ closeModal }) => ({
-                    apiBase: API_BASE,
-                    accessToken,
-                    projectId: project.id,
-                    value: project.is_public ?? false,
-                    onSaved: () => {
-                      void fetchProject()
-                      closeModal()
-                    },
-                  })}
-                  modalTitle="Privacidad del proyecto"
-                  modalDescription="Define si este proyecto es público o privado."
-                  disabled={isProjectExported}
-                />
+
               </div>
               )}
 

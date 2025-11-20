@@ -3,6 +3,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { List } from 'lucide-react'
 
 export default function OrdersButton() {
   const router = useRouter()
@@ -12,7 +13,18 @@ export default function OrdersButton() {
   }
 
   return (
-    <Button className="rounded-full bg-blue-50 p-2 text-blue-600"  onClick={handleOrders}>
+    <Button   className="
+    inline-flex items-center
+    px-3 py-1.5                  
+    rounded-lg                   
+    bg-blue-100                  
+    text-blue-700
+    font-medium
+    transition-colors
+    hover:bg-blue-700            
+    hover:text-white
+  "  onClick={handleOrders}>
+    <List className="w-4 h-4 mr-1.5" /> 
       Pedidos
     </Button>
   )

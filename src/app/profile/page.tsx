@@ -8,6 +8,7 @@ import {
   Home,
   ShoppingBasket,
   Book,
+  BookOpen,
   Film,
   User, // Added User icon for the main profile card
 } from 'lucide-react'
@@ -38,11 +39,13 @@ const ProfileStat = ({ label, count }: { label: string; count: number }) => (
 
 // --- NEW DATA: Action Cards Configuration ---
 const actionCards = [
+  { href: '/projects', icon: BookOpen, label: 'Proyectos' },
+  { href: '/clips', icon: Film, label: 'Videos' },
   { href: '/orders', icon: List, label: 'Pedidos' },
   { href: '/shipping', icon: Home, label: 'Dirección de entrega' },
   { href: '/cart', icon: ShoppingBasket, label: 'Cesta de la compra' },
-  { href: '/projects', icon: Book, label: 'Proyectos' },
-  { href: '/clips', icon: Film, label: 'Videos' },
+  
+  
 ]
 
 // --- NEW COMPONENT: Action Card ---

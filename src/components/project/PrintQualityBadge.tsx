@@ -23,7 +23,7 @@ export default function PrintQualityBadge({
   className = '',
 }: Props) {
   const hasValue = Boolean(name) || Boolean(ppi)
-  const label = hasValue ? `${name ?? ''}${ppi ? ` — ${ppi} PPI` : ''}`.trim() : 'Sin calidad'
+  const label = hasValue ? `${name ?? ''}${ppi ? ` — ${ppi} PPI` : ''}`.trim() : 'Elige la calidad'
   const title = titleHint
     ? (hasValue ? `Calidad de impresión: ${label}` : 'Calidad de impresión no seleccionada')
     : undefined

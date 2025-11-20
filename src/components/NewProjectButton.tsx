@@ -136,19 +136,37 @@ export default function NewProjectButton() {
 
   return (
     <>
-      <button
-        onClick={openWizard}
-        className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
-      >
-        <FilePlus className="w-4 h-4" />
-        Nuevo
-      </button>
+
+
+<button
+  className="
+    inline-flex             // 1. Usar Flexbox para alinear elementos
+    items-center            // 2. Centrar verticalmente el icono y el texto
+    justify-center          // 3. (Opcional) Si el botón es ancho, centrar el contenido horizontalmente
+    px-4 py-2               // Espaciado interno (padding)
+    bg-indigo-600           // Estilo base
+    text-white
+    font-semibold
+    rounded-lg
+    shadow-md
+    hover:bg-indigo-700
+    transition-colors       // Transición para suavizar el hover
+  "
+  onClick={openWizard}
+>
+  {/* 4. Icono (usar margin a la derecha del icono) */}
+  <FilePlus className="w-5 h-5 mr-2" /> 
+
+  {/* 5. Texto del Botón */}
+  <span>Nuevo</span> 
+</button>
+      
 
       {/* Modal Principal (New Project Wizard) */}
       <Modal
         open={open}
         onClose={() => !submitting && setOpen(false)}
-        title={step === 1 ? 'Nombre del proyecto' : 'Elige un video'}
+        title={step === 1 ? 'Nombre del proyecto' : 'Elige un video de tu galería'}
         labelledById="new-project-title"
         describedById={error ? 'new-project-error' : undefined}
         size={step === 2 ? 'lg' : 'md'}

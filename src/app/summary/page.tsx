@@ -180,7 +180,7 @@ export default function SummaryPage() {
       if (cart?.items?.length) {
         for (const item of cart.items) {
           if (!item.project_id) continue
-          await exportPdf(item.project_id)
+          await exportPdf(item.project_id, { shippingAddressId: selectedAddressId })
         }
       }
       const res = await fetch(`${API_BASE}/checkout/`, {

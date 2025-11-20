@@ -7,6 +7,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
 type ExportOptions = {
   openWindow?: boolean
+  shippingAddressId?: number | null
 }
 
 export function useProjectPdfExport() {
@@ -26,10 +27,21 @@ export function useProjectPdfExport() {
       setError(null)
 
       try {
+        const body =
+          options?.shippingAddressId != null
+            ? JSON.stringify({ shipping_address_id: options.shippingAddressId })
+            : undefined
+
+        const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` }
+        if (body) {
+          headers['Content-Type'] = 'application/json'
+        }
+
         const res = await fetch(`${API_BASE}/projects/${projectId}/export-pdf/`, {
           method: 'POST',
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers,
           credentials: 'include',
+          body,
         })
 
         const data = await res.json().catch(() => null)

@@ -14,10 +14,23 @@ export default function ProfileButton() {
   }
 
   return (
-    <Button className="rounded-full bg-pink-50 p-2 text-pink-600" onClick={handleProfile}>
-      <CircleUserRound className="w-4 h-4" />
-
-      Mi perfil
-    </Button>
+// Un diseño más sobrio y profesional para el escritorio
+<Button
+  className="
+    inline-flex items-center
+    px-3 py-1.5                  
+    rounded-lg                   
+    bg-pink-100                  
+    text-pink-700
+    font-medium
+    transition-colors
+    hover:bg-pink-700            
+    hover:text-white
+  "
+  onClick={handleProfile}
+>
+  <CircleUserRound className="w-4 h-4 mr-1.5" /> 
+  Mi perfil
+</Button>
   )
 }
