@@ -19,6 +19,8 @@ import ProjectPrivacyBadge from '@/components/project/ProjectPrivacyBadge'
 import PrivacySelector from '@/components/project/PrivacySelector'
 import PrintAspectBadge from '@/components/project/PrintAspectBadge'
 import AspectSelector from '@/components/project/AspectSelector'
+import PrintBindingBadge from '@/components/project/PrintBindingBadge'
+import BindingSelector from '@/components/project/BindingSelector'
 import StatusBadge from '@/components/project/StatusBadge'
 import type { FrameSettingClient } from '@/types/frame'
 import { toast } from 'sonner'
@@ -72,6 +74,9 @@ type Project = {
   frame_description?: string | null
   frame_setting?: FrameSettingClient
   print_quality_ppi?: number | null
+  print_binding_id?: number | null
+  print_binding_name?: string | null
+  print_binding_description?: string | null
 }
 
 type ProjectPricePreview = {
@@ -131,9 +136,10 @@ const qualityNotCompleted = project && !project.print_quality_id ? "Calidad de i
 const sizeNotCompleted = project && !project.print_size_id ? "Tamaño de impresión" : null;
 const orientationNotCompleted = project && !project.print_orientation_id ? "Orientación de impresión" : null;
 const aspectNotCompleted = project && !project.print_aspect_id ? "Posición de impresión" : null;
+const bindingNotCompleted = project && !project.print_binding_id ? "Encuadernación" : null;
 
 // 2. Crear una lista de los campos que faltan.
-const missingFields = [qualityNotCompleted, sizeNotCompleted, orientationNotCompleted, aspectNotCompleted].filter(Boolean) as string[];
+const missingFields = [qualityNotCompleted, sizeNotCompleted, orientationNotCompleted, aspectNotCompleted, bindingNotCompleted].filter(Boolean) as string[];
 const missingFieldsMessage = missingFields.length > 0 ? missingFields.join(', ') : null;
 
 // 3. Definición del mensaje de estado (statusMessage)
@@ -495,7 +501,29 @@ const statusMessage = project
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
                   disabled={isProjectExported}
-                />    
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintBindingBadge}
+                  SelectorComponent={BindingSelector}
+                  badgeProps={{
+                    name: project.print_binding_name,
+                    description: project.print_binding_description,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_binding_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar encuadernación"
+                  modalDescription="Escoge el tipo de encuadernación para este proyecto."
+                  disabled={isProjectExported}
+                />
                 <button
                   type="button"
                   onClick={openEffectsModal}
@@ -671,7 +699,29 @@ const statusMessage = project
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
                   disabled={isProjectExported}
-                />    
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintBindingBadge}
+                  SelectorComponent={BindingSelector}
+                  badgeProps={{
+                    name: project.print_binding_name,
+                    description: project.print_binding_description,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_binding_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar encuadernación"
+                  modalDescription="Escoge el tipo de encuadernación para este proyecto."
+                  disabled={isProjectExported}
+                />
                 <button
                   type="button"
                   onClick={openEffectsModal}
