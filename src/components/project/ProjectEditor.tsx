@@ -113,13 +113,25 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [editTitleOpen, setEditTitleOpen] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
   const isProjectExported = project?.status === 'exported'
-  const statusMessage = project
-    ? project.status === 'exported'
-      ? 'Este proyecto ya ha sido comprado. Duplicalo para volver a comprar o modificar.'
-      : project.status === 'draft'
-        ? 'Debes completar el proyecto antes de añadirlo al carrito.'
-        : 'Añade este proyecto a tu carrito para proceder a la compra.'
-    : ''
+// 1. Definición de variables de campos incompletos (usan const y ; al final)
+//    Se utiliza el cortocircuito lógico (&&) para que la variable sea el string o false/undefined.
+const qualityNotCompleted = project && !project.print_quality_id ? "Calidad de imagen" : null;
+const sizeNotCompleted = project && !project.print_size_id ? "Tamaño de impresión" : null;
+const orientationNotCompleted = project && !project.print_orientation_id ? "Orientación de impresión" : null;
+const aspectNotCompleted = project && !project.print_aspect_id ? "Posición de impresión" : null;
+
+// 2. Crear una lista de los campos que faltan.
+const missingFields = [qualityNotCompleted, sizeNotCompleted, orientationNotCompleted, aspectNotCompleted].filter(Boolean) as string[];
+const missingFieldsMessage = missingFields.length > 0 ? missingFields.join(', ') : null;
+
+// 3. Definición del mensaje de estado (statusMessage)
+const statusMessage = project
+  ? project.status === 'exported'
+    ? 'Este proyecto ya ha sido comprado. Duplícalo para volver a comprar o modificar.'
+    : missingFieldsMessage // Verifica si faltan campos
+      ? `Debes completar el proyecto antes de añadirlo al carrito. Faltan: ${missingFieldsMessage}`
+      : 'Añade este proyecto a tu carrito para proceder a la compra.'
+  : '';
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
