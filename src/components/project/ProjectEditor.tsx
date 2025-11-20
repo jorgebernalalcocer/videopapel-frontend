@@ -650,17 +650,25 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           <div className="bg-white rounded-xl shadow p-4 border space-y-3">
             <h2 className="text-lg font-semibold text-gray-900">Acciones rápidas</h2>
             <p className="text-sm text-gray-500">
-              Añade el proyecto al carrito para proceder a la compra
+              {project.status === 'exported' ? 'Este proyecto ya ha sido comprado. Duplicalo para volver a comprar.' : project.status === 'draft' ? 'Debes completar el proyecto antes de añadirlo al carrito.' : 'Añade este proyecto a tu carrito para proceder a la compra.'}
             </p>
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={!project || addingToCart}
+                disabled={!project || addingToCart || exporting || project.status === 'exported' || project.status === 'draft'}
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
               >
                 {addingToCart ? 'Añadiendo…' : 'Añadir al carrito'}
               </button>
+              {project.status === "exported" && (
+                <DuplicateProjectButton
+                  projectId={project.id}
+                  size="large"
+                  className="px-3 py-1 text-xs rounded-lg"
+                  title="Duplicar proyecto"
+                />
+              )}
               <Link
                 href="/cart"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
