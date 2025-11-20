@@ -26,6 +26,7 @@ import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
 import DuplicateProjectButton from '@/components/DuplicateProjectButton'
 import EditTitleModal from '@/components/project/EditTitleModal'
 import { SquarePen } from 'lucide-react'
+import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/ProjectPriceCard'
 
 /* =========================
    Tipos
@@ -71,6 +72,17 @@ type Project = {
   frame_description?: string | null
   frame_setting?: FrameSettingClient
   print_quality_ppi?: number | null
+}
+
+type ProjectPricePreview = {
+  project_id: string
+  project_name: string
+  quantity: number
+  total_pages: number
+  unit_price: string
+  line_total: string
+  print_size_label?: string | null
+  price_breakdown?: PriceBreakdown | null
 }
 
 const resolveClipPreview = (clip?: ProjectClipPayload | null): EffectPreviewClip | null => {
@@ -138,6 +150,9 @@ const statusMessage = project
 
   const [addingToCart, setAddingToCart] = useState(false)
   const { exportPdf, exporting, error: exportError } = useProjectPdfExport()
+  const [pricePreview, setPricePreview] = useState<ProjectPricePreview | null>(null)
+  const [priceLoading, setPriceLoading] = useState(false)
+  const [priceError, setPriceError] = useState<string | null>(null)
 
 
   /* --------- fetch proyecto --------- */
@@ -187,6 +202,36 @@ const statusMessage = project
   useEffect(() => {
     fetchClips()
   }, [fetchClips])
+
+  const fetchProjectPrice = useCallback(async () => {
+    if (!accessToken || !project?.id) return
+    setPriceLoading(true)
+    setPriceError(null)
+    try {
+      const res = await fetch(`${API_BASE}/projects/${project.id}/price-breakdown/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const data = (await res.json()) as ProjectPricePreview
+      setPricePreview(data)
+    } catch (err: any) {
+      setPriceError(err?.message || 'No se pudo calcular el precio del proyecto.')
+    } finally {
+      setPriceLoading(false)
+    }
+  }, [API_BASE, accessToken, project?.id])
+
+  useEffect(() => {
+    if (!project) {
+      setPricePreview(null)
+      return
+    }
+    void fetchProjectPrice()
+  }, [project, fetchProjectPrice])
 
   const handleThumbsDensityChange = useCallback(async () => {
     await fetchClips()
@@ -713,7 +758,42 @@ const statusMessage = project
               </Link>
             </div>
           </div>
-          
+
+          <div className="bg-white rounded-xl shadow p-4 border space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-lg font-semibold text-gray-900">Desglose del proyecto</h2>
+              <button
+                type="button"
+                onClick={() => void fetchProjectPrice()}
+                disabled={priceLoading || !project}
+                className="text-sm font-medium text-purple-600 hover:text-purple-500 disabled:opacity-40"
+              >
+                Actualizar
+              </button>
+            </div>
+            {priceLoading ? (
+              <p className="text-sm text-gray-500">Calculando precio…</p>
+            ) : priceError ? (
+              <p className="text-sm text-red-600">{priceError}</p>
+            ) : pricePreview ? (
+              <ProjectPriceCard
+                projectId={pricePreview.project_id}
+                projectName={pricePreview.project_name || project?.name || 'Proyecto'}
+                quantity={pricePreview.quantity}
+                totalPages={pricePreview.total_pages}
+                unitPrice={pricePreview.unit_price}
+                lineTotal={pricePreview.line_total}
+                printSizeLabel={pricePreview.print_size_label ?? project?.print_size_label ?? undefined}
+                breakdown={pricePreview.price_breakdown}
+                className="bg-white"
+              />
+            ) : (
+              <p className="text-sm text-gray-500">
+                Completa la configuración del proyecto para ver el precio estimado.
+              </p>
+            )}
+          </div>
+
           {/* Contenedor de Exportar y Comprar */}
           <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
             <h2 className="text-xl font-semibold mb-3 text-green-800">Añadir a la cesta</h2>

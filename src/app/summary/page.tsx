@@ -6,24 +6,9 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
+import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/ProjectPriceCard'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
-
-type PriceLine = {
-  label: string
-  qty: number
-  unit: string
-  amount: string
-  kind: string
-}
-
-type PriceBreakdown = {
-  currency: string
-  pages: number
-  subtotal: string
-  total: string
-  line_items: PriceLine[]
-}
 
 type CartItem = {
   id: number
@@ -61,16 +46,6 @@ type ShippingAddress = {
   instructions?: string | null
   created_at?: string
   is_default?: boolean
-}
-
-const describePriceLine = (line: PriceLine): string => {
-  if (line.kind === 'per_page') {
-    return `${line.qty} pág × ${line.unit} €`
-  }
-  if (line.kind === 'percent') {
-    return `${line.unit}% sobre subtotal`
-  }
-  return `${line.qty} × ${line.unit} €`
 }
 
 export default function SummaryPage() {
@@ -278,53 +253,20 @@ export default function SummaryPage() {
             </div>
           ) : (
             <div className="space-y-4">
-              {cart!.items.map((item) => {
-                const breakdown = item.price_breakdown
-                return (
-                  <div key={item.id} className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <Link
-                          href={`/projects/${item.project_id}`}
-                          className="font-semibold text-purple-600 hover:text-purple-400"
-                        >
-                          {item.project_name}
-                        </Link>
-                        <p className="text-sm text-gray-600">
-                          {item.quantity} unidad{item.quantity === 1 ? '' : 'es'} · {item.total_pages} página{item.total_pages === 1 ? '' : 's'}
-                        </p>
-                        {item.print_size_label_snapshot && (
-                          <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <p className="text-base font-semibold text-gray-900">{item.line_total} €</p>
-                        <p className="text-xs text-gray-500">{item.unit_price} € / unidad</p>
-                      </div>
-                    </div>
-                    {breakdown && breakdown.line_items.length > 0 && (
-                      <div className="rounded-lg border border-gray-200 bg-white/80 px-3 py-2">
-                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Desglose</p>
-                        <ul className="divide-y divide-gray-100 text-sm text-gray-600">
-                          {breakdown.line_items.map((line, idx) => (
-                            <li key={`${item.id}-${line.label}-${idx}`} className="flex items-center justify-between py-1">
-                              <div>
-                                <p className="font-medium text-gray-800">{line.label}</p>
-                                <p className="text-xs text-gray-500">{describePriceLine(line)}</p>
-                              </div>
-                              <span className="font-semibold text-gray-900">{line.amount} €</span>
-                            </li>
-                          ))}
-                        </ul>
-                        <div className="flex items-center justify-between pt-2 text-sm font-semibold text-gray-900">
-                          <span>Total del proyecto</span>
-                          <span>{breakdown.total} €</span>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
+              {cart!.items.map((item) => (
+                <ProjectPriceCard
+                  key={item.id}
+                  projectId={item.project_id}
+                  projectName={item.project_name}
+                  projectLink={`/projects/${item.project_id}`}
+                  quantity={item.quantity}
+                  totalPages={item.total_pages}
+                  unitPrice={item.unit_price}
+                  lineTotal={item.line_total}
+                  printSizeLabel={item.print_size_label_snapshot ?? undefined}
+                  breakdown={item.price_breakdown}
+                />
+              ))}
             </div>
           )}
         </div>
