@@ -3,7 +3,7 @@
 
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingBasket } from 'lucide-react'
 
 
 export default function CartButton() {
@@ -15,7 +15,7 @@ export default function CartButton() {
 
   return (
             <div className="rounded-full bg-emerald-50 p-2 text-emerald-600" onClick={handleCart}>
-            <ShoppingCart className="h-5 w-5" />
+            <ShoppingBasket className="h-5 w-5" />
           </div>
     
   )

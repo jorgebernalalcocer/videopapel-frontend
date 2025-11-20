@@ -6,11 +6,12 @@ import { useEffect, useState } from 'react' // Importar useState
 import { useAuth } from '@/store/auth'
 import LoginButton from '@/components/LoginButton'
 import RegisterButton from '@/components/RegisterButton'
-import LogoutButton from '@/components/LogoutButton'
+// import LogoutButton from '@/components/LogoutButton'
 import ClipsButton from '@/components/ClipsButton'
 import ProjectsButton from '@/components/ProjectsButton'
 import ProfileButton from '@/components/ProfileButton'
-import CartButton from '@/components/CartButton'
+import CartButtonIcon from '@/components/CartButtonIcon'
+import CartButtonString from '@/components/CartButtonString'
 import { Menu as MenuIcon, X } from 'lucide-react' // Importar iconos
 
 export default function Menu() {
@@ -53,9 +54,10 @@ export default function Menu() {
             </span>
             <ClipsButton />
             <ProjectsButton />
+            <CartButtonIcon />
             <ProfileButton />
-            <CartButton />
-            <LogoutButton />
+            
+            {/* <LogoutButton /> */}
           </>
         ) : (
           <>
@@ -90,9 +92,10 @@ export default function Menu() {
                 </span>
                 <ClipsButton />
                 <ProjectsButton />
+                
+                <CartButtonString />
                 <ProfileButton />
-                <CartButton />
-                <LogoutButton />
+                {/* <LogoutButton /> */}
               </>
             ) : (
               <>

@@ -21,7 +21,15 @@ type FormData = z.infer<typeof schema>;
 type LoginResponse = {
   access: string;
   refresh: string;
-  user?: { id: number; email: string; username?: string | null; phone?: string | null; is_active: boolean };
+  user?: {
+    id: number;
+    email: string;
+    username?: string | null;
+    phone?: string | null;
+    is_active: boolean;
+    is_superuser?: boolean;
+    is_staff?: boolean;
+  };
 };
 
 export default function LoginPage() {

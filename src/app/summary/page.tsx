@@ -106,7 +106,7 @@ export default function SummaryPage() {
       }
       setCart(await res.json())
     } catch (err: any) {
-      setError(err?.message || 'No se pudo cargar el carrito.')
+      setError(err?.message || 'No se pudo cargar la cesta.')
     } finally {
       setLoading(false)
     }
@@ -197,7 +197,7 @@ export default function SummaryPage() {
       return
     }
     if (!cart || cart.items.length === 0) {
-      toast.error('Tu carrito está vacío.')
+      toast.error('Tu cesta está vacía.')
       return
     }
     setIsCheckingOut(true)
@@ -271,7 +271,7 @@ export default function SummaryPage() {
             <p className="text-sm text-red-600">{error}</p>
           ) : !hasItems ? (
             <div className="space-y-3 text-sm text-gray-500">
-              <p>No hay proyectos en tu carrito.</p>
+              <p>No hay proyectos en tu cesta.</p>
               <Link href="/projects" className="text-purple-600 hover:text-purple-700">
                 Ir a proyectos
               </Link>
@@ -348,7 +348,7 @@ export default function SummaryPage() {
               href="/cart"
               className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
             >
-              Volver al carrito
+              Volver a la cesta
             </Link>
             <Link
               href="/shipping"

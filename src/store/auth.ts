@@ -11,6 +11,8 @@ type AuthUser = {
   username?: string | null
   phone?: string | null
   is_active?: boolean
+  is_superuser?: boolean
+  is_staff?: boolean
 }
 
 interface AuthState {

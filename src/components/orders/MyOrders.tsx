@@ -63,6 +63,7 @@ type MyOrdersProps = {
 export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+  const isSuperuser = useAuth((s) => Boolean(s.user?.is_superuser))
 
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
@@ -84,7 +85,6 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
         throw new Error(detail || `Error ${res.status}`)
       }
       const data = await res.json()
-      console.log('Fetched orders:', data)
       setOrders(Array.isArray(data) ? data : [])
     } catch (err: any) {
       setError(err?.message || 'No se pudieron cargar tus pedidos.')
@@ -162,52 +162,56 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
                   <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
                     <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Proyectos incluidos</p>
                     <ul className="divide-y divide-gray-100 text-sm text-gray-700">
-                      {order.items.map((item) => (
-                        <li key={item.id} className="flex items-center justify-between py-2">
-                          <div>
-                            <Link
-                              href={`/projects/${item.project_id}`}
-                              className="font-medium text-purple-600 hover:text-purple-400"
-                            >
-                              {item.project_name_snapshot}
-                            </Link>
-                            <p className="text-xs text-gray-500">
-                              {item.quantity} unidad{item.quantity === 1 ? '' : 'es'} · {formatAmount(item.unit_price)} € / unidad
-                            </p>
-                            {item.print_size_label_snapshot && (
-                              <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
-                            )}
-                            {item.frame_name_snapshot && (
-                              <p className="text-xs text-gray-500">Orientación: {item.orientation_snapshot}</p>
-                            )}
-                            {item.orientation_snapshot && (
-                              <p className="text-xs text-gray-500">Marco decorativo: {item.frame_name_snapshot}</p>
-                            )}
-                            {item.aspect_name_snapshot && (
-                              <p className="text-xs text-gray-500">Aspecto: {item.aspect_name_snapshot}</p>
-                            )}
-                            {item.effect_name_snapshot && (
-                              <p className="text-xs text-gray-500">Efecto: {item.effect_name_snapshot}</p>
-                            )}
-                            {item.quality_label_snapshot && (
-                              <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
-                            )}
-                            {item.number_pages_snapshot && (
-                              <p className="text-xs text-gray-500">Número de páginas: {item.number_pages_snapshot}</p>
-                            )}
-
-                            <Link
-                              href={`${item.pdf_snapshot}`}
-                              className="font-medium text-gray-900 text-green-600 hover:text-green-400"
-                            >
-                              Link PDF
-                            </Link>
-                          </div>
-                          <span className="text-sm font-semibold text-gray-900">
-                            {formatAmount(parseFloat(item.unit_price) * item.quantity)} €
-                          </span>
-                        </li>
-                      ))}
+                      {order.items.map((item) => {
+                        const canSeePdf = Boolean(isSuperuser && item.pdf_snapshot)
+                        return (
+                          <li key={item.id} className="flex items-center justify-between py-2">
+                            <div>
+                              <Link
+                                href={`/projects/${item.project_id}`}
+                                className="font-medium text-purple-600 hover:text-purple-400"
+                              >
+                                {item.project_name_snapshot}
+                              </Link>
+                              <p className="text-xs text-gray-500">
+                                {item.quantity} unidad{item.quantity === 1 ? '' : 'es'} · {formatAmount(item.unit_price)} € / unidad
+                              </p>
+                              {item.print_size_label_snapshot && (
+                                <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
+                              )}
+                              {item.frame_name_snapshot && (
+                                <p className="text-xs text-gray-500">Orientación: {item.orientation_snapshot}</p>
+                              )}
+                              {item.orientation_snapshot && (
+                                <p className="text-xs text-gray-500">Marco decorativo: {item.frame_name_snapshot}</p>
+                              )}
+                              {item.aspect_name_snapshot && (
+                                <p className="text-xs text-gray-500">Aspecto: {item.aspect_name_snapshot}</p>
+                              )}
+                              {item.effect_name_snapshot && (
+                                <p className="text-xs text-gray-500">Efecto: {item.effect_name_snapshot}</p>
+                              )}
+                              {item.quality_label_snapshot && (
+                                <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
+                              )}
+                              {item.number_pages_snapshot && (
+                                <p className="text-xs text-gray-500">Número de páginas: {item.number_pages_snapshot}</p>
+                              )}
+                              {canSeePdf && (
+                                <Link
+                                  href={item.pdf_snapshot!}
+                                  className="font-medium text-gray-900 text-green-600 hover:text-green-400"
+                                >
+                                  Link PDF
+                                </Link>
+                              )}
+                            </div>
+                            <span className="text-sm font-semibold text-gray-900">
+                              {formatAmount(parseFloat(item.unit_price) * item.quantity)} €
+                            </span>
+                          </li>
+                        )
+                      })}
                     </ul>
                   </div>
                   <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">

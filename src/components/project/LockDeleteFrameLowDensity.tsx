@@ -20,7 +20,7 @@ export default function LockDeleteFrameLowDensity({
       open={open}
       onClose={onClose}
       size="sm"
-      title={`Aumenta la densidad ${maxDensity}`}
+      title={`Aumenta la densidad a ${maxDensity} fotos/s`}
 
       footer={
         <>

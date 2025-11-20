@@ -83,7 +83,6 @@ export default function RegisterPage() {
 });
 
   const onSubmit: SubmitHandler<FormData> = async (values) => {
-    console.log('Submitting values:', values);
     setServerError(null);
     try {
       // Zod se encargó de convertir '' a null. 

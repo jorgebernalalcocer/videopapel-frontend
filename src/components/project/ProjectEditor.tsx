@@ -129,8 +129,8 @@ const statusMessage = project
   ? project.status === 'exported'
     ? 'Este proyecto ya ha sido comprado. Duplícalo para volver a comprar o modificar.'
     : missingFieldsMessage // Verifica si faltan campos
-      ? `Debes completar el proyecto antes de añadirlo al carrito. Faltan: ${missingFieldsMessage}`
-      : 'Añade este proyecto a tu carrito para proceder a la compra.'
+      ? `Debes completar el proyecto antes de añadirlo a la cesta, falta por asignar: ${missingFieldsMessage}`
+      : 'Añade este proyecto a tu cesta para proceder a la compra.'
   : '';
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -168,7 +168,6 @@ const statusMessage = project
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'include',
       })
-      console.log('Fetch clips response:', res)
       if (!res.ok) throw new Error(`Clips ${res.status}`)
       const data: ProjectClipPayload[] = await res.json()
       data.sort((a, b) => (a.position ?? 1) - (b.position ?? 1))
@@ -247,7 +246,6 @@ const statusMessage = project
         credentials: 'include',
         body: JSON.stringify({ video_id: video.id }),
       })
-      console.log('Create clip response:', res)
       if (!res.ok) {
         const text = await res.text()
         throw new Error(text || `Error ${res.status} al crear el clip`)
@@ -265,7 +263,7 @@ const statusMessage = project
   const handleAddToCart = useCallback(async () => {
     if (!project) return
     if (!accessToken) {
-      toast.error('Debes iniciar sesión para añadir al carrito.')
+      toast.error('Debes iniciar sesión para añadir al cesta.')
       return
     }
     setAddingToCart(true)
@@ -281,11 +279,11 @@ const statusMessage = project
       })
       if (!res.ok) {
         const detail = await res.text()
-        throw new Error(detail || `Error ${res.status} al añadir al carrito`)
+        throw new Error(detail || `Error ${res.status} al añadir al cesta`)
       }
-      toast.success('Proyecto añadido al carrito.')
+      toast.success('Proyecto añadido al cesta.')
     } catch (err: any) {
-      toast.error(err?.message || 'No se pudo añadir al carrito.')
+      toast.error(err?.message || 'No se pudo añadir al cesta.')
     } finally {
       setAddingToCart(false)
     }
@@ -697,7 +695,7 @@ const statusMessage = project
                 disabled={!project || addingToCart || exporting || project.status === 'exported' || project.status === 'draft'}
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
               >
-                {addingToCart ? 'Añadiendo…' : 'Añadir al carrito'}
+                {addingToCart ? 'Añadiendo…' : 'Añadir a la cesta'}
               </button>
               {project.status === "exported" && (
                 <DuplicateProjectButton
@@ -711,14 +709,14 @@ const statusMessage = project
                 href="/cart"
                 className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
               >
-                Ver carrito
+                Ver cesta
               </Link>
             </div>
           </div>
           
           {/* Contenedor de Exportar y Comprar */}
           <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
-            <h2 className="text-xl font-semibold mb-3 text-green-800">Añadir al carrito</h2>
+            <h2 className="text-xl font-semibold mb-3 text-green-800">Añadir a la cesta</h2>
             <button
               className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
               onClick={() => {

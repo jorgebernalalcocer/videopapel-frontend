@@ -3,6 +3,8 @@
 
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { CircleUserRound } from 'lucide-react'
+
 
 export default function ProfileButton() {
   const router = useRouter()
@@ -12,7 +14,9 @@ export default function ProfileButton() {
   }
 
   return (
-    <Button variant="secondary" onClick={handleProfile}>
+    <Button variant="default" onClick={handleProfile}>
+      <CircleUserRound className="w-4 h-4" />
+
       Mi perfil
     </Button>
   )

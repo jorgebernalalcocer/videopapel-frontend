@@ -7,6 +7,8 @@ import { useAuth } from '@/store/auth'
 import { Modal } from '@/components/ui/Modal'
 // 1. ⭐️ Importar el componente de subida
 import UploadVideoTriggerButton from '@/components/UploadVideoTriggerButton'
+import { FilePlus } from 'lucide-react'
+
 
 type Video = {
   id: number
@@ -138,7 +140,8 @@ export default function NewProjectButton() {
         onClick={openWizard}
         className="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
       >
-        Nuevo proyecto
+        <FilePlus className="w-4 h-4" />
+        Nuevo
       </button>
 
       {/* Modal Principal (New Project Wizard) */}

@@ -6,7 +6,7 @@ import {
   Plus,
   List,
   Home,
-  ShoppingCart,
+  ShoppingBasket,
   Book,
   Film,
   User, // Added User icon for the main profile card
@@ -18,6 +18,8 @@ import ShippingAddressModal, {
 } from '@/components/profile/ShippingAddressModal'
 import { MyOrders } from '@/components/orders/MyOrders'
 import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
+import LogoutButton from '@/components/LogoutButton'
+
 import Link from 'next/link' // Import Link for navigation
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -38,7 +40,7 @@ const ProfileStat = ({ label, count }: { label: string; count: number }) => (
 const actionCards = [
   { href: '/orders', icon: List, label: 'Pedidos' },
   { href: '/shipping', icon: Home, label: 'Dirección de entrega' },
-  { href: '/cart', icon: ShoppingCart, label: 'Carrito' },
+  { href: '/cart', icon: ShoppingBasket, label: 'Cesta de la compra' },
   { href: '/projects', icon: Book, label: 'Proyectos' },
   { href: '/clips', icon: Film, label: 'Videos' },
 ]
@@ -65,6 +67,7 @@ const ActionCard = ({
 export default function ProfilePage() {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+  const isSuperuser = useAuth((s) => Boolean(s.user?.is_superuser))
   const username = useAuth(
     (s) =>
       s.user?.username ||
@@ -227,7 +230,7 @@ export default function ProfilePage() {
             </h1>
             <p className="text-sm text-gray-500">
               {/* Assuming you have user email or another identifier */}
-              Perfil de usuario
+              {isSuperuser ? 'SuperUser' : 'Perfil de usuario'}
             </p>
           </div>
         </div>
@@ -361,9 +364,13 @@ export default function ProfilePage() {
         accessToken={accessToken}
         onCreated={handleCreated}
       />
+                  <LogoutButton />
+
       {/* <MyOrdersHeader /> */}
       {/* <MyOrders compact embed /> versión resumida de MyProjects.tsx */}
       {/* <MyOrders /> */}
     </section>
+    
   )
+  
 }

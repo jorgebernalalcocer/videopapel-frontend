@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
-import { ShoppingCart, ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react'
+import { ShoppingBasket, ArrowLeft, Plus, Minus, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -80,7 +80,7 @@ export default function CartPage() {
       }
       setCart(await res.json())
     } catch (err: any) {
-      setError(err?.message || 'No se pudo cargar tu carrito.')
+      setError(err?.message || 'No se pudo cargar tu cesta.')
     } finally {
       setLoading(false)
     }
@@ -113,7 +113,7 @@ export default function CartPage() {
   if (!hasHydrated) {
     return (
       <section className="max-w-5xl mx-auto px-4 py-16">
-        <p className="text-gray-500">Preparando tu carrito…</p>
+        <p className="text-gray-500">Preparando tu cesta</p>
       </section>
     )
   }
@@ -121,8 +121,8 @@ export default function CartPage() {
   if (!accessToken) {
     return (
       <section className="max-w-5xl mx-auto px-4 py-16">
-        <h1 className="text-3xl font-semibold text-gray-900 mb-3">Mi carrito</h1>
-        <p className="text-gray-600">Inicia sesión para ver tus proyectos guardados en el carrito.</p>
+        <h1 className="text-3xl font-semibold text-gray-900 mb-3">Mi cesta</h1>
+        <p className="text-gray-600">Inicia sesión para ver tus proyectos guardados en el cesta.</p>
       </section>
     )
   }
@@ -166,7 +166,7 @@ export default function CartPage() {
         throw new Error(detail || `Error ${res.status}`)
       }
       setCart(await res.json())
-      toast.success('Proyecto eliminado del carrito.')
+      toast.success('Proyecto eliminado del cesta.')
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo eliminar el proyecto.')
     }
@@ -179,7 +179,7 @@ export default function CartPage() {
       <header className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm text-gray-500">Resumen</p>
-          <h1 className="text-3xl font-semibold text-gray-900">Mi carrito</h1>
+          <h1 className="text-3xl font-semibold text-gray-900">Mi cesta</h1>
         </div>
         <Link
           href="/projects"
@@ -192,7 +192,7 @@ export default function CartPage() {
       <div className="rounded-2xl border border-gray-200 shadow-sm">
         <div className="flex items-center gap-3 border-b border-gray-100 px-6 py-4">
           <div className="rounded-full bg-emerald-50 p-2 text-emerald-600">
-            <ShoppingCart className="h-5 w-5" />
+            <ShoppingBasket className="h-5 w-5" />
           </div>
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Proyectos en la cesta</h2>
@@ -201,11 +201,11 @@ export default function CartPage() {
         </div>
         <div className="px-6 py-6">
           {loading ? (
-            <p className="text-sm text-gray-500">Cargando carrito…</p>
+            <p className="text-sm text-gray-500">Cargando cesta</p>
           ) : error ? (
             <p className="text-sm text-red-600">{error}</p>
           ) : !cart || cart.items.length === 0 ? (
-            <p className="text-sm text-gray-500">Todavía no tienes proyectos en tu carrito.</p>
+            <p className="text-sm text-gray-500">Todavía no tienes proyectos en tu cesta.</p>
           ) : (
             <div className="space-y-4">
               {cart.items.map((item) => (
@@ -266,7 +266,7 @@ export default function CartPage() {
                       <button
                         type="button"
                         onClick={() => {
-                          if (window.confirm('¿Estás seguro que quieres eliminar el proyecto del carrito?')) {
+                          if (window.confirm('¿Estás seguro que quieres eliminar el proyecto de la cesta?')) {
                             void removeItem(item.id)
                           }
                         }}
