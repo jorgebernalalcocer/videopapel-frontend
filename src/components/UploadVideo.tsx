@@ -2,22 +2,51 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { UploadCloud } from "lucide-react";
+import { UploadCloud, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/store/auth";
 import { apiFetch } from "@/lib/api";
 import { toast } from "sonner";
-import { CheckCircle2, XCircle } from "lucide-react";
 import ProgressIndicator from "@/components/ui/ProgressIndicator";
 import { Modal } from "@/components/ui/Modal";
 
-type SignResponse = {
-  cloud_name: string;
-  api_key: string;
-  timestamp: number;
-  signature: string;
-  folder: string;
+type UploadUrlResponse = {
+  upload_url: string;
+  object_name: string;
+  public_url: string;
 };
+
+async function getVideoMetadata(file: File): Promise<{
+  duration_ms: number;
+  width_px: number | null;
+  height_px: number | null;
+  format: string | null;
+}> {
+  const url = URL.createObjectURL(file);
+  try {
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.src = url;
+
+    await new Promise<void>((resolve, reject) => {
+      video.onloadedmetadata = () => resolve();
+      video.onerror = () => reject(new Error("No se pudo leer metadata del video"));
+    });
+
+    const duration_ms = Math.round(video.duration * 1000);
+    const width_px = video.videoWidth || null;
+    const height_px = video.videoHeight || null;
+
+    // formato desde mimetype o extensión
+    const formatFromType = file.type?.split("/")[1] || null;
+    const ext = file.name.split(".").pop()?.toLowerCase() || null;
+    const format = formatFromType || ext;
+
+    return { duration_ms, width_px, height_px, format };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
 
 export default function UploadVideo() {
   const [isDragging, setIsDragging] = useState(false);
@@ -27,26 +56,20 @@ export default function UploadVideo() {
   const [progressModalOpen, setProgressModalOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  // Fuerza rehidratación por si este componente se monta sin el layout/menú
   useEffect(() => {
     // @ts-ignore
     useAuth.persist?.rehydrate?.();
   }, []);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
-
-  // 👇 IMPORTANTÍSIMO: leer *siempre* el estado fresco justo al empezar
   const handleVideo = useCallback(async (file: File) => {
     const { hasHydrated, accessToken } = useAuth.getState();
-    const ready = hasHydrated && !!accessToken;
-
-    if (!ready) {
+    if (!(hasHydrated && accessToken)) {
       console.warn("Auth no lista aún (hydration/token).");
       return;
     }
 
     if (!file.type.startsWith("video/")) {
-      alert("Por favor, selecciona un archivo de video.");
+      toast.error("Por favor, selecciona un archivo de video.");
       return;
     }
 
@@ -56,9 +79,7 @@ export default function UploadVideo() {
         icon: <XCircle className="text-red-500" />,
         duration: 5000,
       });
-      if (inputRef.current) {
-        inputRef.current.value = "";
-      }
+      if (inputRef.current) inputRef.current.value = "";
       return;
     }
 
@@ -68,85 +89,82 @@ export default function UploadVideo() {
     setProgressModalOpen(true);
 
     try {
-      // 1) Firma (apiFetch reintenta con refresh si toca)
-      const signRes = await apiFetch("/cloudinary/sign/");
+      // 1) Pedir signed upload URL a backend
+      const signRes = await apiFetch("/videos/upload-url/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          content_type: file.type || "application/octet-stream",
+        }),
+      });
+
       if (!signRes.ok) {
         const txt = await signRes.text();
-        throw new Error(`Firma Cloudinary: ${signRes.status} ${txt}`);
+        throw new Error(`Signed URL: ${signRes.status} ${txt}`);
       }
-      const { cloud_name, api_key, timestamp, signature, folder } =
-        (await signRes.json()) as SignResponse;
 
-      // 2) Upload a Cloudinary con progreso
-      const form = new FormData();
-      form.append("file", file);
-      form.append("api_key", api_key);
-      form.append("timestamp", String(timestamp));
-      form.append("signature", signature);
-      form.append("folder", folder);
+      const { upload_url, object_name, public_url } =
+        (await signRes.json()) as UploadUrlResponse;
 
-      const cloudUrl = `https://api.cloudinary.com/v1_1/${cloud_name}/video/upload`;
-
-      const responseJson = await new Promise<any>((resolve, reject) => {
+      // 2) Subir directo a GCS con PUT (progreso)
+      await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        xhr.open("POST", cloudUrl, true);
+        xhr.open("PUT", upload_url, true);
+        xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+
         xhr.upload.onprogress = (evt) => {
           if (evt.lengthComputable) {
             const pct = Math.round((evt.loaded / evt.total) * 100);
             setProgress(pct);
           }
         };
-        xhr.onerror = () =>
-          reject(new Error("Error de red subiendo a Cloudinary"));
+
+        xhr.onerror = () => reject(new Error("Error de red subiendo a GCS"));
         xhr.onload = () => {
-          try {
-            const json = JSON.parse(xhr.responseText);
-            if (xhr.status >= 200 && xhr.status < 300) resolve(json);
-            else
-              reject(
-                new Error(json?.error?.message || "Error al subir a Cloudinary")
-              );
-          } catch {
-            reject(new Error("Respuesta inválida de Cloudinary"));
-          }
+          if (xhr.status >= 200 && xhr.status < 300) resolve();
+          else reject(new Error(`GCS error ${xhr.status}: ${xhr.responseText}`));
         };
-        xhr.send(form);
+
+        xhr.send(file);
       });
 
-      const { secure_url, public_id, format, duration, original_filename, width, height } =
-        responseJson;
+      // 3) Leer metadata local del vídeo
+      const meta = await getVideoMetadata(file);
 
-      // 3) Registrar en backend (apiFetch maneja refresh)
-      const createRes = await apiFetch("/videos/", {
+      // 4) Confirmar al backend para crear Video
+      const completeRes = await apiFetch("/videos/upload-complete/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: original_filename,
-          format,
-          file: secure_url,
-          public_id,
-          duration,
-          width,
-          height,
+          object_name,
+          public_url,
+          duration_ms: meta.duration_ms,
+          width_px: meta.width_px,
+          height_px: meta.height_px,
+          format: meta.format,
+          title: file.name.replace(/\.[^/.]+$/, ""),
         }),
       });
-      if (!createRes.ok) {
-        const err = await createRes.text();
-        throw new Error(`Error creando Video en backend: ${err}`);
+
+      if (!completeRes.ok) {
+        const err = await completeRes.text();
+        throw new Error(`upload-complete backend: ${err}`);
       }
 
       setProgress(100);
       toast.success("¡Video subido y registrado con éxito!", {
         icon: <CheckCircle2 className="text-green-500" />,
-        duration: 5000, // ⏱ duración en ms (configurable)
+        duration: 5000,
       });
+
       window.dispatchEvent(new CustomEvent("videopapel:uploaded"));
       setProgressModalOpen(false);
     } catch (err: any) {
       console.error(err);
-      toast.error("Error al subir el video", {
+      toast.error(err?.message || "Error al subir el video", {
         icon: <XCircle className="text-red-500" />,
-        duration: 5000, // ⏱ también configurable
+        duration: 5000,
       });
       setProgressModalOpen(false);
     } finally {
@@ -154,7 +172,6 @@ export default function UploadVideo() {
     }
   }, []);
 
-  // 👉 Usa el handle actualizado en los handlers (sin closures “viejas”)
   const onDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(true);
@@ -213,6 +230,7 @@ export default function UploadVideo() {
           Archivo: <span className="font-medium">{fileName}</span>
         </p>
       )}
+
       <Modal
         open={progressModalOpen}
         onClose={() => {
