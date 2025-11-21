@@ -8,7 +8,6 @@ import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
 import FrameStyleOverlay from '@/components/project/viewer/FrameStyleOverlay'
 import ApplyEffect from '@/components/project/viewer/ApplyEffect'
-import { cloudinaryPreviewVideoUrl } from '@/utils/cloudinary'
 import { paintFrameToCanvas, seekVideo, setVideoSrcAndWait } from '@/utils/video'
 import type { FrameSettingClient } from '@/types/frame'
 
@@ -118,8 +117,9 @@ export default function BigFrameViewer(props: {
       setPaintError(false)
       setFlash(true)
 
-      const targetHeight = Math.max(240, Math.min(wrapper?.clientHeight ?? 720, 1080))
-      const previewSrc = cloudinaryPreviewVideoUrl(current.videoSrc, targetHeight)
+    const targetHeight = Math.max(240, Math.min(wrapper?.clientHeight ?? 720, 1080))
+const previewSrc = current.videoSrc
+
 
       // dataset.previewSrc para evitar recargas inútiles
       if ((video as any).dataset?.previewSrc !== previewSrc || video.src !== previewSrc) {
