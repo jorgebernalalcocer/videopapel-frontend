@@ -138,6 +138,8 @@ export default function UploadVideo() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           object_name,
+          file_url: public_url,
+          thumbnail_url: null,
           public_url,
           duration_ms: meta.duration_ms,
           width_px: meta.width_px,

@@ -34,15 +34,22 @@ import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/Proj
    Tipos
 ========================= */
 
+type ClipThumbnail = {
+  image_url: string
+  frame_time_ms: number
+}
+
 type ProjectClipPayload = {
   id: number
   video_url: string
   duration_ms: number
   frames?: number[] | null
+  thumbnails?: ClipThumbnail[] | null
   time_start_ms?: number | null
   time_end_ms?: number | null
   position?: number | null
 }
+
 
 type Project = {
   id: string
@@ -92,17 +99,30 @@ type ProjectPricePreview = {
 
 const resolveClipPreview = (clip?: ProjectClipPayload | null): EffectPreviewClip | null => {
   if (!clip || !clip.video_url) return null
-  const frames = Array.isArray(clip.frames) ? clip.frames.filter((value): value is number => typeof value === 'number' && Number.isFinite(value)) : []
-  const orderedFrames = frames.length ? [...frames].sort((a, b) => a - b) : []
-  const secondFrame = orderedFrames[1]
-  const firstFrame = orderedFrames[0]
-  const frameCandidate = secondFrame ?? firstFrame ?? clip.time_start_ms ?? 0
-  const frameTimeMs = Math.max(0, typeof frameCandidate === 'number' ? frameCandidate : 0)
+
+  // 1) Si hay thumbnails generados, usamos el primero
+  const firstThumb = clip.thumbnails && clip.thumbnails.length > 0
+    ? clip.thumbnails[0]
+    : null
+
+  if (firstThumb) {
+    return {
+      videoUrl: clip.video_url,
+      frameTimeMs: firstThumb.frame_time_ms,
+    }
+  }
+
+  // 2) Si no hay thumbnails, caemos al comportamiento antiguo usando frames
+  const frames = Array.isArray(clip.frames) ? [...clip.frames].sort((a, b) => a - b) : []
+  const firstFrame = frames[0] ?? 0
+
   return {
     videoUrl: clip.video_url,
-    frameTimeMs,
+    frameTimeMs: firstFrame,
   }
 }
+
+
 
 const STATUS_LABELS: Record<Project['status'], string> = {
   draft: 'Elaborando',
@@ -572,14 +592,15 @@ const statusMessage = project
                 // thumbnailsCount={Math.round(45 * 2) + 1} // mayor densidad fotograma
                 // thumbnailsCount={Math.round(12 * 4) + 1}// menor densidad de fotograma
                 projectId={project.id}
-                clips={clips.map((c) => ({
-                  clipId: c.id,
-                  videoSrc: c.video_url,
-                  durationMs: (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
-                  frames: c.frames ?? [],
-                  timeStartMs: c.time_start_ms ?? 0,
-                  timeEndMs: c.time_end_ms ?? c.duration_ms,
-                }))}
+   clips={clips.map((c) => ({
+  clipId: c.id,
+  videoSrc: c.video_url,
+  durationMs: (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
+  frames: c.frames ?? [],
+  thumbnails: c.thumbnails ?? [],           // 👈 NUEVO: pasamos thumbnails al canvas
+  timeStartMs: c.time_start_ms ?? 0,
+  timeEndMs: c.time_end_ms ?? c.duration_ms,
+}))}
                 apiBase={API_BASE}
                 accessToken={accessToken}
                 printAspectSlug={project.print_aspect_slug ?? 'fill'}
@@ -612,11 +633,17 @@ const statusMessage = project
             <div className="bg-gray-100 p-3 rounded-md min-h-[100px]">
               {clips.length === 0 ? 'No hay clips' : (
                 <ul className="text-sm text-gray-700 list-disc pl-5">
-                  {clips.map((c) => (
-                    <li key={c.id}>
-                      #{c.position} · {c.video_url?.split('/').pop()} ({(c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0)} ms)
-                    </li>
-                  ))}
+{clips.map((c) => (
+  <li key={c.id}>
+    #{c.position} · {c.video_url?.split('/').pop()} (
+      {(c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0)} ms
+      {typeof c.thumbnails?.length === 'number'
+        ? ` · ${c.thumbnails.length} miniaturas`
+        : ''}
+    )
+  </li>
+))}
+
                 </ul>
               )}
             </div>

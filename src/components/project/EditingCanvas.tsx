@@ -21,11 +21,19 @@ import { makeTimelineKeydownHandler } from '@/hooks/useKeyboardTimelineNav'
 import { formatTime, nearestIndex } from '@/utils/time'
 import type { FrameSettingClient } from '@/types/frame'
 
-const MAX_DENSITY = 10
-const CUSTOM_DENSITIES = [1 , 2 , 3 , 4 , 5 , 6 , 7 , 8 , 9 , MAX_DENSITY]
+const MAX_DENSITY = 8
+const CUSTOM_DENSITIES = [1 , 2 , 3 , 4 , 5 , 6 , 7 , MAX_DENSITY]
 
 /* ===== Tipos (abrev.) ===== */
-type ClipState = { clipId: number; videoSrc: string; durationMs: number; frames: number[]; timeStartMs?: number; timeEndMs?: number }
+type ClipState = {
+  clipId: number
+  videoSrc: string
+  durationMs: number
+  frames: number[]
+  thumbnails?: { image_url: string; frame_time_ms: number }[] // 👈 miniaturas del backend
+  timeStartMs?: number
+  timeEndMs?: number
+}
 type EditingCanvasProps = {
   projectId: string; apiBase: string; accessToken: string | null;
   clips?: ClipState[]; clipId?: number; videoSrc?: string; durationMs?: number;
