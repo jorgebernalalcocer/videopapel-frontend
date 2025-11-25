@@ -141,6 +141,7 @@ export default function UploadVideo() {
           file_url: public_url,
           thumbnail_url: null,
           public_url,
+          content_type: file.type || "application/octet-stream",
           duration_ms: meta.duration_ms,
           width_px: meta.width_px,
           height_px: meta.height_px,
