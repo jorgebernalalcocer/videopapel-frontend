@@ -1,9 +1,16 @@
 // src/components/project/timeline/GlobalTimeline.tsx
 'use client'
+import { useEffect } from 'react'
 import { formatTime } from '@/utils/time'
 import { Type } from 'lucide-react'
 
-export type TimelineItem = { id: string; url?: string; tGlobal: number }
+export type TimelineItem = {
+  id: string
+  url?: string
+  imageUrl?: string
+  image_url?: string
+  tGlobal: number
+}
 export default function GlobalTimeline(props: {
   items: TimelineItem[]
   selectedId: string | null
@@ -15,6 +22,12 @@ export default function GlobalTimeline(props: {
   textPresence?: Map<string, boolean>
 }) {
   const { items, selectedId, onSelect, isReady, thumbnailHeight, error, onKeyDown, textPresence } = props
+  useEffect(() => {
+    console.log('[GlobalTimeline] items received', items)
+  }, [items])
+  useEffect(() => {
+    console.log('[GlobalTimeline] selectedId', selectedId)
+  }, [selectedId])
   return (
     <div
       className="overflow-x-auto border rounded-lg p-2 bg-white focus:outline-none flex-none"
@@ -29,6 +42,7 @@ export default function GlobalTimeline(props: {
           ) : (
             items.map((it) => {
               const selected = it.id === selectedId
+              const previewUrl = it.url ?? it.imageUrl ?? it.image_url
               const hasText = textPresence?.get(it.id)
               return (
                 <li key={it.id} id={`thumb-${it.id}`}>
@@ -39,10 +53,10 @@ export default function GlobalTimeline(props: {
                       selected ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200 hover:border-gray-400'
                     }`}
                   >
-                    {it.url ? (
+                    {previewUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
-                        src={it.url}
+                        src={previewUrl}
                         alt={`Frame ${formatTime(it.tGlobal)}`}
                         height={thumbnailHeight}
                         className="block"

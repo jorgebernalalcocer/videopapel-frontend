@@ -5,6 +5,7 @@ import { buildSig, loadThumbsFromCache, saveThumbsToCache, Thumbnail } from '@/u
 
 export type ClipState = {
   clipId: number; videoSrc: string; durationMs: number; frames: number[];
+  thumbnails?: { image_url?: string | null; frame_time_ms?: number | null }[];
   timeStartMs?: number; timeEndMs?: number
 }
 
@@ -121,6 +122,32 @@ const targetTimes = baseGridTimes // rejilla maestra completa
             ? snapTimesToGrid(backendFramesRaw, stepMs, c.durationMs)
             : []
 
+          const backendThumbnails = Array.isArray(c.thumbnails)
+            ? c.thumbnails
+                .map((thumb) => {
+                    const t = Number(thumb?.frame_time_ms ?? 0)
+                    if (!Number.isFinite(t)) return null
+                    return {
+                    t: Math.max(0, Math.min(c.durationMs, Math.round(t))),
+                    url: thumb?.image_url ?? '',
+                  }
+                })
+                .filter((entry): entry is { t: number; url: string } => Boolean(entry))
+                .sort((a, b) => a.t - b.t)
+            : []
+
+          if (backendThumbnails.length) {
+            console.log('[useCombinedThumbs] usando thumbnails backend', {
+              clipId: c.clipId,
+              count: backendThumbnails.length,
+              sample: backendThumbnails.slice(0, 4),
+            })
+            items = backendThumbnails
+            saveThumbsToCache(projectId, c.clipId, sig, backendThumbnails)
+          } else {
+            console.log('[useCombinedThumbs] sin thumbnails backend', { clipId: c.clipId })
+          }
+
           if ((!items || items.length === 0) && snappedBackendFrames.length) {
             const filtered = snappedBackendFrames.filter((t) => targetTimeSet.has(t))
             const baseTimes = filtered.length ? filtered : targetTimes
@@ -170,6 +197,10 @@ const targetTimes = baseGridTimes // rejilla maestra completa
         }
 
         if (!canceled) {
+          console.log('[useCombinedThumbs] combined thumbs ready', {
+            clips: clipsOrdered.map((c) => c.clipId),
+            total: perClip.reduce((sum, arr) => sum + arr.length, 0),
+          })
           const all = perClip.flat().sort((a, b) => a.tGlobal - b.tGlobal)
           setCombinedThumbs(all)
           setState({ generating: false, error: null, isCacheLoaded: true })
