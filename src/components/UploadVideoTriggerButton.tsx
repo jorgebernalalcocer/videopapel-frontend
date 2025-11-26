@@ -15,28 +15,10 @@ type UploadVideoTriggerButtonProps = {
 
 const defaultButtonContent = (
   <>
-<button
-  className="
-    inline-flex             // 1. Usar Flexbox para alinear elementos
-    items-center            // 2. Centrar verticalmente el icono y el texto
-    justify-center          // 3. (Opcional) Si el botón es ancho, centrar el contenido horizontalmente
-    px-4 py-2               // Espaciado interno (padding)
-    bg-indigo-600           // Estilo base
-    text-white
-    font-semibold
-    rounded-lg
-    shadow-md
-    hover:bg-indigo-700
-    transition-colors       // Transición para suavizar el hover
-  "
- 
->
-  {/* 4. Icono (usar margin a la derecha del icono) */}
-  <Upload className="w-5 h-5 mr-2" /> 
 
-  {/* 5. Texto del Botón */}
-  <span>Añadir nuevo video</span> 
-</button>
+    {/* El contenido por defecto solo debe ser el icono y el texto, no el botón completo. */}
+    <Upload className="w-5 h-5 mr-2" />
+    <span>Añadir nuevo video</span>
   </>
 )
 
@@ -44,7 +26,7 @@ export default function UploadVideoTriggerButton({
   onUploaded,
   disabled,
   buttonContent = defaultButtonContent,
-  buttonClassName = 'inline-flex items-center gap-1 rounded-xl bg-indigo-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50',
+  buttonClassName = 'inline-flex items-center justify-center px-4 py-2 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 transition-colors disabled:opacity-50',
   modalTitle = 'Subir nuevo video',
 }: UploadVideoTriggerButtonProps) {
   const [open, setOpen] = useState(false)
