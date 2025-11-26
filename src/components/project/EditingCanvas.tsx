@@ -146,7 +146,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
       const meta = clipOffsets[clip.clipId]; if (!meta) continue
       const offset = meta.offset
       const baseFrames = Array.isArray(clip.frames) && clip.frames.length > 0 ? clip.frames : [0]
-      const localFrames = Array.from(new Set([0, ...baseFrames])).sort((a, b) => a - b)
+      const localFrames = Array.from(new Set(baseFrames)).sort((a, b) => a - b)
       for (const value of localFrames) {
         const localMs = Math.max(0, value)
         const globalMs = offset + localMs
@@ -198,11 +198,19 @@ export default function EditingCanvas(props: EditingCanvasProps) {
 )
 
 
-  const currentFrameIndex = useMemo(() => {
-    if (!frameIndexMs.length) return null
-    const idx = nearestIndex(frameIndexMs, selectedGlobalMs)
-    return idx >= 0 ? idx + 1 : null
-  }, [frameIndexMs, selectedGlobalMs])
+const currentPageIndex = useMemo(() => {
+  if (!visibleThumbs.length) return null
+
+  if (selectedId) {
+    const idx = visibleThumbs.findIndex((t) => t.id === selectedId)
+    if (idx >= 0) return idx + 1
+  }
+
+  const globals = visibleThumbs.map((t) => t.tGlobal)
+  const idx = nearestIndex(globals, selectedGlobalMs)
+  return idx >= 0 ? idx + 1 : null
+}, [visibleThumbs, selectedId, selectedGlobalMs])
+
 
 const currentThumb = useMemo(() => {
   if (!visibleThumbs.length) return null
@@ -633,12 +641,12 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   }
   rightHud={
     <div className="flex items-center gap-2">
-      <div className="text-xs bg-black/60 text-white px-2 py-1 rounded flex items-center gap-2">
-        <span>{formatTime(selectedGlobalMs)} / {formatTime(projectTotalMs)}</span>
-        {currentFrameIndex != null && totalFrameCount > 0 && (
-          <span>Frame {currentFrameIndex} / {totalFrameCount}</span>
-        )}
-      </div>
+    <div className="text-xs bg-black/60 text-white px-2 py-1 rounded flex items-center gap-2">
+      <span>{formatTime(selectedGlobalMs)} / {formatTime(projectTotalMs)}</span>
+      {currentPageIndex != null && visibleThumbs.length > 0 && (
+        <span>Página {currentPageIndex} / {visibleThumbs.length}</span>
+      )}
+    </div>
       <PlayButton onClick={stepForward} />
     </div>
   }
