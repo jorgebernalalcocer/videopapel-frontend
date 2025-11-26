@@ -736,39 +736,35 @@ function scrollThumbIntoView(combinedId: string) {
   el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
 }
 
-function applyDensityToThumbs(
-  thumbs: { tGlobal: number }[],
-  density: number
-) {
+function applyDensityToThumbs(thumbs: { id?: string; tGlobal: number }[], density: number) {
   const d = Math.max(1, Math.round(density || 1))
   if (thumbs.length <= d) return thumbs
 
-  // Queremos ~d "fotos" por segundo → calculamos un paso en ms
   const totalMs = thumbs[thumbs.length - 1]?.tGlobal ?? 0
   if (totalMs <= 0) return thumbs
 
+  const times = thumbs.map((t) => t.tGlobal)
   const totalSec = totalMs / 1000
   const targetCount = Math.max(2, Math.round(totalSec * d) + 1)
-
-  const lastIndex = thumbs.length - 1
   const segments = Math.max(1, targetCount - 1)
-  const step = lastIndex / segments
+  const stepMs = totalMs / segments
+
+  const pickNearestByTime = (target: number) => {
+    const idx = nearestIndex(times, target)
+    return thumbs[idx]
+  }
 
   const picked: typeof thumbs = []
   for (let i = 0; i < targetCount; i++) {
-    const idx = Math.min(lastIndex, Math.round(i * step))
-    picked.push(thumbs[idx])
+    const targetMs = Math.min(totalMs, Math.round(i * stepMs))
+    picked.push(pickNearestByTime(targetMs))
   }
 
-  // aseguramos último
-  if (picked[picked.length - 1] !== thumbs[lastIndex]) {
-    picked[picked.length - 1] = thumbs[lastIndex]
-  }
+  picked[picked.length - 1] = thumbs[thumbs.length - 1]
 
-  // quitamos duplicados por si acaso
   const seen = new Set<string>()
   return picked.filter((t) => {
-    const key = String(t.tGlobal)
+    const key = t?.id ?? String(t?.tGlobal)
     if (seen.has(key)) return false
     seen.add(key)
     return true
