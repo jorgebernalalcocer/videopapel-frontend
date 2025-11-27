@@ -13,7 +13,7 @@ export type CombinedThumb = {
   id: string; clipId: number; tLocal: number; tGlobal: number; videoSrc: string; url?: string
 }
 
-const BASE_GRID_DENSITY = 10
+const BASE_GRID_DENSITY = 8
 
 function resolveDensity(value?: number | null) {
   return Math.max(1, Math.round(value ?? 1))
