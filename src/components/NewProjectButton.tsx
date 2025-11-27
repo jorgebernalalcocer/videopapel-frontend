@@ -1,24 +1,19 @@
 // src/components/NewProjectButton.tsx
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
 import { Modal } from '@/components/ui/Modal'
-// 1. ⭐️ Importar el componente de subida
-import UploadVideoTriggerButton from '@/components/UploadVideoTriggerButton'
+// 1. ⭐️ Importar el nuevo componente modal
+import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
+
 import { FilePlus } from 'lucide-react'
 
 
-type Video = {
-  id: number
-  title: string | null
-  thumbnail: string | null
-  duration_ms: number
-  format: string | null
-  url?: string | null
-  file?: string | null
-}
+// Eliminamos la definición local de Video, ahora usamos VideoItem de VideoPickerModal
+// type Video = { ... } 
+
 
 // **Función auxiliar (sin cambios)**
 function formatMs(ms: number) {
@@ -31,57 +26,32 @@ function formatMs(ms: number) {
 
 export default function NewProjectButton() {
   const [open, setOpen] = useState(false)
-  const [step, setStep] = useState<1 | 2>(1)
+  const [step, setStep] = useState<1 | 2>(1) // Ahora Step 2 solo abrirá el otro modal
   const [name, setName] = useState('')
-  const [videos, setVideos] = useState<Video[]>([])
-  const [loadingVideos, setLoadingVideos] = useState(false)
-  const [selectedVideoId, setSelectedVideoId] = useState<number | null>(null)
+  // ❌ Eliminado: [videos, setVideos]
+  // ❌ Eliminado: [loadingVideos, setLoadingVideos]
+  // ❌ Eliminado: [selectedVideoId, setSelectedVideoId]
+
+  // ⭐️ Nuevo estado para el modal de selección de video
+  const [openVideoPicker, setOpenVideoPicker] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   
-  // 2. ⭐️ Nuevo estado para el modal de subida de video
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const accessToken = useAuth((s) => s.accessToken)
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const router = useRouter()
 
-  // abrir modal
+  // abrir modal principal (Step 1: Nombre)
   const openWizard = () => {
     setError(null)
     setStep(1)
     setName('')
-    setSelectedVideoId(null)
     setOpen(true)
   }
 
-  // Carga de videos (inalterada)
-  const fetchVideos = useCallback(async () => {
-    if (!accessToken) return
-    setLoadingVideos(true)
-    setError(null)
-    try {
-      const res = await fetch(`${API_BASE}/videos/`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        credentials: 'include',
-      })
-      if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
-      const data = await res.json()
-      const newVideos = Array.isArray(data) ? data : data.results ?? []
-      setVideos(newVideos)
-
-      // Mantener la selección si el video aún existe, o resetear
-      setSelectedVideoId(prev => (prev && newVideos.some(v => v.id === prev) ? prev : null))
-    } catch (e: any) {
-      setError(e.message || 'No se pudieron cargar los videos')
-    } finally {
-      setLoadingVideos(false)
-    }
-  }, [API_BASE, accessToken])
-
-  useEffect(() => {
-    if (open && step === 2) fetchVideos()
-  }, [open, step, fetchVideos])
-
+  // ❌ Eliminado: fetchVideos (ya no es necesario, lo hace VideoPickerModal)
+  // ❌ Eliminado: useEffect para fetchVideos
 
   const handleNext = () => {
     setError(null)
@@ -91,19 +61,24 @@ export default function NewProjectButton() {
         setError('Ponle un nombre al proyecto')
         return
       }
-      setStep(2)
+      
+      // En lugar de ir al step 2, abrimos el VideoPickerModal
+      setOpen(false) // Cerrar modal principal
+      setOpenVideoPicker(true) // Abrir modal de selección
     }
   }
 
-  const handleBack = () => {
-    setError(null)
-    if (step === 2) setStep(1)
-  }
+  // ❌ Eliminado: handleBack (ya no hay Step 2 en este modal)
 
-  const handleCreate = async () => {
-    if (!accessToken || !selectedVideoId) return
+
+  // ⭐️ Nueva función para crear el proyecto una vez que se selecciona el video
+  const handleVideoSelected = async (video: VideoItem) => {
+    if (!accessToken) return
     setSubmitting(true)
     setError(null)
+
+    // Nota: El modal de selección se encarga de cerrarse a sí mismo (onSelect lo hace)
+    
     try {
       const res = await fetch(`${API_BASE}/projects/`, {
         method: 'POST',
@@ -114,7 +89,7 @@ export default function NewProjectButton() {
         credentials: 'include',
         body: JSON.stringify({
           name: name.trim(),
-          video_id: selectedVideoId,
+          video_id: video.id, // Usamos el ID del video seleccionado
           // opcionalmente puedes enviar time_start_ms y time_end_ms
         }),
       })
@@ -123,53 +98,59 @@ export default function NewProjectButton() {
         throw new Error(t || `Error ${res.status}`)
       }
       const project = await res.json()
-      setOpen(false)
-      // notificar y navegar
+      // Éxito: notificar y navegar
       window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
       router.push(`/projects/${project.id}`)
+
     } catch (e: any) {
-      setError(e.message || 'No se pudo crear el proyecto')
+      // Si falla la creación, mostramos el error
+      console.error(e)
+      // Como el modal principal ya está cerrado, reabrimos el principal para mostrar el error
+      setName(name.trim()) // Restaurar el nombre
+      setStep(1) // Volver al step 1
+      setOpen(true) // Abrir el modal principal
+      setError(`Error al crear el proyecto: ${e.message || 'Desconocido'}`)
     } finally {
       setSubmitting(false)
+      // Asegurarse de que el estado de los modales es limpio
+      setOpenVideoPicker(false)
     }
   }
 
+
   return (
     <>
-
-
-<button
-  className="
-    inline-flex             // 1. Usar Flexbox para alinear elementos
-    items-center            // 2. Centrar verticalmente el icono y el texto
-    justify-center          // 3. (Opcional) Si el botón es ancho, centrar el contenido horizontalmente
-    px-4 py-2               // Espaciado interno (padding)
-    bg-indigo-600           // Estilo base
-    text-white
-    font-semibold
-    rounded-lg
-    shadow-md
-    hover:bg-indigo-700
-    transition-colors       // Transición para suavizar el hover
-  "
-  onClick={openWizard}
->
-  {/* 4. Icono (usar margin a la derecha del icono) */}
-  <FilePlus className="w-5 h-5 mr-2" /> 
-
-  {/* 5. Texto del Botón */}
-  <span>Nuevo</span> 
-</button>
+      {/* Botón de Lanzamiento (sin cambios) */}
+      <button
+        className="
+          inline-flex             
+          items-center            
+          justify-center          
+          px-4 py-2               
+          bg-indigo-600           
+          text-white
+          font-semibold
+          rounded-lg
+          shadow-md
+          hover:bg-indigo-700
+          transition-colors       
+        "
+        onClick={openWizard}
+        disabled={submitting}
+      >
+        <FilePlus className="w-5 h-5 mr-2" /> 
+        <span>Nuevo</span> 
+      </button>
       
 
-      {/* Modal Principal (New Project Wizard) */}
+      {/* Modal Principal (Solo Step 1: Nombre) */}
       <Modal
         open={open}
         onClose={() => !submitting && setOpen(false)}
-        title={step === 1 ? 'Nombre del proyecto' : 'Elige un video de tu galería'}
+        title={'Nombre del proyecto'}
         labelledById="new-project-title"
         describedById={error ? 'new-project-error' : undefined}
-        size={step === 2 ? 'lg' : 'md'}
+        size={'md'}
         footer={
           <div className="flex justify-between w-full">
             <div>
@@ -180,114 +161,54 @@ export default function NewProjectButton() {
               )}
             </div>
             <div className="flex gap-2">
-              {step === 2 && (
-                <button
-                  type="button"
-                  onClick={handleBack}
-                  disabled={submitting}
-                  className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50"
-                >
-                  Atrás
-                </button>
-              )}
               <button
                 type="button"
-                  onClick={() => setOpen(false)}
-                  disabled={submitting}
+                onClick={() => setOpen(false)}
+                disabled={submitting}
                 className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50"
               >
                 Cancelar
               </button>
-              {step === 1 ? (
-                <button
-                  type="button"
-                  onClick={handleNext}
-                  className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700"
-                >
-                  Siguiente
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={handleCreate}
-                  disabled={!selectedVideoId || submitting || loadingVideos}
-                  className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-                >
-                  {submitting ? 'Creando…' : 'Crear proyecto'}
-                </button>
-              )}
+              {/* El botón Siguiente ahora pasa directamente al VideoPicker */}
+              <button
+                type="button"
+                onClick={handleNext}
+                disabled={submitting || name.trim().length === 0}
+                className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+              >
+                Siguiente
+              </button>
             </div>
           </div>
         }
       >
-        {step === 1 ? (
-          <div className="space-y-2">
-            <label htmlFor="project-name" className="text-sm font-medium">
-              Nombre
-            </label>
-            <input
-              id="project-name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Mi primer proyecto"
-              className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="text-xs text-gray-500">
-              Podrás cambiarlo más tarde.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {/* 4. ⭐️ Botón que abre el modal de subida */}
-            <UploadVideoTriggerButton
-              disabled={loadingVideos || submitting}
-              onUploaded={fetchVideos}
-            />
-            
-            {loadingVideos ? (
-              <p className="text-gray-500 text-sm">Cargando videos…</p>
-            ) : videos.length === 0 ? (
-              <p className="text-gray-500 text-sm">No tienes videos todavía. ¡Sube uno!</p>
-            ) : (
-              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-auto pr-1">
-                {videos.map((v) => {
-                  const selected = selectedVideoId === v.id
-                  return (
-                    <li
-                      key={v.id}
-                      className={`rounded-lg border overflow-hidden cursor-pointer ${
-                        selected ? 'ring-2 ring-blue-500' : 'hover:border-gray-400'
-                      }`}
-                      onClick={() => setSelectedVideoId(v.id)}
-                    >
-                      <div className="aspect-video bg-black">
-                        {v.thumbnail ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={v.thumbnail}
-                            alt={v.title || `Video ${v.id}`}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <div className="w-full h-full grid place-items-center text-white text-xs">
-                            {v.title || `Video #${v.id}`}
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-2">
-                        <p className="text-sm font-medium truncate">{v.title || `Video #${v.id}`}</p>
-                        <p className="text-xs text-gray-500">{formatMs(v.duration_ms)} • {v.format?.toUpperCase() || '—'}</p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </div>
-        )}
+        {/* Solo mostramos el Step 1: Nombre */}
+        <div className="space-y-2">
+          <label htmlFor="project-name" className="text-sm font-medium">
+            Nombre
+          </label>
+          <input
+            id="project-name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Mi primer proyecto"
+            className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <p className="text-xs text-gray-500">
+            Podrás cambiarlo más tarde.
+          </p>
+        </div>
       </Modal>
 
+      {/* ⭐️ Modal de Selección de Video (componente externo) */}
+      <VideoPickerModal
+        open={openVideoPicker}
+        onClose={() => setOpenVideoPicker(false)}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        onSelect={handleVideoSelected} // Usamos la nueva función para crear el proyecto
+      />
     </>
   )
 }
