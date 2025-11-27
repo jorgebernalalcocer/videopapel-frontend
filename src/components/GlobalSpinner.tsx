@@ -7,9 +7,12 @@ import { useEffect, useState } from 'react'
 
 type GlobalSpinnerProps = {
   force?: boolean
+  // 1. Añadimos la propiedad opcional 'message'
+  message?: string 
 }
 
-export default function GlobalSpinner({ force = false }: GlobalSpinnerProps) {
+// Desestructuramos 'message' y le damos un valor predeterminado 'Cargando'
+export default function GlobalSpinner({ force = false, message = 'Cargando' }: GlobalSpinnerProps) {
   const isFetching = useIsFetching()           // queries (GETs)
   const isMutating = useIsMutating()           // mutations (POST/PUT/DELETE) si usas React Query
   const manual = useLoading((s) => s.pending)  // fetch manual con apiFetch
@@ -32,8 +35,12 @@ export default function GlobalSpinner({ force = false }: GlobalSpinnerProps) {
 
   return (
     <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      {/* Spinner accesible */}
-      <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-white/40 border-t-white" aria-label="Cargando" />
+      <div className="flex flex-col items-center p-4 bg-black/60 rounded-lg"> {/* Contenedor para spinner y texto */}
+        {/* Spinner accesible */}
+        <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-white/40 border-t-white" aria-label={message} />
+        {/* 2. Mostramos el mensaje (con un poco de margen superior) */}
+        <span className="mt-3 text-white text-lg font-semibold">{message}</span>
+      </div>
     </div>
   )
 }
