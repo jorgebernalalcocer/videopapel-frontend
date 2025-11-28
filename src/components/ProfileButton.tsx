@@ -20,11 +20,11 @@ export default function ProfileButton() {
     inline-flex items-center
     px-3 py-1.5                  
     rounded-lg                   
-    bg-pink-100                  
-    text-pink-700
+    bg-purple-100                  
+    text-purple-700
     font-medium
     transition-colors
-    hover:bg-pink-700            
+    hover:bg-purple-700            
     hover:text-white
   "
   onClick={handleProfile}

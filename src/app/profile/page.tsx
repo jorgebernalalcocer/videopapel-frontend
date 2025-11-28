@@ -39,11 +39,11 @@ const ProfileStat = ({ label, count }: { label: string; count: number }) => (
 
 // --- NEW DATA: Action Cards Configuration ---
 const actionCards = [
-  { href: '/projects', icon: BookOpen, label: 'Proyectos' },
-  { href: '/clips', icon: Film, label: 'Videos' },
-  { href: '/orders', icon: List, label: 'Pedidos' },
-  { href: '/shipping', icon: Home, label: 'Dirección de entrega' },
-  { href: '/cart', icon: ShoppingBasket, label: 'Cesta de la compra' },
+  { href: '/projects', icon: BookOpen, label: 'Proyectos', color: 'pink-700' },
+  { href: '/clips', icon: Film, label: 'Videos', color: 'orange-700' },
+  { href: '/orders', icon: List, label: 'Pedidos', color: 'blue-700' },
+  { href: '/shipping', icon: Home, label: 'Dirección de entrega', color: 'orange-700' },
+  { href: '/cart', icon: ShoppingBasket, label: 'Cesta de la compra', color: 'emerald-700' },
   
   
 ]
@@ -53,16 +53,19 @@ const ActionCard = ({
   href,
   icon: Icon,
   label,
+  color
 }: {
   href: string
   icon: React.ElementType
   label: string
+  color: string
 }) => (
   <Link
     href={href}
     className="flex aspect-square flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md"
   >
-    <Icon className="h-8 w-8 text-purple-600 mb-2" />
+    {/* ¡AQUÍ ESTÁ EL CAMBIO! text-${color} para inyectar la clase completa */}
+    <Icon className={`h-8 w-8 text-${color} mb-2`} /> 
     <span className="text-sm font-medium text-gray-700">{label}</span>
   </Link>
 )

@@ -17,11 +17,11 @@ export default function ProjectsButton() {
     inline-flex items-center
     px-3 py-1.5                  
     rounded-lg                   
-    bg-purple-100                  
-    text-purple-700
+    bg-pink-100                  
+    text-pink-700
     font-medium
     transition-colors
-    hover:bg-purple-700            
+    hover:bg-pink-700            
     hover:text-white
   "  onClick={handleProjects}>
       <BookOpen className="w-4 h-4 mr-1.5" /> 
