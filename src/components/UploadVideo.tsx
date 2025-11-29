@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
-import { UploadCloud, CheckCircle2, XCircle } from "lucide-react";
+import { Upload, UploadCloud, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/store/auth";
 import { apiFetch } from "@/lib/api";
@@ -214,8 +214,9 @@ export default function UploadVideo() {
       </p>
 
       <label htmlFor="video-upload" className="cursor-pointer">
-        <Button variant="secondary" asChild>
-          <span>Seleccionar archivo</span>
+        <Button className="'inline-flex items-center justify-center px-4 py-2 bg-orange-100 text-orange-700 hover:bg-orange-700 hover:text-white font-semibold rounded-lg shadow-md transition-colors'">
+              <Upload className="w-5 h-5 mr-2" /> 
+    <span>Añadir nuevo video</span>
         </Button>
         <input
           ref={inputRef}
