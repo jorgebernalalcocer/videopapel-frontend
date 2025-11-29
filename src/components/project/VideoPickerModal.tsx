@@ -232,12 +232,14 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
                     </div>
                 )}
                 <div className="aspect-video bg-black">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  {v.thumbnail ? (
-                    <img
-                      src={v.thumbnail}
-                      alt={v.title || `Video ${v.id}`}
-                      className="w-full h-full object-cover"
+                  {v.url || v.file ? (
+                    <video
+                      src={v.url || v.file || undefined}
+                      poster={v.thumbnail ?? undefined}
+                      className="w-full h-full object-cover bg-black"
+                      muted
+                      playsInline
+                      preload="metadata"
                     />
                   ) : (
                     <div className="w-full h-full grid place-items-center text-white text-xs">
