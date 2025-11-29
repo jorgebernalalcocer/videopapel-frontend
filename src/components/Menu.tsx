@@ -16,6 +16,7 @@ import CartButtonString from '@/components/CartButtonString'
 import { Menu as MenuIcon, X } from 'lucide-react' // Importar iconos
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
 import { borelFontStack } from '@/fonts/borel'
+import { cookieFontStack } from '@/fonts/cookie'
 
 export default function Menu() {
   // Estado para controlar la apertura del menú móvil
@@ -43,13 +44,23 @@ export default function Menu() {
       <Link
         href="/"
         className={`${pacifico.className} text-lg font-semibold leading-none`}
-        style={{ fontFamily: pacificoFontStack, fontSize: '3rem' }}
+        style={{ fontFamily: pacificoFontStack, fontSize: '2rem' }}
         onClick={() => setIsMobileMenuOpen(false)} // Cerrar menú al ir a Home
       >
                   <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
             papel . video
           </span>
       </Link>
+            {/* <Link
+        href="/"
+        className={`${pacifico.className} text-lg font-semibold leading-none`}
+        style={{ fontFamily: cookieFontStack, fontSize: '2rem' }}
+        onClick={() => setIsMobileMenuOpen(false)} // Cerrar menú al ir a Home
+      >
+                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
+            papel . video / Papel . Video
+          </span>
+      </Link> */}
 
       {/* Navegación de ESCRITORIO (visible desde 'md' hacia arriba) */}
       <nav className="hidden md:flex items-center gap-3">
