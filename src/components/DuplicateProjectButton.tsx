@@ -14,15 +14,16 @@ type ProjectClone = {
 }
 
 interface DuplicateProjectButtonProps
-  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick'> {
+  extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'onClick' | 'onError'> {
   projectId: string
   onDuplicated?: (project: ProjectClone) => void
   onError?: (message: string | null) => void
   label?: string
   showIcon?: boolean
   children?: ReactNode
-  size?: 'compact' | 'large' // Define el tamaño
+  size?: 'compact' | 'large'
 }
+
 
 export default function DuplicateProjectButton({
   projectId,

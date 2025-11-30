@@ -22,9 +22,11 @@ type PublicProjectResponse = {
     clip_count: number
     print_aspect_slug?: string | null
     thumbs_per_second?: number | null
+    print_effect_label?: string | null
   }
   clips: PublicClip[]
 }
+
 
 const PREVIEW_PROJECT_ID = '049c7743-e327-45d9-8d67-25970839bbc6'
 

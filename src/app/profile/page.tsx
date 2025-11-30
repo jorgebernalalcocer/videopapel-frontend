@@ -39,11 +39,11 @@ const ProfileStat = ({ label, count }: { label: string; count: number }) => (
 
 // --- NEW DATA: Action Cards Configuration ---
 const actionCards = [
-  { href: '/projects', icon: BookOpen, label: 'Proyectos', color: 'pink-700' },
-  { href: '/clips', icon: Film, label: 'Videos', color: 'orange-700' },
-  { href: '/orders', icon: List, label: 'Pedidos', color: 'blue-700' },
-  { href: '/shipping', icon: Home, label: 'Dirección de entrega', color: 'orange-700' },
-  { href: '/cart', icon: ShoppingBasket, label: 'Cesta de la compra', color: 'emerald-700' },
+  { href: '/projects', icon: BookOpen, label: 'Proyectos', color: 'purple-700' },
+  { href: '/clips', icon: Film, label: 'Videos', color: 'purple-700' },
+  { href: '/orders', icon: List, label: 'Pedidos', color: 'purple-700' },
+  { href: '/shipping', icon: Home, label: 'Dirección de entrega', color: 'purple-700' },
+  { href: '/cart', icon: ShoppingBasket, label: 'Cesta de la compra', color: 'purple-700' },
   
   
 ]

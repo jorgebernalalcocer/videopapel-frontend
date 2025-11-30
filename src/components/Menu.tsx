@@ -23,6 +23,7 @@ import { Menu as MenuIcon, X } from 'lucide-react' // Importar iconos
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
 import { borelFontStack } from '@/fonts/borel'
 import { cookieFontStack } from '@/fonts/cookie'
+import BookLogo from './BookLogo'
 
 export default function Menu() {
   // Estado para controlar la apertura del menú móvil
@@ -46,16 +47,21 @@ export default function Menu() {
 
   return (
     // Añadimos 'relative' para que el menú móvil absoluto se posicione correctamente
-    <header className="sticky top-0 inset-x-0 h-16 w-full border-b bg-white/90 backdrop-blur flex items-center justify-between px-4 z-50">
+<header className="sticky top-0 inset-x-0 h-16 w-full border-b bg-white/90 backdrop-blur flex items-center justify-between px-4 z-50">
       <Link
         href="/"
-        className={`${pacifico.className} text-lg font-semibold leading-none`}
+        // CAMBIAR gap-2 por gap-4 (o el que te parezca mejor espaciado)
+        // Añadimos 'ml-1' al Link para separarlo un poco del borde izquierdo
+        className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
         style={{ fontFamily: pacificoFontStack, fontSize: '2rem' }}
-        onClick={() => setIsMobileMenuOpen(false)} // Cerrar menú al ir a Home
+        onClick={() => setIsMobileMenuOpen(false)}
       >
-                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
-            papel . video
-          </span>
+        <BookLogo /> 
+        
+        {/* TEXTO CON DEGRADADO */}
+        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
+          papel . video
+        </span>
       </Link>
             {/* <Link
         href="/"

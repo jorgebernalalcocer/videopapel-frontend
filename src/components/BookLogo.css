@@ -1,0 +1,104 @@
+/* src/components/BookLogo.css */
+
+:root {
+  /* Definir los colores base del degradado para usar en la animación */
+  --color-fuchsia: #d946ef; /* fuchsia-500 */
+  --color-sky: #0ea5e9;    /* sky-500 */
+  --color-emerald: #10b981; /* emerald-500 */
+  --color-grey: #e2e8f0;   /* color de las páginas inactivas o de fondo, si es necesario */
+}
+
+.book-logo-container {
+  /* Contenedor principal del logo */
+  position: relative;
+  width: 1.7rem;   
+  height: 1.7rem; 
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  
+  /* ¡APLICAR GIRO DE 180 GRADOS! */
+  transform: rotateZ(180deg);
+}
+
+.book-page {
+  position: absolute;
+  background-color: var(--color-sky); /* Color base inicial (puede ser uno de los degradados) */
+  animation: page-color-cycle 3s infinite; /* Animación de ciclo de color, 3s de duración */
+  border-radius: 2px; /* Ligeros bordes redondeados para suavizar */
+}
+
+
+/* --- Formas y posiciones de las páginas --- */
+
+/* Páginas principales del centro (las más grandes) */
+.main-left, .main-right {
+  width: 48%; /* Casi la mitad del contenedor */
+  height: 80%; /* Mayor altura */
+  transform: skewY(-20deg); /* Inclinar para dar perspectiva */
+  left: 0; right: auto; /* Posición para main-left */
+}
+
+.main-right {
+  transform: skewY(20deg); /* Inclinar en dirección contraria */
+  left: auto; right: 0; /* Posición para main-right */
+}
+
+/* Páginas exteriores 1 */
+.outer-left-1, .outer-right-1 {
+  width: 40%; 
+  height: 70%;
+  transform: skewY(-25deg); /* Más inclinación */
+  left: -5%; /* Mover un poco más a la izquierda */
+  top: 10%; /* Bajar un poco para el efecto de profundidad */
+  opacity: 0.8; /* Ligeramente más transparentes */
+}
+
+.outer-right-1 {
+  transform: skewY(25deg);
+  left: auto; right: -5%; /* Mover un poco más a la derecha */
+}
+
+/* Páginas exteriores 2 (las más externas) */
+.outer-left-2, .outer-right-2 {
+  width: 30%;
+  height: 60%;
+  transform: skewY(-30deg); /* Aún más inclinación */
+  left: -10%; /* Más a la izquierda */
+  top: 20%; /* Más abajo */
+  opacity: 0.6; /* Más transparentes */
+}
+
+.outer-right-2 {
+  transform: skewY(30deg);
+  left: auto; right: -10%; /* Más a la derecha */
+}
+
+
+/* --- Animación de cambio de color secuencial --- */
+
+@keyframes page-color-cycle {
+  0%   { background-color: var(--color-fuchsia); }
+  25%  { background-color: var(--color-sky); }
+  50%  { background-color: var(--color-emerald); }
+  75%  { background-color: var(--color-fuchsia); } /* Repetir para un ciclo suave */
+  100% { background-color: var(--color-fuchsia); }
+}
+
+/* Aplicar retrasos a la animación para que los bloques cambien de color secuencialmente */
+.main-left { animation-delay: 0s; }
+.main-right { animation-delay: 0.1s; } /* Ligero retraso */
+
+.outer-left-1 { animation-delay: 0.2s; }
+.outer-right-1 { animation-delay: 0.3s; }
+
+.outer-left-2 { animation-delay: 0.4s; }
+.outer-right-2 { animation-delay: 0.5s; } /* Último en cambiar */
+
+/* Ajustes finos de posición para solapamiento y forma de libro */
+.main-left { z-index: 5; }
+.main-right { z-index: 5; }
+.outer-left-1 { z-index: 4; }
+.outer-right-1 { z-index: 4; }
+.outer-left-2 { z-index: 3; }
+.outer-right-2 { z-index: 3; }

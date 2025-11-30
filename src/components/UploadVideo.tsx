@@ -213,21 +213,26 @@ export default function UploadVideo() {
         o haz clic para seleccionar un archivo. Máximo 100 Mb.
       </p>
 
-      <label htmlFor="video-upload" className="cursor-pointer">
-        <Button className="'inline-flex items-center justify-center px-4 py-2 bg-orange-100 text-orange-700 hover:bg-orange-700 hover:text-white font-semibold rounded-lg shadow-md transition-colors'">
-              <Upload className="w-5 h-5 mr-2" /> 
-    <span>Añadir nuevo video</span>
-        </Button>
-        <input
-          ref={inputRef}
-          id="video-upload"
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={onChange}
-          disabled={uploading}
-        />
-      </label>
+      <Button
+        type="button"
+        className="inline-flex items-center justify-center px-4 py-2 bg-orange-100 text-orange-700 hover:bg-orange-700 hover:text-white font-semibold rounded-lg shadow-md transition-colors"
+        onClick={() => {
+          if (!uploading) inputRef.current?.click()
+        }}
+        disabled={uploading}
+      >
+        <Upload className="w-5 h-5 mr-2" />
+        <span>Añadir nuevo video</span>
+      </Button>
+      <input
+        ref={inputRef}
+        id="video-upload"
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={onChange}
+        disabled={uploading}
+      />
 
       {fileName && (
         <p className="mt-4 text-sm text-gray-700">

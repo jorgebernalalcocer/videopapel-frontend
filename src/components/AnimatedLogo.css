@@ -1,0 +1,99 @@
+/* src/components/AnimatedLogo.css */
+
+/* Define los colores del degradado */
+:root {
+  --color-start: #fuchsia-500; /* Asumo un color aproximado para Tailwind fuchsia-500 */
+  --color-mid: #sky-500; /* Asumo un color aproximado para Tailwind sky-500 */
+  --color-end: #emerald-500; /* Asumo un color aproximado para Tailwind emerald-500 */
+}
+
+/* Adaptación de los colores Tailwind a valores CSS para animación.
+  Puedes ajustarlos si es necesario.
+*/
+.animated-logo-line {
+  --color-start: #d946ef; /* fuchsia-500 */
+  --color-mid: #0ea5e9; /* sky-500 */
+  --color-end: #10b981; /* emerald-500 */
+}
+
+
+.animated-logo-container {
+  width: 1.5rem; /* 24px */
+  height: 1.5rem; /* 24px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* IMPORTANTE: Comentamos o eliminamos 'overflow: hidden;' para ver el rastro */
+}
+.animated-logo-line {
+  width: 100%;
+  height: 2px; 
+  
+  transform-origin: left center;
+  
+  /* DURACIÓN AJUSTADA: 0.6s es un buen punto de partida para que se vea el rastro */
+  animation: 
+    flip 0.6s cubic-bezier(0.4, 0, 0.2, 1) infinite,
+    color-cycle 0.6s steps(6) infinite,
+    trail-fade 1.2s ease-out infinite; /* <-- ¡NUEVA ANIMACIÓN para el desvanecimiento! */
+    
+  background-color: var(--color-start);
+  
+  /* Sombra inicial que actúa como rastro. Se animará en 'trail-fade' */
+  box-shadow: 0 0 0 rgba(0, 0, 0, 0.5); 
+}
+
+/* @keyframes flip: Simula el giro rápido de 180 grados desde el eje izquierdo.
+  Usamos steps(6) en la animación de color para que los cambios sean abruptos.
+*/
+@keyframes flip {
+  0% { transform: rotate(0deg); }
+  49% { transform: rotate(-179deg); } 
+  50% { transform: rotate(0deg); } 
+  100% { transform: rotate(0deg); }
+}
+/* @keyframes color-cycle: Cambia el color de fondo para simular la textura del flipbook/degradado.
+  - 0-16.6%: Color 1 (fuchsia)
+  - 16.6-33.3%: Color 2 (sky)
+  - 33.3-50%: Color 3 (emerald)
+  - 50-100%: Los mismos colores para el "reverso" del giro.
+*/
+@keyframes color-cycle {
+  0%, 16.6% { background-color: var(--color-start); }
+  16.7%, 33.3% { background-color: var(--color-mid); }
+  33.4%, 50% { background-color: var(--color-end); }
+  
+  50.1%, 66.6% { background-color: var(--color-start); }
+  66.7%, 83.3% { background-color: var(--color-mid); }
+  83.4%, 100% { background-color: var(--color-end); }
+}
+
+/* @keyframes trail-fade: Crea la "señal" que se desvanece */
+@keyframes trail-fade {
+  /* Al inicio del giro, el rastro es visible (simulado con una sombra grande y opaca) */
+  0% { 
+    box-shadow: 
+      0 0 10px 5px rgba(255, 255, 255, 0.8), /* Sombra blanca de fondo (opcional) */
+      0 0 0 3px var(--color-start); /* Sombra de color (rastro) */
+    opacity: 1; /* La línea es totalmente visible */
+  }
+  
+  /* A mitad del tiempo de desvanecimiento, reducimos la opacidad y el tamaño del rastro */
+  40% {
+    box-shadow: 
+      0 0 5px 2px rgba(255, 255, 255, 0.4),
+      0 0 0 2px rgba(var(--color-mid-rgb), 0.5); /* Usar RGB si es posible para cambiar la opacidad */
+  }
+  
+  /* Al final del ciclo de desvanecimiento, la sombra desaparece */
+  99% { 
+    box-shadow: none;
+    opacity: 0.1; /* La línea casi desaparece antes de volver a aparecer */
+  }
+  
+  /* Vuelve al inicio del ciclo */
+  100% { 
+    box-shadow: none;
+    opacity: 1; 
+  }
+}

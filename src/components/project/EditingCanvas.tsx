@@ -237,23 +237,38 @@ const currentThumb = useMemo(() => {
     clipSignature, clipsOrdered, clipOffsets, globalFrameLookupByClip, textsVersion
   )
 
-  const activeTextFrames = useMemo(() => {
-    if (!currentThumb) return []
-    const framesForClip = textFramesByClip[currentThumb.clipId] ?? []
-    const tLocal = currentThumb.tLocal, tGlobal = currentThumb.tGlobal
-    return framesForClip.filter((tf) => {
-      const gStart = tf.frame_start_global, gEnd = tf.frame_end_global
-      const gSpec = tf.specific_frames_global ?? []
-      const inGRange = gStart != null && gEnd != null && gStart <= tGlobal && tGlobal < gEnd
-      const inGSpec = Array.isArray(gSpec) && gSpec.includes(Math.round(tGlobal))
-      if (inGRange || inGSpec) return true
+const activeTextFrames = useMemo(() => {
+  if (!currentThumb) return []
 
-      const startMs = tf.frame_start, endMs = tf.frame_end
-      const inRange = startMs != null && endMs != null && startMs <= tLocal && tLocal < endMs
-      const inSpecific = Array.isArray(tf.specific_frames) && tf.specific_frames.includes(Math.round(tLocal))
-      return inRange || inSpecific
-    })
-  }, [textFramesByClip, currentThumb])
+  const { clipId, tLocal, tGlobal } = currentThumb as {
+    clipId: number | string
+    tLocal: number
+    tGlobal: number
+  }
+
+  const framesForClip = textFramesByClip[clipId] ?? []
+
+  return framesForClip.filter((tf) => {
+    const gStart = tf.frame_start_global,
+      gEnd = tf.frame_end_global
+    const gSpec = tf.specific_frames_global ?? []
+    const inGRange =
+      gStart != null && gEnd != null && gStart <= tGlobal && tGlobal < gEnd
+    const inGSpec =
+      Array.isArray(gSpec) && gSpec.includes(Math.round(tGlobal))
+    if (inGRange || inGSpec) return true
+
+    const startMs = tf.frame_start,
+      endMs = tf.frame_end
+    const inRange =
+      startMs != null && endMs != null && startMs <= tLocal && tLocal < endMs
+    const inSpecific =
+      Array.isArray(tf.specific_frames) &&
+      tf.specific_frames.includes(Math.round(tLocal))
+    return inRange || inSpecific
+  })
+}, [textFramesByClip, currentThumb])
+
 
 const textPresenceLookup = useMemo(() => {
   const map = new Map<string, boolean>()
