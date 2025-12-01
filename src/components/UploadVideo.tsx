@@ -16,6 +16,14 @@ type UploadUrlResponse = {
   public_url: string;
 };
 
+type UploadVideoProps = {
+  /**
+   * Permite que un componente padre (por ejemplo, UploadVideoTriggerButton)
+   * reciba una función para abrir directamente el file picker.
+   */
+  registerOpenPicker?: (fn: (() => void) | null) => void;
+};
+
 async function getVideoMetadata(file: File): Promise<{
   duration_ms: number;
   width_px: number | null;
@@ -48,7 +56,7 @@ async function getVideoMetadata(file: File): Promise<{
   }
 }
 
-export default function UploadVideo() {
+export default function UploadVideo({ registerOpenPicker }: UploadVideoProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [fileName, setFileName] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
@@ -60,6 +68,18 @@ export default function UploadVideo() {
     // @ts-ignore
     useAuth.persist?.rehydrate?.();
   }, []);
+
+  const openFilePicker = useCallback(() => {
+    if (!uploading) {
+      inputRef.current?.click();
+    }
+  }, [uploading]);
+
+  useEffect(() => {
+    if (!registerOpenPicker) return;
+    registerOpenPicker(openFilePicker);
+    return () => registerOpenPicker(null);
+  }, [registerOpenPicker, openFilePicker]);
 
   const handleVideo = useCallback(async (file: File) => {
     const { hasHydrated, accessToken } = useAuth.getState();
@@ -213,17 +233,15 @@ export default function UploadVideo() {
         o haz clic para seleccionar un archivo. Máximo 100 Mb.
       </p>
 
-      {/* <Button
+      <Button
         type="button"
         className="inline-flex items-center justify-center px-4 py-2 bg-orange-100 text-orange-700 hover:bg-orange-700 hover:text-white font-semibold rounded-lg shadow-md transition-colors"
-        onClick={() => {
-          if (!uploading) inputRef.current?.click()
-        }}
+        onClick={openFilePicker}
         disabled={uploading}
       >
         <Upload className="w-5 h-5 mr-2" />
         <span>Nuevo video</span>
-      </Button> */}
+      </Button>
       <input
         ref={inputRef}
         id="video-upload"

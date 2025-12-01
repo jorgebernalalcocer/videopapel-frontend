@@ -1,7 +1,6 @@
 'use client'
 
-import { ReactNode, useEffect, useState } from 'react'
-import { Modal } from '@/components/ui/Modal'
+import { ReactNode, useCallback, useEffect, useRef } from 'react'
 import UploadVideo from '@/components/UploadVideo'
 import { Upload } from 'lucide-react'
 
@@ -27,34 +26,37 @@ export default function UploadVideoTriggerButton({
   disabled,
   buttonContent = defaultButtonContent,
   buttonClassName = 'inline-flex items-center justify-center px-4 py-2 bg-orange-100 text-orange-700 hover:bg-orange-700 hover:text-white font-semibold rounded-lg shadow-md transition-colors disabled:opacity-50',
-  modalTitle = 'Subir nuevo video',
 }: UploadVideoTriggerButtonProps) {
-  const [open, setOpen] = useState(false)
+  const openPickerRef = useRef<(() => void) | null>(null)
+
+  const registerOpenPicker = useCallback(
+    (fn: (() => void) | null) => {
+      openPickerRef.current = fn
+    },
+    [],
+  )
+
+  const handleButtonClick = useCallback(() => {
+    if (disabled) return
+    openPickerRef.current?.()
+  }, [disabled])
 
   useEffect(() => {
-    if (!open) return
     const handler = () => {
-      setOpen(false)
       onUploaded?.()
     }
     window.addEventListener('videopapel:uploaded', handler)
     return () => window.removeEventListener('videopapel:uploaded', handler)
-  }, [open, onUploaded])
+  }, [onUploaded])
 
   return (
     <>
-      <button type="button" onClick={() => !disabled && setOpen(true)} disabled={disabled} className={buttonClassName}>
+      <button type="button" onClick={handleButtonClick} disabled={disabled} className={buttonClassName}>
         {buttonContent}
       </button>
-      <Modal
-        open={open}
-        onClose={() => setOpen(false)}
-        title={modalTitle}
-        size="lg"
-        contentClassName="max-w-xl"
-      >
-        <UploadVideo />
-      </Modal>
+      <div className="hidden" aria-hidden>
+        <UploadVideo registerOpenPicker={registerOpenPicker} />
+      </div>
     </>
   )
 }
