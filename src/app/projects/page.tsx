@@ -10,7 +10,7 @@ export default function ProjectsPage() {
     <main className="min-h-screen px-6 py-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
-          <h1 className="text-3xl font-semibold">Mis proyectos</h1>
+          <h1 className="text-3xl font-semibold">Proyectos</h1>
           <NewProjectButton />
         </div>
         <MyProjects />

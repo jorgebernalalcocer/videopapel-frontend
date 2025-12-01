@@ -31,7 +31,7 @@ function TitleBar({
   return (
     <div className="mb-6 flex items-center justify-between gap-4">
       <div>
-                  <h1 className="text-3xl font-semibold">Mis proyectos</h1>
+                  <h1 className="text-3xl font-semibold">Videos</h1>
 
         {subtitle ? <p className={`mt-1 text-sm ${subtitleClassName}`}>{subtitle}</p> : null}
       </div>

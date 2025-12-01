@@ -18,7 +18,7 @@ const defaultButtonContent = (
 
     {/* El contenido por defecto solo debe ser el icono y el texto, no el botón completo. */}
     <Upload className="w-5 h-5 mr-2" />
-    <span>Añadir nuevo video</span>
+    <span>Nuevo video</span>
   </>
 )
 
