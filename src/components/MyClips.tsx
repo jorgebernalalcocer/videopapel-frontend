@@ -4,22 +4,46 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/store/auth'
 import DeleteClipButton from './DeleteClipButton'
 import GoProjectButton from './GoProjectButton'
+import UploadVideoTriggerButton from '@/components/UploadVideoTriggerButton'
 
 type Video = {
   id: number
   title: string | null
   file: string | null
-  url: string | null 
+  url: string | null
   thumbnail: string | null
   duration_ms: number
   format: string | null
   uploaded_at: string
 }
 
+const TITLE = 'Mis videos'
+
+function TitleBar({
+  subtitle,
+  subtitleClassName = 'text-gray-500',
+  showUploadButton = false,
+}: {
+  subtitle?: string
+  subtitleClassName?: string
+  showUploadButton?: boolean
+}) {
+  return (
+    <div className="mb-6 flex items-center justify-between gap-4">
+      <div>
+                  <h1 className="text-3xl font-semibold">Mis proyectos</h1>
+
+        {subtitle ? <p className={`mt-1 text-sm ${subtitleClassName}`}>{subtitle}</p> : null}
+      </div>
+      {showUploadButton ? <UploadVideoTriggerButton /> : null}
+    </div>
+  )
+}
+
 export default function MyClips() {
-  const [clips, setClips] = useState<any[]>([])
+  const [clips, setClips] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string|null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const hasHydrated = useAuth((s) => s.hasHydrated)
@@ -35,7 +59,7 @@ export default function MyClips() {
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
       setClips(await res.json())
-    } catch (e:any) {
+    } catch (e: any) {
       setError(e.message || 'Error al cargar tus videos')
     } finally {
       setLoading(false)
@@ -43,33 +67,41 @@ export default function MyClips() {
   }, [API_BASE, accessToken])
 
   useEffect(() => {
-    // ⛔️ No pedir hasta que el store esté hidratado y haya token
     if (!hasHydrated || !accessToken) return
     fetchClips()
   }, [hasHydrated, accessToken, fetchClips])
 
-useEffect(() => {
-  const handler = () => fetchClips()
-  window.addEventListener('videopapel:uploaded', handler)
-  window.addEventListener('videopapel:deleted', handler) // ⬅️ Add this line
-  return () => {
-    window.removeEventListener('videopapel:uploaded', handler)
-    window.removeEventListener('videopapel:deleted', handler) // ⬅️ And this cleanup
-  }
-}, [fetchClips])
+  useEffect(() => {
+    if (!hasHydrated || !accessToken) return undefined
+    const handler = () => fetchClips()
+    window.addEventListener('videopapel:uploaded', handler)
+    window.addEventListener('videopapel:deleted', handler)
+    return () => {
+      window.removeEventListener('videopapel:uploaded', handler)
+      window.removeEventListener('videopapel:deleted', handler)
+    }
+  }, [hasHydrated, accessToken, fetchClips])
 
   if (!hasHydrated) {
-    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2><p className="text-gray-500">Preparando…</p></section>
+    return (
+      <section className="mt-12 w-full max-w-5xl">
+        <TitleBar subtitle="Cargando…" />
+      </section>
+    )
   }
+
   if (!accessToken) {
-    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2><p className="text-gray-500">Inicia sesión para ver tus videos.</p></section>
+    return (
+      <section className="mt-12 w-full max-w-5xl">
+        <TitleBar subtitle="Inicia sesión para ver tus videos." />
+      </section>
+    )
   }
 
   if (loading) {
     return (
       <section className="mt-12 w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2>
-        <p className="text-gray-500">Cargando…</p>
+        <TitleBar subtitle="Cargando…" showUploadButton />
       </section>
     )
   }
@@ -77,8 +109,7 @@ useEffect(() => {
   if (error) {
     return (
       <section className="mt-12 w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2>
-        <p className="text-red-600 text-sm">{error}</p>
+        <TitleBar subtitle={error} subtitleClassName="text-sm text-red-600" showUploadButton />
       </section>
     )
   }
@@ -86,40 +117,39 @@ useEffect(() => {
   if (!clips.length) {
     return (
       <section className="mt-12 w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2>
-        <p className="text-gray-500">Aún no has subido ningún video.</p>
+        <TitleBar subtitle="Aún no has subido ningún video." showUploadButton />
       </section>
     )
   }
 
   return (
-    <section className="mt-12 w-full max-w-5xl">
-      <h2 className="text-2xl font-semibold mb-6">Mis clips de video</h2>
+    <section className="mt-6 w-full max-w-5xl sm:mt-12">
+      <TitleBar showUploadButton />
 
-      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-{clips.map((v) => (
-  <li key={v.id} className="bg-white rounded-xl shadow-sm border overflow-hidden">
-    <div className="aspect-video bg-black">
-      {(v.url || v.file) ? (
-        <video
-          src={v.url || v.file!}
-          poster={v.thumbnail ?? undefined}
-          controls
-          className="w-full h-full object-contain bg-black"
-        />
-      ) : (
-        <div className="w-full h-full flex items-center justify-center text-white text-sm">
-          Sin URL de video
-        </div>
-      )}
-    </div>
+      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {clips.map((v) => (
+          <li key={v.id} className="overflow-hidden rounded-xl border bg-white shadow-sm">
+            <div className="aspect-video bg-black">
+              {v.url || v.file ? (
+                <video
+                  src={v.url || v.file}
+                  poster={v.thumbnail ?? undefined}
+                  controls
+                  className="h-full w-full bg-black object-contain"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-sm text-white">
+                  Sin URL de video
+                </div>
+              )}
+            </div>
 
             <div className="p-3">
-              <h3 className="text-sm font-semibold truncate">{v.title || `Video #${v.id}`}</h3>
-              <p className="text-xs text-gray-500 mt-1">
+              <h3 className="truncate text-sm font-semibold">{v.title || `Video #${v.id}`}</h3>
+              <p className="mt-1 text-xs text-gray-500">
                 {msToTime(v.duration_ms)} • {v.format?.toUpperCase() || '—'}
               </p>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="mt-1 text-xs text-gray-400">
                 Subido: {new Date(v.uploaded_at).toLocaleString()}
               </p>
               <DeleteClipButton videoId={v.id} />
@@ -137,8 +167,10 @@ function msToTime(ms: number) {
   const h = Math.floor(totalSec / 3600)
   const m = Math.floor((totalSec % 3600) / 60)
   const s = totalSec % 60
-  return [h, m, s]
-    .map((t, i) => (i === 0 && t === 0 ? null : String(t).padStart(2, '0')))
-    .filter(Boolean)
-    .join(':') || '00:00'
+  return (
+    [h, m, s]
+      .map((t, i) => (i === 0 && t === 0 ? null : String(t).padStart(2, '0')))
+      .filter(Boolean)
+      .join(':') || '00:00'
+  )
 }
