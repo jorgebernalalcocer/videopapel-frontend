@@ -28,7 +28,7 @@ type PublicProjectResponse = {
 }
 
 
-const PREVIEW_PROJECT_ID = '049c7743-e327-45d9-8d67-25970839bbc6'
+const PREVIEW_PROJECT_ID = 'fec0e901-858f-4756-ba5d-b4793f958f43'
 
 export default function LandingProjectPreview() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? ''

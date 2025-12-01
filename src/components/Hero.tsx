@@ -10,7 +10,7 @@ export default function Hero() {
       </div>
       <div className="mx-auto max-w-6xl px-6 pt-24 pb-20">
         <p className="text-sm font-semibold uppercase tracking-[0.3em] text-emerald-600 dark:text-emerald-400">
-          VideoPapel · impresión personalizada
+          flipbook · impresión personalizada
         </p>
         <h1 className="mt-4 text-balance text-4xl sm:text-5xl md:text-6xl font-extrabold tracking-tight">
           Impresión de videos en papel
@@ -19,9 +19,8 @@ export default function Hero() {
           </span>
         </h1>
         <p className="mt-6 max-w-2xl text-lg text-neutral-700 dark:text-neutral-300">
-          Diseña, visualiza y solicita impresiones premium con previsualización en tiempo real,
-          perfiles de color profesionales y entregas en 48&nbsp;horas. Optimizado para marketing,
-          ecommerce y proyectos creativos.
+          Diseña, visualiza y solicita videos impresos de tus proyectos creativos. Previsualización en tiempo real,
+          perfiles de color profesionales y entrega en casa.
         </p>
         <div className="mt-9 flex flex-col sm:flex-row gap-3">
           <Link
@@ -39,10 +38,8 @@ export default function Hero() {
           </Link>
         </div>
         <ul className="mt-10 grid gap-2 text-sm text-neutral-600 dark:text-neutral-400 sm:grid-cols-2">
-          <li>✔️ Perfiles ICC certificados y control de color profesional</li>
-          <li>✔️ Soportes premium: papeles fotográficos, algodones y sintéticos</li>
-          <li>✔️ Integraciones con Shopify, WooCommerce y automaciones Zapier</li>
-          <li>✔️ Envío con seguimiento en 24-48h a toda España y UE</li>
+          <li>✔️ Soportes premium: papeles fotográficos</li>
+          <li>✔️ Envío a toda España</li>
         </ul>
       </div>
     </section>
