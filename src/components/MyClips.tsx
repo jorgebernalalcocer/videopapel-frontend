@@ -59,16 +59,16 @@ useEffect(() => {
 }, [fetchClips])
 
   if (!hasHydrated) {
-    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Preparando…</p></section>
+    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2><p className="text-gray-500">Preparando…</p></section>
   }
   if (!accessToken) {
-    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips</h2><p className="text-gray-500">Inicia sesión para ver tus videos.</p></section>
+    return <section className="mt-12 w-full max-w-5xl"><h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2><p className="text-gray-500">Inicia sesión para ver tus videos.</p></section>
   }
 
   if (loading) {
     return (
       <section className="mt-12 w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold mb-4">Mis clips</h2>
+        <h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2>
         <p className="text-gray-500">Cargando…</p>
       </section>
     )
@@ -77,7 +77,7 @@ useEffect(() => {
   if (error) {
     return (
       <section className="mt-12 w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold mb-4">Mis clips</h2>
+        <h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2>
         <p className="text-red-600 text-sm">{error}</p>
       </section>
     )
@@ -86,7 +86,7 @@ useEffect(() => {
   if (!clips.length) {
     return (
       <section className="mt-12 w-full max-w-5xl">
-        <h2 className="text-2xl font-semibold mb-4">Mis clips</h2>
+        <h2 className="text-2xl font-semibold mb-4">Mis clips de video</h2>
         <p className="text-gray-500">Aún no has subido ningún video.</p>
       </section>
     )
@@ -94,7 +94,7 @@ useEffect(() => {
 
   return (
     <section className="mt-12 w-full max-w-5xl">
-      <h2 className="text-2xl font-semibold mb-6">Mis clips</h2>
+      <h2 className="text-2xl font-semibold mb-6">Mis clips de video</h2>
 
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
 {clips.map((v) => (

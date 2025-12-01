@@ -610,7 +610,11 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
     <div className="w-full flex flex-col gap-4 h-[90vh] min-h-0">
       {/* Viewer */}
 <BigFrameViewer
-  current={currentThumb ? { videoSrc: currentThumb.videoSrc, tLocal: currentThumb.tLocal } : null}
+  current={currentThumb ? {
+    videoSrc: currentThumb.videoSrc,
+    tLocal: currentThumb.tLocal,
+    previewUrl: currentThumb.url ?? undefined,
+  } : null}
   generating={generating}
   isCacheLoaded={isCacheLoaded}
   activeTextFrames={activeTextFrames}

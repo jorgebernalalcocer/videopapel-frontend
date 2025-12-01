@@ -48,21 +48,19 @@ export default function Menu() {
   return (
     // Añadimos 'relative' para que el menú móvil absoluto se posicione correctamente
 <header className="sticky top-0 inset-x-0 h-16 w-full border-b bg-white/90 backdrop-blur flex items-center justify-between px-4 z-50">
-      <Link
-        href="/"
-        // CAMBIAR gap-2 por gap-4 (o el que te parezca mejor espaciado)
-        // Añadimos 'ml-1' al Link para separarlo un poco del borde izquierdo
-        className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
-        style={{ fontFamily: pacificoFontStack, fontSize: '2rem' }}
-        onClick={() => setIsMobileMenuOpen(false)}
-      >
-        <BookLogo /> 
-        
-        {/* TEXTO CON DEGRADADO */}
-        <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
-          papel . video
-        </span>
-      </Link>
+<Link
+  href="/"
+  className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
+  style={{ fontFamily: pacificoFontStack, fontSize: '2rem', lineHeight: 2}}
+  onClick={() => setIsMobileMenuOpen(false)}
+>
+  {/* <BookLogo />  */}
+  
+  {/* CAMBIO CLAVE AQUÍ: Se añade `px-1` al span */}
+  <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
+    papel . video
+  </span>
+</Link>
             {/* <Link
         href="/"
         className={`${pacifico.className} text-lg font-semibold leading-none`}

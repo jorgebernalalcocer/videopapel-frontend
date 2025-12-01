@@ -1,6 +1,7 @@
 // src/hooks/useCombinedThumbs.ts
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
+import { loadThumbsFromIndexedDb, saveThumbsToIndexedDb } from '@/utils/thumbsIndexedDb'
 import { buildSig, loadThumbsFromCache, saveThumbsToCache, Thumbnail } from '@/utils/thumbCache'
 
 export type ClipState = {
@@ -98,9 +99,9 @@ export function useCombinedThumbs(params: {
 
         for (const c of clipsOrdered) {
           const { offset, start, end } = clipOffsets[c.clipId]
-          
-  const baseGridTimes = buildGridTimes(c.durationMs, BASE_GRID_DENSITY)
-const targetTimes = baseGridTimes // rejilla maestra completa
+
+          const baseGridTimes = buildGridTimes(c.durationMs, BASE_GRID_DENSITY)
+          const targetTimes = baseGridTimes // rejilla maestra completa
 
           const targetTimeSet = new Set(targetTimes)
           const stepMs = gridStepMsForDensity(BASE_GRID_DENSITY)
@@ -109,7 +110,8 @@ const targetTimes = baseGridTimes // rejilla maestra completa
             targetCount: targetTimes.length, thumbnailHeight, framesVersion: c.frames?.join(',') ?? null,
           })
 
-          let items = loadThumbsFromCache(projectId, c.clipId, sig)
+          const indexedDbThumbs = await loadThumbsFromIndexedDb(projectId, c.clipId, sig)
+          let items = indexedDbThumbs ?? loadThumbsFromCache(projectId, c.clipId, sig)
 
           const backendFramesRaw = Array.isArray(c.frames)
             ? c.frames
@@ -142,8 +144,11 @@ const targetTimes = baseGridTimes // rejilla maestra completa
               count: backendThumbnails.length,
               sample: backendThumbnails.slice(0, 4),
             })
-            items = backendThumbnails
+            if (!items || items.length === 0) items = backendThumbnails
             saveThumbsToCache(projectId, c.clipId, sig, backendThumbnails)
+            if (!indexedDbThumbs || indexedDbThumbs.length === 0) {
+              await saveThumbsToIndexedDb(projectId, c.clipId, sig, backendThumbnails)
+            }
           } else {
             console.log('[useCombinedThumbs] sin thumbnails backend', { clipId: c.clipId })
           }

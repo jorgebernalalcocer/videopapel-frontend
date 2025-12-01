@@ -47,7 +47,7 @@ type PrintOverlay =
     }
 
 export default function BigFrameViewer(props: {
-  current?: { videoSrc: string; tLocal: number } | null
+  current?: { videoSrc: string; tLocal: number; previewUrl?: string } | null
   generating: boolean
   isCacheLoaded: boolean
   activeTextFrames: ActiveTextItem[]
@@ -117,15 +117,54 @@ export default function BigFrameViewer(props: {
       setPaintError(false)
       setFlash(true)
 
-    const targetHeight = Math.max(240, Math.min(wrapper?.clientHeight ?? 720, 1080))
-const previewSrc = current.videoSrc
+      const previewSrc = current.previewUrl
 
+      const tryPaintPreview = async () => {
+        if (!previewSrc) return false
+        try {
+          const img = new Image()
+          img.crossOrigin = 'anonymous'
+          img.decoding = 'async'
+          img.src = previewSrc
+          await img.decode()
+          const w = img.naturalWidth || img.width
+          const h = img.naturalHeight || img.height
+          if (!w || !h) return false
+          const maxW = wrapper?.clientWidth ?? w
+          const maxH = wrapper?.clientHeight ?? h
+          const ratioBase = isFull ? Math.max(maxW / w, maxH / h) : Math.min(maxW / w, maxH / h)
+          const ratio = Number.isFinite(ratioBase) && ratioBase > 0 ? ratioBase : 1
+          const displayW = Math.max(1, Math.round(w * ratio))
+          const displayH = Math.max(1, Math.round(h * ratio))
+
+          canvas.width = w
+          canvas.height = h
+          canvas.style.width = `${displayW}px`
+          canvas.style.height = `${displayH}px`
+
+          const ctx = canvas.getContext('2d')
+          if (!ctx) return false
+          ctx.clearRect(0, 0, w, h)
+          ctx.drawImage(img, 0, 0, w, h)
+          setPrintFrame({ width: displayW, height: displayH })
+          console.log('[BigFrameViewer] preview pintada desde IndexedDB/local cache', {
+            w, h, displayW, displayH,
+          })
+          return true
+        } catch (error) {
+          console.warn('[BigFrameViewer] no se pudo usar preview cacheada', error)
+          return false
+        }
+      }
+      if (await tryPaintPreview()) return
+
+      const fallbackVideoSrc = current.videoSrc
 
       // dataset.previewSrc para evitar recargas inútiles
-      if ((video as any).dataset?.previewSrc !== previewSrc || video.src !== previewSrc) {
+      if ((video as any).dataset?.previewSrc !== fallbackVideoSrc || video.src !== fallbackVideoSrc) {
         try {
-          ;(video as any).dataset.previewSrc = previewSrc
-          await setVideoSrcAndWait(video, previewSrc)
+          ;(video as any).dataset.previewSrc = fallbackVideoSrc
+          await setVideoSrcAndWait(video, fallbackVideoSrc)
         } catch {
           setPaintError(true)
           return
