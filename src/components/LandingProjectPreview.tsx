@@ -36,7 +36,7 @@ export default function LandingProjectPreview() {
   const [projectName, setProjectName] = useState<string | null>(null)
   const [printAspect, setPrintAspect] = useState<string | null>(null)
   const [printEffectName, setPrintEffectName] = useState<string | null>(null)
-  const [thumbsPerSecond, setThumbsPerSecond] = useState<number>(1)
+  const [thumbsPerSecond, setThumbsPerSecond] = useState<number>(8)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -63,7 +63,7 @@ export default function LandingProjectPreview() {
         setClips(data.clips ?? [])
         setProjectName(data.project?.name ?? null)
         setPrintAspect(data.project?.print_aspect_slug ?? 'fill')
-        setThumbsPerSecond(data.project?.thumbs_per_second ?? 1)
+        setThumbsPerSecond(data.project?.thumbs_per_second ?? 8)
         setPrintEffectName(data.project?.print_effect_label ?? null)
       } catch (err: any) {
         if (err?.name === 'AbortError') return

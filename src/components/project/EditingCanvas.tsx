@@ -56,7 +56,7 @@ type EditingCanvasProps = {
 export default function EditingCanvas(props: EditingCanvasProps) {
   const {
     projectId, apiBase, accessToken, clips, clipId, videoSrc, durationMs, initialFrames,
-    initialTimeMs = 0, thumbnailsCount, thumbsPerSecond = 1, thumbnailHeight = 68,
+    initialTimeMs = 0, thumbnailsCount, thumbsPerSecond = 8, thumbnailHeight = 68,
     onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo,
     printAspectSlug = 'fill',
     onThumbsDensityChange,
