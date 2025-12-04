@@ -53,24 +53,21 @@ export default function Menu() {
   className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
   style={{ fontFamily: pacificoFontStack, fontSize: '2rem', lineHeight: 2}}
   onClick={() => setIsMobileMenuOpen(false)}
->
-  {/* <BookLogo />  */}
-  
-  {/* CAMBIO CLAVE AQUÍ: Se añade `px-1` al span */}
+>  
   <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
     papel . video
   </span>
 </Link>
-            {/* <Link
-        href="/"
-        className={`${pacifico.className} text-lg font-semibold leading-none`}
-        style={{ fontFamily: cookieFontStack, fontSize: '2rem' }}
-        onClick={() => setIsMobileMenuOpen(false)} // Cerrar menú al ir a Home
-      >
-                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
-            papel . video / Papel . Video
-          </span>
-      </Link> */}
+{/* <Link
+  href="/"
+  className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
+  style={{ fontFamily: pacificoFontStack, fontSize: '2rem', lineHeight: 2}}
+  onClick={() => setIsMobileMenuOpen(false)}
+>
+  <span className="block px-1 text-[#c6613f]">
+    papel . video
+  </span>
+</Link> */}
 
       {/* Navegación de ESCRITORIO (visible desde 'md' hacia arriba) */}
       <nav className="hidden md:flex items-center gap-3">
