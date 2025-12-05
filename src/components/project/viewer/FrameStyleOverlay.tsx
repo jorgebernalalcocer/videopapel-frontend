@@ -10,6 +10,7 @@ type Props = {
   dimensions: { width: number; height: number }
   printWidthMm?: number | null
   printHeightMm?: number | null
+  printQualityDpi?: number | null
   printQualityPpi?: number | null
 }
 
@@ -21,13 +22,14 @@ const POSITION_STYLES: Record<FramePosition, CSSProperties> = {
 }
 
 const DEFAULT_COLOR = 'rgba(0,0,0,0.9)'
-const FALLBACK_PPI = 300
+const FALLBACK_DPI = 300
 
 export default function FrameStyleOverlay({
   setting,
   dimensions,
   printWidthMm,
   printHeightMm,
+  printQualityDpi,
   printQualityPpi,
 }: Props) {
   if (!setting || !setting.positions || !setting.positions.length) return null
@@ -36,7 +38,7 @@ export default function FrameStyleOverlay({
   const uniquePositions = Array.from(new Set(setting.positions)) as FramePosition[]
   if (!uniquePositions.length) return null
 
-  const ppi = Math.max(1, printQualityPpi || FALLBACK_PPI)
+  const dpi = Math.max(1, (printQualityDpi ?? printQualityPpi ?? FALLBACK_DPI))
   const thicknessPct =
     setting.thickness_pct != null ? Math.max(0, Number(setting.thickness_pct)) : null
   const rawThicknessPx = setting.thickness_px || 8
@@ -49,7 +51,7 @@ export default function FrameStyleOverlay({
   const baseThicknessPx = computeThicknessPx({
     thicknessPct,
     thicknessPx: rawThicknessPx,
-    ppi,
+    dpi,
     dimensionMm: printHeightMm,
     dimensionPx: referenceDimensionPx,
   })
@@ -371,13 +373,13 @@ function toPascalCase(value: string): string {
 function computeThicknessPx({
   thicknessPct,
   thicknessPx,
-  ppi,
+  dpi,
   dimensionMm,
   dimensionPx,
 }: {
   thicknessPct: number | null
   thicknessPx: number
-  ppi: number
+  dpi: number
   dimensionMm?: number | null
   dimensionPx: number
 }) {
@@ -390,7 +392,7 @@ function computeThicknessPx({
     const fallback = Math.max(2, Math.min(thicknessPx, minDimensionPx / 2))
     return fallback
   }
-  const thicknessInches = thicknessPx / ppi
+  const thicknessInches = thicknessPx / dpi
   const thicknessMm = thicknessInches * 25.4
   const mmPerPixel = dimensionMm / minDimensionPx
   const displayThickness = thicknessMm / mmPerPixel

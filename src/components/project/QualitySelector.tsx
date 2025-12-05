@@ -5,7 +5,8 @@ import { useEffect, useMemo, useState, useCallback } from 'react'
 type PrintQuality = {
   id: number
   name: string
-  points_per_inch: number
+  dpi?: number
+  points_per_inch?: number
 }
 
 type Props = {
@@ -109,7 +110,7 @@ export default function QualitySelector({
         <option value="">{loadingOptions ? 'Cargando…' : 'Cambiar calidad de impresión'}</option>
         {options.map(opt => (
           <option key={opt.id} value={opt.id}>
-            {opt.name} — {opt.points_per_inch} PPI
+            {opt.name} — {(opt.dpi ?? opt.points_per_inch) ?? '—'} DPI
           </option>
         ))}
       </select>

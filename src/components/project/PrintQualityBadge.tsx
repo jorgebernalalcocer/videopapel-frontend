@@ -6,7 +6,9 @@ import MainBadge from '@/components/project/MainBadge'
 type Props = {
   /** Nombre comercial: Draft / Standard / Photo ... */
   name?: string | null
-  /** Puntos por pulgada (PPI/DPI) */
+  /** Dots per inch (calidad de impresión) */
+  dpi?: number | null
+  /** Alias legacy para compatibilidad */
   ppi?: number | null
   /** Modo compacto (menos padding/tamaño) */
   compact?: boolean
@@ -17,21 +19,23 @@ type Props = {
 
 export default function PrintQualityBadge({
   name,
+  dpi,
   ppi,
   compact = false,
   titleHint = true,
   className = '',
 }: Props) {
-  const hasValue = Boolean(name) || Boolean(ppi)
-  const label = hasValue ? `${name ?? ''}${ppi ? ` — ${ppi} PPI` : ''}`.trim() : 'Elige la calidad'
+  const quality = dpi ?? ppi ?? null
+  const hasValue = Boolean(name) || Boolean(quality)
+  const label = hasValue ? `${name ?? ''}${quality ? ` — ${quality} DPI` : ''}`.trim() : 'Elige la calidad'
   const title = titleHint
     ? (hasValue ? `Calidad de impresión: ${label}` : 'Calidad de impresión no seleccionada')
     : undefined
 
   // Color por “categoría” simple
   const tone =
-    (ppi ?? 0) >= 300 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-    : (ppi ?? 0) >= 150 ? 'bg-blue-50 text-blue-700 ring-blue-200'
+    (quality ?? 0) >= 300 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+    : (quality ?? 0) >= 150 ? 'bg-blue-50 text-blue-700 ring-blue-200'
     : hasValue ? 'bg-amber-50 text-amber-700 ring-amber-200'
     : 'bg-gray-100 text-gray-500 ring-gray-200'
 

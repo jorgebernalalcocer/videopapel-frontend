@@ -64,6 +64,7 @@ export default function BigFrameViewer(props: {
   frameSetting?: FrameSettingClient | null
   printWidthMm?: number | null
   printHeightMm?: number | null
+  printQualityDpi?: number | null
   printQualityPpi?: number | null
   printEffectName?: string | null
 }) {
@@ -85,6 +86,7 @@ export default function BigFrameViewer(props: {
     frameSetting,
     printWidthMm,
     printHeightMm,
+    printQualityDpi,
     printQualityPpi,
     printEffectName,
   } = props
@@ -103,6 +105,7 @@ export default function BigFrameViewer(props: {
     frameSetting && Array.isArray(frameSetting.positions) && frameSetting.positions.length
       ? frameSetting
       : null
+  const qualityDpi = printQualityDpi ?? printQualityPpi ?? null
 
   useEffect(() => {
     ;(async () => {
@@ -308,7 +311,7 @@ export default function BigFrameViewer(props: {
             dimensions={printFrame}
             printWidthMm={printWidthMm}
             printHeightMm={printHeightMm}
-            printQualityPpi={printQualityPpi}
+            printQualityDpi={qualityDpi ?? undefined}
           />
         )}
         {showPrintArea && !paintError && printOverlay && (
@@ -351,7 +354,7 @@ export default function BigFrameViewer(props: {
                       dimensions={{ width: printOverlay.innerWidth, height: printOverlay.innerHeight }}
                       printWidthMm={printWidthMm}
                       printHeightMm={printHeightMm}
-                      printQualityPpi={printQualityPpi}
+                      printQualityDpi={qualityDpi ?? undefined}
                     />
                   </div>
                 ) : (
@@ -360,7 +363,7 @@ export default function BigFrameViewer(props: {
                     dimensions={{ width: printOverlay.width, height: printOverlay.height }}
                     printWidthMm={printWidthMm}
                     printHeightMm={printHeightMm}
-                    printQualityPpi={printQualityPpi}
+                    printQualityDpi={qualityDpi ?? undefined}
                   />
                 )
               )}

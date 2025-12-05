@@ -47,6 +47,7 @@ type EditingCanvasProps = {
   onFrameChange?: () => void;
   printWidthMm?: number | null;
   printHeightMm?: number | null;
+  printQualityDpi?: number | null;
   printQualityPpi?: number | null;
   printEffectName?: string | null;
 }
@@ -64,10 +65,12 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     frameSetting = null,
     printWidthMm = null,
     printHeightMm = null,
+    printQualityDpi = null,
     printQualityPpi = null,
     printEffectName = null,
   } = props
   const { onFrameChange } = props
+  const qualityDpi = printQualityDpi ?? printQualityPpi ?? null
 
   const isMulti = Array.isArray(clips) && clips.length > 0
   const [thumbsDensity, setThumbsDensity] = useState(thumbsPerSecond)
@@ -629,7 +632,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   frameSetting={frameSetting ?? undefined}
   printWidthMm={printWidthMm ?? undefined}
   printHeightMm={printHeightMm ?? undefined}
-  printQualityPpi={printQualityPpi ?? undefined}
+  printQualityDpi={qualityDpi ?? undefined}
   printEffectName={printEffectName ?? undefined}
   leftHud={
     <div className="flex items-center gap-3">

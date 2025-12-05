@@ -60,6 +60,7 @@ type Project = {
   updated_at?: string
   print_quality_id?: number | null
   print_quality_name?: string | null
+  print_quality_dpi?: number | null
   print_quality_ppi?: number | null
   print_size_id?: number | null
   print_size_label?: string | null
@@ -80,7 +81,6 @@ type Project = {
   frame_name?: string | null
   frame_description?: string | null
   frame_setting?: FrameSettingClient
-  print_quality_ppi?: number | null
   print_binding_id?: number | null
   print_binding_name?: string | null
   print_binding_description?: string | null
@@ -460,7 +460,7 @@ const statusMessage = project
                   SelectorComponent={QualitySelector}
                   badgeProps={{
                     name: project.print_quality_name,
-                    ppi: project.print_quality_ppi,
+                    dpi: project.print_quality_dpi ?? project.print_quality_ppi ?? null,
                     compact: true,
                   }}
                   selectorProps={({ closeModal }) => ({
@@ -609,7 +609,7 @@ const statusMessage = project
                 frameSetting={project.frame_setting ?? null}
                 printWidthMm={project.print_size_width_mm ?? null}
                 printHeightMm={project.print_size_height_mm ?? null}
-                printQualityPpi={project.print_quality_ppi ?? null}
+                printQualityDpi={project.print_quality_dpi ?? project.print_quality_ppi ?? null}
                 printEffectName={project.print_effect_label ?? null}
                 onFrameChange={() => void fetchProject()}
                 playbackFps={2}
@@ -665,7 +665,7 @@ const statusMessage = project
                   SelectorComponent={QualitySelector}
                   badgeProps={{
                     name: project.print_quality_name,
-                    ppi: project.print_quality_ppi,
+                    dpi: project.print_quality_dpi ?? project.print_quality_ppi ?? null,
                     compact: true,
                   }}
                   selectorProps={({ closeModal }) => ({
