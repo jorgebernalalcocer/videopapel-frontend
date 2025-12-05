@@ -1,5 +1,7 @@
 // src/components/Hero.tsx
 import Link from "next/link";
+import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
+
 
 export default function Hero() {
   return (
@@ -18,6 +20,17 @@ export default function Hero() {
             personalizados, listos para enviar
           </span>
         </h1>
+        {/* <Link
+  href="/"
+  className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
+  style={{ fontFamily: pacificoFontStack, fontSize: '2rem', lineHeight: 2}}
+  onClick={() => setIsMobileMenuOpen(false)}
+>  
+  <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
+    papel.video
+
+  </span>
+</Link> */}
         <p className="mt-6 max-w-2xl text-lg text-neutral-700 dark:text-neutral-300">
           Diseña, visualiza y solicita videos impresos de tus proyectos creativos. Previsualización en tiempo real,
           perfiles de color profesionales y entrega en casa.

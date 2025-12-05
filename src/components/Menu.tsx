@@ -55,7 +55,8 @@ export default function Menu() {
   onClick={() => setIsMobileMenuOpen(false)}
 >  
   <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
-    papel . video
+    papel video
+
   </span>
 </Link>
 {/* <Link
@@ -65,7 +66,7 @@ export default function Menu() {
   onClick={() => setIsMobileMenuOpen(false)}
 >
   <span className="block px-1 text-[#c6613f]">
-    papel . video
+    papel video
   </span>
 </Link> */}
 
