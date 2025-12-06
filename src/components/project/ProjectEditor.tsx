@@ -22,6 +22,8 @@ import AspectSelector from '@/components/project/AspectSelector'
 import PrintBindingBadge from '@/components/project/PrintBindingBadge'
 import BindingSelector from '@/components/project/BindingSelector'
 import StatusBadge from '@/components/project/StatusBadge'
+import PrintSheetPaperBadge from './PrintSheetPaperBadge'
+import PrintSheetPaperSelector from '@/components/project/PrintSheetPaperSelector'
 import type { FrameSettingClient } from '@/types/frame'
 import { toast } from 'sonner'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
@@ -84,6 +86,10 @@ type Project = {
   print_binding_id?: number | null
   print_binding_name?: string | null
   print_binding_description?: string | null
+  print_sheet_paper_id?: number | null
+  print_sheet_paper_label?: string | null
+  print_sheet_paper_weight?: number | null
+  print_sheet_paper_finishing?: string | null
 }
 
 type ProjectPricePreview = {
@@ -544,6 +550,30 @@ const statusMessage = project
                   modalDescription="Escoge el tipo de encuadernación para este proyecto."
                   disabled={isProjectExported}
                 />
+                 <SelectableBadgeWrapper
+                  BadgeComponent={PrintSheetPaperBadge}
+                  SelectorComponent={PrintSheetPaperSelector}
+                  badgeProps={{
+                    label: project.print_sheet_paper_label,
+                    weight: project.print_sheet_paper_weight,
+                    finishing: project.print_sheet_paper_finishing,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_sheet_paper_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar papel de impresión"
+                  modalDescription="Elige la hoja de papel que se aplicará al proyecto."
+                  disabled={isProjectExported}
+                />
+                
                 <button
                   type="button"
                   onClick={openEffectsModal}
@@ -556,6 +586,7 @@ const statusMessage = project
                     compact={true}
                   />
                 </button>
+                
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintAspectBadge}
                   SelectorComponent={AspectSelector}
@@ -747,6 +778,29 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar encuadernación"
                   modalDescription="Escoge el tipo de encuadernación para este proyecto."
+                  disabled={isProjectExported}
+                />
+                <SelectableBadgeWrapper
+                  BadgeComponent={PrintSheetPaperBadge}
+                  SelectorComponent={PrintSheetPaperSelector}
+                  badgeProps={{
+                    label: project.print_sheet_paper_label,
+                    weight: project.print_sheet_paper_weight,
+                    finishing: project.print_sheet_paper_finishing,
+                    compact: true,
+                  }}
+                  selectorProps={({ closeModal }) => ({
+                    apiBase: API_BASE,
+                    accessToken,
+                    projectId: project.id,
+                    value: project.print_sheet_paper_id ?? null,
+                    onSaved: () => {
+                      void fetchProject()
+                      closeModal()
+                    },
+                  })}
+                  modalTitle="Seleccionar papel de impresión"
+                  modalDescription="Elige la hoja de papel que se aplicará al proyecto."
                   disabled={isProjectExported}
                 />
                 <button
