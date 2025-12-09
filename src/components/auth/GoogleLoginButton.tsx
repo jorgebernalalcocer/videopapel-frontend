@@ -70,21 +70,28 @@ export function GoogleLoginButton() {
   }, [login, router]);
 
   // 4. Inicialización del SDK de Google Identity Services (GIS)
-  useEffect(() => {
+useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
       setError('Falta configurar NEXT_PUBLIC_GOOGLE_CLIENT_ID.');
       return;
     }
 
-    if (!GOOGLE_REDIRECT_URI) {
-      setError('Falta configurar NEXT_PUBLIC_GOOGLE_REDIRECT_URI.');
+    if (typeof window === 'undefined' || !window.google?.accounts) {
       return;
     }
 
-    if (typeof window === 'undefined' || !window.google?.accounts?.oauth2) {
-      return;
-    }
+    // --- 🚨 PASO 1: Inicialización de la Interfaz de Usuario (Para el Prompt Automático) ---
+    window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleTokenResponse, // Usamos la misma función de callback para el token
+        // Esto inicializa el flujo de ID, lo que permite el prompt automático.
+    });
+    
+    // --- 🚨 PASO 2: Solicitar el Prompt Automático ---
+    // Esto muestra la ventanita flotante o el "One Tap" en la esquina superior.
+    window.google.accounts.id.prompt(); 
 
+    // --- PASO 3: Inicialización del Cliente de Token (Para el Botón Manual) ---
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'openid email profile',
@@ -92,6 +99,9 @@ export function GoogleLoginButton() {
     });
 
     setTokenClient(client);
+    
+    // Eliminamos el manejo de GOOGLE_REDIRECT_URI aquí ya que el flujo de token no lo necesita.
+
   }, [handleTokenResponse]);
 
   // 5. Función para iniciar el flujo al hacer clic en nuestro botón
