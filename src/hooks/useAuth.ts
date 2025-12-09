@@ -29,7 +29,7 @@ interface RegisterCredentials {
   phone?: string;
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
 
 // Helper para hacer requests con fetch
 async function fetchAPI(endpoint: string, options: RequestInit = {}) {

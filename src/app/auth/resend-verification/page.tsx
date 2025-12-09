@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 
 type FormStatus = 'idle' | 'loading' | 'success' | 'error';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
 
 export default function ResendVerificationPage() {
   const router = useRouter();
