@@ -80,6 +80,8 @@ export default function RegisterPage() {
       const payload: Record<string, any> = {
         email: values.email,
         password: values.password,
+        confirm: values.confirm,   // 🔥 NECESARIO para tu serializer
+
       };
 
       if (values.username) payload.username = values.username;
