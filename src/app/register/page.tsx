@@ -10,22 +10,20 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/http';
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'; // 🚨 IMPORTAMOS EL BOTÓN
 
 // --- ZOD SCHEMAS REFINADOS PARA DJANGO ---
-// Si se envía, debe ser válido. Si está vacío, se convierte a null.
-
 const usernameSchema = z.string()
   .trim()
-  // Regla simple: si hay texto, debe tener al menos 3 caracteres (la regla de max 150 es del backend)
   .refine(val => val.length === 0 || val.length >= 3, 'Mínimo 3 caracteres si se proporciona')
   .transform(val => val.length > 0 ? val : null) 
-  .nullable(); // El valor final es string | null
+  .nullable();
 
 const phoneSchema = z.string()
   .trim()
   .refine(val => val.length === 0 || val.length <= 24, 'Máximo 24 caracteres')
   .transform(val => val.length > 0 ? val : null)
-  .nullable(); // El valor final es string | null
+  .nullable();
 // --- FIN ZOD SCHEMAS ---
 
 
@@ -35,7 +33,6 @@ const schema = z
     password: z.string().min(6, 'Mínimo 6 caracteres'),
     confirm: z.string().min(6, 'Mínimo 6 caracteres'),
     
-    // Estos campos serán string | null
     username: usernameSchema,
     phone: phoneSchema,
   })
@@ -44,19 +41,15 @@ const schema = z
     message: 'Las contraseñas no coinciden',
   });
 
-// Definimos el tipo de datos final que usaremos en onSubmit: ahora son string | null
 type FormData = z.infer<typeof schema>;
-
 
 type RegisterResponse =
   | {
-      // caso: la API crea usuario y devuelve tokens
       access: string;
       refresh: string;
       user?: { id: number; email: string; username?: string | null; phone?: string | null; is_active: boolean };
     }
   | {
-      // caso: la API solo devuelve info/usuario
       user: { id: number; email: string; username?: string | null; phone?: string | null; is_active: boolean };
       detail?: string;
     };
@@ -72,7 +65,6 @@ export default function RegisterPage() {
     formState: { errors, isSubmitting },
 } = useForm<FormData>({
   resolver: zodResolver(schema),
-  // FIX: Inicializamos con null para que coincida con el tipo de salida de Zod (string | null)
   defaultValues: { 
       email: '', 
       password: '', 
@@ -85,65 +77,58 @@ export default function RegisterPage() {
   const onSubmit: SubmitHandler<FormData> = async (values) => {
     setServerError(null);
     try {
-      // Zod se encargó de convertir '' a null. 
-      // Construimos el payload enviando solo los campos que tienen valor real.
       const payload: Record<string, any> = {
         email: values.email,
         password: values.password,
       };
 
-      // Si values.username es un string (no null), lo incluimos.
       if (values.username) payload.username = values.username;
       if (values.phone) payload.phone = values.phone;
 
-      // Nota: Si usas Next.js 14+ con App Router y estás en el mismo dominio, puedes usar solo la ruta.
-      // Si usas proxy o un dominio diferente, asegúrate de que apiFetch maneje la URL base.
-const data = await apiFetch<RegisterResponse>('/auth/register/', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-});
+      // Endpoint para registro manual (email/password)
+      const data = await apiFetch<RegisterResponse>('/auth/registration/', { // 🚨 Nota: Usar /auth/registration/ si usas dj-rest-auth.registration
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
-      // La RegisterView devuelve un mensaje de éxito y los datos del usuario.
-      // Si tu backend NO devuelve tokens al registrar, solo redirigimos a login.
       if ('access' in data && 'refresh' in data) {
-        // Si tu RegisterView de alguna manera devuelve tokens (no es el caso de tu vista actual)
-        login(data); // guarda tokens + user en el store
-        router.push('/'); // o /dashboard
+        // Flujo si el backend devuelve tokens directamente (raro en registro)
+        login(data);
+        router.push('/');
         return;
       }
 
-      // El flujo estándar de tu RegisterView (solo devuelve el usuario y un mensaje 201)
+      // Flujo estándar: redirigir a login para la verificación de email
       router.push('/login?registered=1');
-} catch (err: any) {
-  let errorMessage = 'Error en el registro';
+    } catch (err: any) {
+      let errorMessage = 'Error en el registro';
 
-  // 1) si tu apiFetch añade `status`/`data` en el error:
-  if (err?.data && typeof err.data === 'object') {
-    const e = err.data;
-    if (e.email) errorMessage = 'Email: ' + (Array.isArray(e.email) ? e.email.join(' ') : String(e.email));
-    else if (e.phone) errorMessage = 'Teléfono: ' + (Array.isArray(e.phone) ? e.phone.join(' ') : String(e.phone));
-    else if (e.username) errorMessage = 'Nombre de usuario: ' + (Array.isArray(e.username) ? e.username.join(' ') : String(e.username));
-    else if (e.password) errorMessage = 'Contraseña: ' + (Array.isArray(e.password) ? e.password.join(' ') : String(e.password));
-    else if (e.non_field_errors) errorMessage = Array.isArray(e.non_field_errors) ? e.non_field_errors.join(' ') : String(e.non_field_errors);
-    else errorMessage = 'Revise los datos introducidos.';
-  } else {
-    // 2) fallback: intenta parsear message como JSON
-    try {
-      const parsed = JSON.parse(err.message);
-      if (parsed) {
-        if (parsed.email) errorMessage = 'Email: ' + (Array.isArray(parsed.email) ? parsed.email.join(' ') : String(parsed.email));
-        else if (parsed.phone) errorMessage = 'Teléfono: ' + (Array.isArray(parsed.phone) ? parsed.phone.join(' ') : String(parsed.phone));
-        else if (parsed.username) errorMessage = 'Nombre de usuario: ' + (Array.isArray(parsed.username) ? parsed.username.join(' ') : String(parsed.username));
-        else if (parsed.password) errorMessage = 'Contraseña: ' + (Array.isArray(parsed.password) ? parsed.password.join(' ') : String(parsed.password));
+      // Lógica de manejo de errores (conservada de tu código original)
+      if (err?.data && typeof err.data === 'object') {
+        const e = err.data;
+        if (e.email) errorMessage = 'Email: ' + (Array.isArray(e.email) ? e.email.join(' ') : String(e.email));
+        else if (e.phone) errorMessage = 'Teléfono: ' + (Array.isArray(e.phone) ? e.phone.join(' ') : String(e.phone));
+        else if (e.username) errorMessage = 'Nombre de usuario: ' + (Array.isArray(e.username) ? e.username.join(' ') : String(e.username));
+        else if (e.password) errorMessage = 'Contraseña: ' + (Array.isArray(e.password) ? e.password.join(' ') : String(e.password));
+        else if (e.non_field_errors) errorMessage = Array.isArray(e.non_field_errors) ? e.non_field_errors.join(' ') : String(e.non_field_errors);
+        else errorMessage = 'Revise los datos introducidos.';
+      } else {
+        try {
+          const parsed = JSON.parse(err.message);
+          if (parsed) {
+            if (parsed.email) errorMessage = 'Email: ' + (Array.isArray(parsed.email) ? parsed.email.join(' ') : String(parsed.email));
+            else if (parsed.phone) errorMessage = 'Teléfono: ' + (Array.isArray(parsed.phone) ? parsed.phone.join(' ') : String(parsed.phone));
+            else if (parsed.username) errorMessage = 'Nombre de usuario: ' + (Array.isArray(parsed.username) ? parsed.username.join(' ') : String(parsed.username));
+            else if (parsed.password) errorMessage = 'Contraseña: ' + (Array.isArray(parsed.password) ? parsed.password.join(' ') : String(parsed.password));
+          }
+        } catch {
+          errorMessage = err.message || 'Error desconocido del servidor.';
+        }
       }
-    } catch {
-      errorMessage = err.message || 'Error desconocido del servidor.';
-    }
-  }
 
-  setServerError(errorMessage);
-}
+      setServerError(errorMessage);
+    }
   };
 
   return (
@@ -151,11 +136,28 @@ const data = await apiFetch<RegisterResponse>('/auth/register/', {
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
           <h1 className="text-2xl font-semibold mb-1">Crear cuenta</h1>
+          
+          {/* 🚨 INTEGRACIÓN DEL BOTÓN DE GOOGLE */}
+          <GoogleLoginButton /> 
+
+          {/* Separador "o" */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-500">
+                O regístrate con email
+              </span>
+            </div>
+          </div>
+          
           <p className="text-sm text-gray-500 mb-6">
             Regístrate para empezar con Videos de Papel
           </p>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            {/* ... Resto del formulario (email, username, phone, password, confirm) ... */}
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="email">
                 Email *
@@ -183,8 +185,6 @@ const data = await apiFetch<RegisterResponse>('/auth/register/', {
                 autoComplete="username"
                 className="w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
                 placeholder="tu_nick (Máx. 150 chars)"
-                // Nota: Los campos de input de texto DEBEN tener un valor de tipo string para funcionar con React.
-                // Aunque el valor por defecto sea null, el input lo tratará como string.
                 {...register('username')}
               />
               {errors.username && (

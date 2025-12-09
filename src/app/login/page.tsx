@@ -10,6 +10,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { Button } from '@/components/ui/button';
 import { apiFetch } from '@/lib/http';
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
 
 const schema = z.object({
   email: z.string().email('Email no válido'),
@@ -72,7 +73,22 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="w-full max-w-md rounded-xl border bg-white p-6 shadow-sm">
-          <h1 className="text-2xl font-semibold mb-1">Iniciar sesión</h1>
+<h1 className="text-2xl font-semibold mb-1">Iniciar sesión</h1>
+          
+          <GoogleLoginButton /> {/* 🚨 Botón de Google */}
+
+          {/* Separador "o" */}
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-gray-500">
+                O continúa con email
+              </span>
+            </div>
+          </div>
+          
           <p className="text-sm text-gray-500 mb-6">
             Accede a tu cuenta de Videos de Papel
           </p>
