@@ -24,7 +24,8 @@ const API_URL = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:8000';
 export default function VerifyEmailPage() {
   const router = useRouter();
   const params = useParams();
-  const key = params?.key as string;
+  // ✅ DECODIFICAR la key
+  const key = params?.key ? decodeURIComponent(params.key as string) : '';
 
   const [status, setStatus] = useState<VerificationStatus>('loading');
   const [message, setMessage] = useState('');
@@ -37,15 +38,20 @@ export default function VerifyEmailPage() {
       return;
     }
 
-    const verifyEmail = async () => {
+const verifyEmail = async () => {
       try {
-const response = await fetch(`${API_URL}/api/auth/verify-email/`, {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify({ key }),
-});
+        // ✅ Añade un console.log para debugging
+        console.log('Key original:', params?.key);
+        console.log('Key decodificada:', key);
+        
+        const response = await fetch(`${API_URL}/api/auth/verify-email/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ key }),
+        });
+
 
         const data: VerificationResponse = await response.json();
 
