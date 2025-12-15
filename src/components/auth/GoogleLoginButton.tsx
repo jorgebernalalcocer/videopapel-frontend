@@ -39,8 +39,14 @@ export function GoogleLoginButton() {
   // 1. Manejador del Callback de Google
   // Aquí es donde Google devuelve el access_token (flujo implícito)
   const handleTokenResponse = useCallback(async (response: any) => {
-    if (!response.access_token) {
-      setError('No se recibió el access_token de Google.');
+    // El callback de One Tap entrega un "credential" (ID token) sin access_token.
+    // Lo ignoramos para evitar mostrar error antes de que se dispare el flujo real.
+    if (response && typeof response === 'object' && 'credential' in response && !('access_token' in response)) {
+      return;
+    }
+
+    if (!response?.access_token) {
+      setError('No se recibió el access_token de Google. Intenta de nuevo.');
       return;
     }
 
