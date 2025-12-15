@@ -63,21 +63,6 @@ const verifyEmail = async () => {
         setMessage(data.detail);
         setUserData(data.user || null);
 
-        // Guardar tokens en localStorage si se devuelven
-        if (data.tokens) {
-          localStorage.setItem('access_token', data.tokens.access);
-          localStorage.setItem('refresh_token', data.tokens.refresh);
-
-          // También guardar el usuario
-          if (data.user) {
-            localStorage.setItem('user', JSON.stringify(data.user));
-          }
-        }
-
-        // Redirigir después de 3 segundos
-        setTimeout(() => {
-          router.push('/projects');
-        }, 3000);
       } catch (error: any) {
         setStatus('error');
         const errorMessage = error.message || 'Error al verificar el email. El enlace puede haber expirado.';
@@ -113,6 +98,7 @@ const verifyEmail = async () => {
           )}
 
           {/* Success State */}
+  {/* Success State */}
           {status === 'success' && (
             <div className="text-center py-8">
               <div className="mb-4">
@@ -137,33 +123,22 @@ const verifyEmail = async () => {
               </h2>
               <p className="text-gray-700 mb-4">{message}</p>
               {userData && (
-                <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="bg-gray-50 rounded-lg p-4 mb-6">
                   <p className="text-sm text-gray-600">Cuenta verificada:</p>
                   <p className="font-semibold text-gray-900">{userData.email}</p>
                 </div>
               )}
-              <div className="flex items-center justify-center text-sm text-gray-600">
-                <svg
-                  className="animate-spin h-4 w-4 mr-2"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                >
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                Redirigiendo al dashboard...
-              </div>
+              
+              <p className="text-gray-600 mb-6">
+                Tu cuenta está activa. Ahora puedes iniciar sesión.
+              </p>
+              
+              <button
+                onClick={() => router.push('/login')}
+                className="w-full px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors"
+              >
+                Ir a Iniciar Sesión
+              </button>
             </div>
           )}
 
