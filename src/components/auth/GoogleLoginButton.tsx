@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { apiFetch } from '@/lib/http';
 import { Button } from '@/components/ui/button';
-import { Chrome } from 'lucide-react'; // Usamos Chrome de Lucide
+import { GoogleLogo } from '@/components/icons/GoogleLogo';
 import { API_BASE } from '@/lib/env';
 
 // Se leen desde el entorno para no mezclar entornos y evitar 403 por dominios no autorizados
@@ -125,7 +125,7 @@ useEffect(() => {
         disabled={loading}
         className="w-full bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 shadow-sm"
       >
-        <Chrome className="mr-2 h-5 w-5 text-blue-600" /> 
+        <GoogleLogo className="mr-2 h-6 w-6 text-blue-600" /> 
         {loading ? 'Conectando...' : 'Continuar con Google'}
       </Button>
       

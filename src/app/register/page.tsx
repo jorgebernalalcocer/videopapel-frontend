@@ -149,7 +149,7 @@ export default function RegisterPage() {
             </div>
             <div className="relative flex justify-center text-xs uppercase">
               <span className="bg-white px-2 text-gray-500">
-                O regístrate con email
+                O regístrate con un email
               </span>
             </div>
           </div>
@@ -162,7 +162,7 @@ export default function RegisterPage() {
             {/* ... Resto del formulario (email, username, phone, password, confirm) ... */}
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="email">
-                Email *
+                Correo electrónico *
               </label>
               <input
                 id="email"
@@ -177,7 +177,7 @@ export default function RegisterPage() {
               )}
             </div>
 
-            <div>
+            {/* <div>
               <label className="block text-sm font-medium mb-1" htmlFor="username">
                 Nombre de usuario (opcional)
               </label>
@@ -192,7 +192,7 @@ export default function RegisterPage() {
               {errors.username && (
                 <p className="mt-1 text-sm text-red-600">{errors.username.message as string}</p>
               )}
-            </div>
+            </div> */}
 
             <div>
               <label className="block text-sm font-medium mb-1" htmlFor="phone">
