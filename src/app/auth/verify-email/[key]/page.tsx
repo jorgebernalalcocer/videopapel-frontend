@@ -76,7 +76,7 @@ const verifyEmail = async () => {
 
         // Redirigir después de 3 segundos
         setTimeout(() => {
-          router.push('/dashboard');
+          router.push('/projects');
         }, 3000);
       } catch (error: any) {
         setStatus('error');

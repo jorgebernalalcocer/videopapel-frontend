@@ -63,7 +63,7 @@ export default function LoginPage() {
       login(data);
 
       // redirige
-      router.push('/clips'); // o /dashboard
+      router.push('/projects'); // o /dashboard
     } catch (err: any) {
       setServerError(err.message || 'Error en el inicio de sesión');
     }
