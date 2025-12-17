@@ -24,7 +24,7 @@ export default function DeleteClipButton({ videoId }: DeleteClipButtonProps) {
   const handleDelete = async () => {
     if (!accessToken || isDeleting) return
 
-    const ok = await confirm({
+    const firstOk = await confirm({
       title: 'Eliminar clip',
       description: (
         <>
@@ -36,12 +36,64 @@ export default function DeleteClipButton({ videoId }: DeleteClipButtonProps) {
       cancelText: 'Cancelar',
       variant: 'danger',
     })
-    if (!ok) return
+    if (!firstOk) return
+
+    let usedInExported = false
+    try {
+      const usageRes = await fetch(`${API_BASE}/videos/${videoId}/usage/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      })
+      if (!usageRes.ok) {
+        const usageError = await usageRes.text()
+        throw new Error(usageError || 'No se pudo verificar el uso del video.')
+      }
+      const usageData = await usageRes.json()
+      usedInExported = Boolean(usageData.used_in_exported_project)
+    } catch (e: any) {
+      setError(e.message || 'No se pudo verificar el uso del video.')
+      toast.error("No se pudo verificar el uso del video", {
+        icon: <XCircle className="text-red-500" />,
+        duration: 5000,
+      })
+      return
+    }
+
+    if (usedInExported) {
+      const secondOk = await confirm({
+        title: 'Atención !',
+        description: (
+          <>
+            Este video está siendo utilizado en un proyecto que ya has comprado <br />
+            <span className="text-red-600">¿Desea continuar con el borrado?</span>
+          </>
+        ),
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        variant: 'danger',
+      })
+      if (!secondOk) return
+
+      const thirdOk = await confirm({
+        title: 'Última oportunidad',
+        description: (
+          <>
+            Vas a perder el acceso al video a través del QR de tu compra<br />
+            <span className="text-red-600">No va a haber vuelta atrás.</span>
+          </>
+        ),
+        confirmText: 'Eliminar',
+        cancelText: 'Cancelar',
+        variant: 'danger',
+      })
+      if (!thirdOk) return
+    }
 
     setIsDeleting(true)
     setError(null)
 
-    const deleteUrl = `${API_BASE}/videos/${videoId}/`
+    const deleteUrl = `${API_BASE}/videos/${videoId}/?force=true`
 
     try {
       const res = await fetch(deleteUrl, {

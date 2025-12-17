@@ -223,7 +223,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
               >
                 {isPending && (
                     <div className="absolute top-1 right-1 bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded z-10">
-                        Procesando
+                        Extrayendo imagenes
                     </div>
                 )}
                 {isError && (
