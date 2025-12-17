@@ -105,7 +105,7 @@ export default async function PublicClipsPage({ params }: PageProps) {
         </Link>
         <p className="mt-3 text-neutral-600">
           Este proyecto contiene {data.project.clip_count === 1 ? '1 clip' : `${data.project.clip_count} clips`} de vídeo.
-          Pulsa sobre cualquiera para reproducirlo.
+          Pulsa para reproducirlo.
         </p>
       </header>
 
@@ -137,7 +137,7 @@ export default async function PublicClipsPage({ params }: PageProps) {
                   {clip.frames.length > 0 && (
                     <p className="mt-3 text-sm text-neutral-600">
                       Este clip incluye {clip.frames.length} fotograma{clip.frames.length === 1 ? '' : 's'} destacados que
-                      se usan para la impresión.
+                      se usaron para la impresión.
                     </p>
                   )}
                 </div>

@@ -3,6 +3,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
 import EditingCanvas from '@/components/project/EditingCanvas'
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
@@ -31,6 +32,7 @@ import DuplicateProjectButton from '@/components/DuplicateProjectButton'
 import EditTitleModal from '@/components/project/EditTitleModal'
 import { SquarePen } from 'lucide-react'
 import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/ProjectPriceCard'
+import { Modal } from '@/components/ui/Modal'
 
 /* =========================
    Tipos
@@ -156,6 +158,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [editTitleOpen, setEditTitleOpen] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
   const isProjectExported = project?.status === 'exported'
+  const currentUser = useAuth((s) => s.user)
 // 1. Definición de variables de campos incompletos (usan const y ; al final)
 //    Se utiliza el cortocircuito lógico (&&) para que la variable sea el string o false/undefined.
 const qualityNotCompleted = project && !project.print_quality_id ? "Calidad de imagen" : null;
@@ -185,16 +188,29 @@ const statusMessage = project
   const [pricePreview, setPricePreview] = useState<ProjectPricePreview | null>(null)
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceError, setPriceError] = useState<string | null>(null)
+  const [ownershipModalOpen, setOwnershipModalOpen] = useState(false)
+  const [ownershipModalDismissed, setOwnershipModalDismissed] = useState(false)
+  const [duplicatingForeign, setDuplicatingForeign] = useState(false)
+  const [duplicateError, setDuplicateError] = useState<string | null>(null)
+  const router = useRouter()
+
+  const isForeignOwner = useMemo(() => {
+    if (!project || !currentUser) return false
+    return project.owner_id !== currentUser.id
+  }, [project, currentUser])
+  const isInteractionDisabled = isProjectExported || isForeignOwner
 
 
   /* --------- fetch proyecto --------- */
   const fetchProject = useCallback(async () => {
-    if (!accessToken || !projectId) return
+    if (!projectId) return
     setLoading(true)
     setError(null)
     try {
+      const headers: HeadersInit = {}
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`
       const res = await fetch(`${API_BASE}/projects/${projectId}/`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers,
         credentials: 'include',
       })
       if (res.status === 404) throw new Error('Proyecto no encontrado (404)')
@@ -209,10 +225,12 @@ const statusMessage = project
 
   /* --------- fetch clips --------- */
   const fetchClips = useCallback(async () => {
-    if (!accessToken || !projectId) return
+    if (!projectId) return
     try {
+      const headers: HeadersInit = {}
+      if (accessToken) headers.Authorization = `Bearer ${accessToken}`
       const res = await fetch(`${API_BASE}/projects/${projectId}/clips/`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers,
         credentials: 'include',
       })
       if (!res.ok) throw new Error(`Clips ${res.status}`)
@@ -262,8 +280,60 @@ const statusMessage = project
       setPricePreview(null)
       return
     }
+    if (project && currentUser && project.owner_id !== currentUser.id) {
+      setPricePreview(null)
+      return
+    }
     void fetchProjectPrice()
-  }, [project, fetchProjectPrice])
+  }, [project, fetchProjectPrice, currentUser])
+
+  useEffect(() => {
+    if (isForeignOwner && !ownershipModalDismissed) {
+      setOwnershipModalOpen(true)
+    } else {
+      setOwnershipModalOpen(false)
+    }
+  }, [isForeignOwner, ownershipModalDismissed])
+
+  const handleCloseOwnershipModal = useCallback(() => {
+    setOwnershipModalDismissed(true)
+    setOwnershipModalOpen(false)
+  }, [])
+
+  const handleDuplicateForForeignOwner = useCallback(async () => {
+    if (!project) return
+    if (!accessToken) {
+      toast.error('Debes iniciar sesión para duplicar el proyecto.')
+      return
+    }
+    setDuplicateError(null)
+    setDuplicatingForeign(true)
+    try {
+      const res = await fetch(`${API_BASE}/projects/${project.id}/duplicate/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status} al duplicar el proyecto.`)
+      }
+      const clone = await res.json()
+      toast.success('Proyecto duplicado en tu cuenta.')
+      setOwnershipModalOpen(false)
+      setOwnershipModalDismissed(true)
+      router.push(`/projects/${clone.id}`)
+    } catch (err: any) {
+      const message = err?.message || 'No se pudo duplicar el proyecto.'
+      setDuplicateError(message)
+      toast.error(message)
+    } finally {
+      setDuplicatingForeign(false)
+    }
+  }, [API_BASE, accessToken, project, router])
 
   const handleThumbsDensityChange = useCallback(async () => {
     await fetchClips()
@@ -310,7 +380,10 @@ const statusMessage = project
 
   /* --------- insertar video (crear clip) --------- */
   const handleSelectVideo = useCallback(async (video: VideoItem) => {
-    if (!accessToken) return
+    if (!accessToken || isInteractionDisabled) {
+      if (isInteractionDisabled) toast.error('Duplica el proyecto para poder editarlo.')
+      return
+    }
     setActionError(null)
     setCreatingClip(true)
     try {
@@ -335,10 +408,14 @@ const statusMessage = project
     } finally {
       setCreatingClip(false)
     }
-  }, [API_BASE, accessToken, projectId, fetchClips])
+  }, [API_BASE, accessToken, projectId, fetchClips, isInteractionDisabled])
 
   const handleAddToCart = useCallback(async () => {
     if (!project) return
+    if (isForeignOwner) {
+      toast.error('Duplica el proyecto para añadirlo a tu cesta.')
+      return
+    }
     if (!accessToken) {
       toast.error('Debes iniciar sesión para añadir al cesta.')
       return
@@ -364,7 +441,7 @@ const statusMessage = project
     } finally {
       setAddingToCart(false)
     }
-  }, [API_BASE, accessToken, project])
+  }, [API_BASE, accessToken, project, isForeignOwner])
 
   /* --------- Render: estados --------- */
 
@@ -411,6 +488,7 @@ const statusMessage = project
             type="button"
             aria-label="Editar título del proyecto"
             onClick={() => setEditTitleOpen(true)}
+            disabled={isInteractionDisabled}
             className="rounded-full p-2 text-gray-500 transition hover:bg-gray-100 hover:text-gray-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500"
           >
             <SquarePen className="h-5 w-5" />
@@ -459,7 +537,7 @@ const statusMessage = project
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintQualityBadge}
@@ -481,7 +559,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar calidad de impresión"
                   modalDescription="Elige la calidad con la que se generarán las impresiones."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
 
                 <SelectableBadgeWrapper
@@ -505,7 +583,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar tamaño de impresión"
                   modalDescription="Escoge el tamaño que se aplicará al proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintOrientationBadge}
@@ -526,7 +604,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintBindingBadge}
@@ -548,7 +626,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar encuadernación"
                   modalDescription="Escoge el tipo de encuadernación para este proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                  <SelectableBadgeWrapper
                   BadgeComponent={PrintSheetPaperBadge}
@@ -571,14 +649,14 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar papel de impresión"
                   modalDescription="Elige la hoja de papel que se aplicará al proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 
                 <button
                   type="button"
                   onClick={openEffectsModal}
                   className="inline-block rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
 
                 >
                   <PrintEffectBadge
@@ -607,7 +685,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar posición de impresión"
                   modalDescription="Define cómo se ajustará la imagen al área de impresión."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
 
               </div>
@@ -645,14 +723,21 @@ const statusMessage = project
                 onFrameChange={() => void fetchProject()}
                 playbackFps={2}
                 onChange={() => {}}
-                onInsertVideo={() => setPickerOpen(true)}   // <<— ABRIR MODAL
+                onInsertVideo={() => {
+                  if (isInteractionDisabled) return
+                  setPickerOpen(true)
+                }}   // <<— ABRIR MODAL
               />
             ) : (
               <div className="h-full w-full grid place-items-center text-white/50">
                 Sin clips
                 <button
                   className="ml-3 px-3 py-1.5 rounded bg-white/20 hover:bg-white/30 text-white text-sm"
-                  onClick={() => setPickerOpen(true)}
+                  onClick={() => {
+                    if (isInteractionDisabled) return
+                    setPickerOpen(true)
+                  }}
+                  disabled={isInteractionDisabled}
                 >
                   Insertar video
                 </button>
@@ -711,7 +796,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar calidad de impresión"
                   modalDescription="Elige la calidad con la que se generarán las impresiones."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
 
                 <SelectableBadgeWrapper
@@ -735,7 +820,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar tamaño de impresión"
                   modalDescription="Escoge el tamaño que se aplicará al proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintOrientationBadge}
@@ -756,7 +841,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar orientación de impresión"
                   modalDescription="Elige la orientación que se aplicará al proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintBindingBadge}
@@ -778,7 +863,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar encuadernación"
                   modalDescription="Escoge el tipo de encuadernación para este proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintSheetPaperBadge}
@@ -801,12 +886,13 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar papel de impresión"
                   modalDescription="Elige la hoja de papel que se aplicará al proyecto."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <button
                   type="button"
                   onClick={openEffectsModal}
                   className="inline-block rounded-full cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  disabled={isInteractionDisabled}
                 >
                   <PrintEffectBadge
                     name={project.print_effect_label}
@@ -833,7 +919,7 @@ const statusMessage = project
                   })}
                   modalTitle="Seleccionar proporción de impresión"
                   modalDescription="Define cómo se ajustará la imagen al área de impresión."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={ProjectPrivacyBadge}
@@ -854,7 +940,7 @@ const statusMessage = project
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
-                  disabled={isProjectExported}
+                  disabled={isInteractionDisabled}
                 />
               </div>
 
@@ -869,7 +955,14 @@ const statusMessage = project
               <button
                 type="button"
                 onClick={handleAddToCart}
-                disabled={!project || addingToCart || exporting || project.status === 'exported' || project.status === 'draft'}
+                disabled={
+                  !project ||
+                  addingToCart ||
+                  exporting ||
+                  project.status === 'exported' ||
+                  project.status === 'draft' ||
+                  isForeignOwner
+                }
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
               >
                 {addingToCart ? 'Añadiendo…' : 'Añadir a la cesta'}
@@ -897,7 +990,7 @@ const statusMessage = project
               <button
                 type="button"
                 onClick={() => void fetchProjectPrice()}
-                disabled={priceLoading || !project}
+                disabled={priceLoading || !project || isForeignOwner}
                 className="text-sm font-medium text-purple-600 hover:text-purple-500 disabled:opacity-40"
               >
                 Actualizar
@@ -936,7 +1029,7 @@ const statusMessage = project
                   void exportPdf(project.id)
                 }
               }}
-              disabled={exporting}
+              disabled={exporting || isForeignOwner}
             >
               {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
             </button>
@@ -959,6 +1052,38 @@ const statusMessage = project
           previewClip={effectsPreviewClip}
         />
       )}
+
+      <Modal
+        open={ownershipModalOpen}
+        onClose={handleCloseOwnershipModal}
+        title="Este proyecto pertenece a otro usuario"
+        description="Duplícalo para tener una copia propia y poder editarlo."
+        footer={
+          <>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
+              onClick={handleCloseOwnershipModal}
+              disabled={duplicatingForeign}
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm disabled:opacity-60"
+              onClick={() => void handleDuplicateForForeignOwner()}
+              disabled={duplicatingForeign}
+            >
+              {duplicatingForeign ? 'Duplicando…' : 'Duplicar proyecto'}
+            </button>
+          </>
+        }
+      >
+        <div className="space-y-2 text-sm text-gray-700">
+          <p>Este proyecto es público, pero pertenece a otra cuenta. Crea una copia para guardarlo en tu espacio.</p>
+          {duplicateError && <p className="text-red-600">{duplicateError}</p>}
+        </div>
+      </Modal>
 
       {/* Modal de selección de video */}
       <VideoPickerModal
