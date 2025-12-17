@@ -7,7 +7,6 @@ import { useAuth } from '@/store/auth';
 import { apiFetch } from '@/lib/http';
 import { Button } from '@/components/ui/button';
 import { GoogleLogo } from '@/components/icons/GoogleLogo';
-import { API_BASE } from '@/lib/env';
 
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
@@ -27,22 +26,17 @@ export function GoogleLoginButton() {
   const [error, setError] = useState<string | null>(null);
   const [tokenClient, setTokenClient] = useState<any>(null);
   
-  // 🔹 MANEJADOR PARA ONE TAP (recibe id_token/credential)
   const handleCredentialResponse = useCallback(async (response: any) => {
-    if (!response?.credential) {
-      console.log('One Tap: sin credential');
-      return;
-    }
+    if (!response?.credential) return;
 
     setLoading(true);
     setError(null);
 
     try {
-      // Envía el ID token al backend
       const data = await apiFetch<SocialLoginResponse>('/auth/google/login/', {
         method: 'POST',
         body: JSON.stringify({
-          id_token: response.credential, // 🚨 Cambia según tu backend
+          id_token: response.credential,
         }),
       });
 
@@ -56,10 +50,10 @@ export function GoogleLoginButton() {
     }
   }, [login, router]);
 
-  // 🔹 MANEJADOR PARA EL BOTÓN MANUAL (recibe access_token)
   const handleTokenResponse = useCallback(async (response: any) => {
     if (!response?.access_token) {
       setError('No se recibió el access_token de Google.');
+      setLoading(false);
       return;
     }
 
@@ -84,7 +78,6 @@ export function GoogleLoginButton() {
     }
   }, [login, router]);
 
-  // 🔹 INICIALIZACIÓN
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
       setError('Falta configurar NEXT_PUBLIC_GOOGLE_CLIENT_ID.');
@@ -95,19 +88,17 @@ export function GoogleLoginButton() {
       return;
     }
 
-    // ONE TAP (popup automático)
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
-      callback: handleCredentialResponse, // 🚨 Usa el handler de credential
+      callback: handleCredentialResponse,
     });
     
     window.google.accounts.id.prompt();
 
-    // BOTÓN MANUAL (OAuth con access_token)
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'openid email profile',
-      callback: handleTokenResponse, // 🚨 Usa el handler de token
+      callback: handleTokenResponse,
     });
 
     setTokenClient(client);
@@ -119,6 +110,12 @@ export function GoogleLoginButton() {
     if (!tokenClient) {
       setError('Google todavía se está cargando.');
       return;
+    }
+
+    // Cancelar One Tap antes de iniciar OAuth manual
+    // 🚨 Usamos 'as any' para evitar el error de TypeScript
+    if (window.google?.accounts?.id) {
+      (window.google.accounts.id as any).cancel?.();
     }
 
     setLoading(true);
