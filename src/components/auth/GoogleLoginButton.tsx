@@ -9,26 +9,17 @@ import { Button } from '@/components/ui/button';
 import { GoogleLogo } from '@/components/icons/GoogleLogo';
 import { API_BASE } from '@/lib/env';
 
-// Se leen desde el entorno para no mezclar entornos y evitar 403 por dominios no autorizados
 const GOOGLE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
-const GOOGLE_REDIRECT_URI =
-  process.env.NEXT_PUBLIC_GOOGLE_REDIRECT_URI ||
-  `${API_BASE}/auth/google/login/callback/`;
 
-// Definición de tipos de respuesta del backend
 type SocialLoginResponse = {
   access: string;
   refresh: string;
   user?: {
     id: number;
     email: string;
-    // ... otros campos del usuario que devuelve tu serializador UserDetailsSerializer
   };
 };
 
-// ----------------------------------------------------------------------
-// Función que maneja el flujo de Google OAuth
-// ----------------------------------------------------------------------
 export function GoogleLoginButton() {
   const router = useRouter();
   const login = useAuth((s) => s.login);
@@ -36,26 +27,46 @@ export function GoogleLoginButton() {
   const [error, setError] = useState<string | null>(null);
   const [tokenClient, setTokenClient] = useState<any>(null);
   
-  // 1. Manejador del Callback de Google
-  // Aquí es donde Google devuelve el access_token (flujo implícito)
-  const handleTokenResponse = useCallback(async (response: any) => {
-    // El callback de One Tap entrega un "credential" (ID token) sin access_token.
-    // Lo ignoramos para evitar mostrar error antes de que se dispare el flujo real.
-    if (response && typeof response === 'object' && 'credential' in response && !('access_token' in response)) {
-      return;
-    }
-
-    if (!response?.access_token) {
-      setError('No se recibió el access_token de Google. Intenta de nuevo.');
+  // 🔹 MANEJADOR PARA ONE TAP (recibe id_token/credential)
+  const handleCredentialResponse = useCallback(async (response: any) => {
+    if (!response?.credential) {
+      console.log('One Tap: sin credential');
       return;
     }
 
     setLoading(true);
     setError(null);
 
-    // 2. POSTear el token al backend de Django
     try {
-      // Endpoint de Django: /auth/google/login/
+      // Envía el ID token al backend
+      const data = await apiFetch<SocialLoginResponse>('/auth/google/login/', {
+        method: 'POST',
+        body: JSON.stringify({
+          id_token: response.credential, // 🚨 Cambia según tu backend
+        }),
+      });
+
+      login(data);
+      router.push('/clips');
+    } catch (err: any) {
+      console.error('Error en One Tap:', err);
+      setError('El inicio de sesión con Google falló.');
+    } finally {
+      setLoading(false);
+    }
+  }, [login, router]);
+
+  // 🔹 MANEJADOR PARA EL BOTÓN MANUAL (recibe access_token)
+  const handleTokenResponse = useCallback(async (response: any) => {
+    if (!response?.access_token) {
+      setError('No se recibió el access_token de Google.');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
+    try {
       const data = await apiFetch<SocialLoginResponse>('/auth/google/login/', {
         method: 'POST',
         body: JSON.stringify({
@@ -63,20 +74,18 @@ export function GoogleLoginButton() {
         }),
       });
 
-      // 3. Login exitoso: guarda tokens y redirige
       login(data);
       router.push('/clips');
-
     } catch (err: any) {
-      console.error('Error al enviar código a Django:', err);
-      setError('El registro/login con Google falló o el email ya está registrado.');
+      console.error('Error en botón manual:', err);
+      setError('El inicio de sesión con Google falló.');
     } finally {
       setLoading(false);
     }
   }, [login, router]);
 
-  // 4. Inicialización del SDK de Google Identity Services (GIS)
-useEffect(() => {
+  // 🔹 INICIALIZACIÓN
+  useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
       setError('Falta configurar NEXT_PUBLIC_GOOGLE_CLIENT_ID.');
       return;
@@ -86,44 +95,36 @@ useEffect(() => {
       return;
     }
 
-    // --- 🚨 PASO 1: Inicialización de la Interfaz de Usuario (Para el Prompt Automático) ---
+    // ONE TAP (popup automático)
     window.google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleTokenResponse, // Usamos la misma función de callback para el token
-        // Esto inicializa el flujo de ID, lo que permite el prompt automático.
+      client_id: GOOGLE_CLIENT_ID,
+      callback: handleCredentialResponse, // 🚨 Usa el handler de credential
     });
     
-    // --- 🚨 PASO 2: Solicitar el Prompt Automático ---
-    // Esto muestra la ventanita flotante o el "One Tap" en la esquina superior.
-    window.google.accounts.id.prompt(); 
+    window.google.accounts.id.prompt();
 
-    // --- PASO 3: Inicialización del Cliente de Token (Para el Botón Manual) ---
+    // BOTÓN MANUAL (OAuth con access_token)
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'openid email profile',
-      callback: handleTokenResponse,
+      callback: handleTokenResponse, // 🚨 Usa el handler de token
     });
 
     setTokenClient(client);
-    
-    // Eliminamos el manejo de GOOGLE_REDIRECT_URI aquí ya que el flujo de token no lo necesita.
+  }, [handleCredentialResponse, handleTokenResponse]);
 
-  }, [handleTokenResponse]);
-
-  // 5. Función para iniciar el flujo al hacer clic en nuestro botón
   const handleGoogleLogin = () => {
     setError(null);
 
     if (!tokenClient) {
-      setError('Google todavía se está cargando. Inténtalo de nuevo en unos segundos.');
+      setError('Google todavía se está cargando.');
       return;
     }
 
-    setLoading(true); // Mostrar loading al inicio del flujo
+    setLoading(true);
     tokenClient.requestAccessToken();
   };
 
-  // 6. Renderizado del botón
   return (
     <>
       <Button
