@@ -23,8 +23,8 @@ export function ShareModal({ project, onClose }: ShareModalProps) {
     return `${window.location.origin}/projects/${project.id}`
   }, [project.id])
 
-  const PROJECT_TITLE = project.name || 'Proyecto de VideoPapel'
-  const PROJECT_TEXT = `Mira mi proyecto de VideoPapel: ${PROJECT_TITLE}`
+  const PROJECT_TITLE = project.name || 'Mira mi proyecto de Papel.Video'
+  const PROJECT_TEXT = `¿Has pensado alguna vez en imprimir un video? : ${PROJECT_TITLE}`
 
   // Función para abrir enlaces de compartir
   const openShareWindow = useCallback((url: string) => {
