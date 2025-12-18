@@ -19,13 +19,32 @@ type SocialLoginResponse = {
   };
 };
 
-export function GoogleLoginButton() {
+interface GoogleLoginButtonProps {
+  mode?: 'login' | 'register';
+  redirectTo?: string;
+  className?: string;
+}
+
+export function GoogleLoginButton({ 
+  mode = 'login',
+  redirectTo = '/clips',
+  className = '',
+}: GoogleLoginButtonProps) {
   const router = useRouter();
   const login = useAuth((s) => s.login);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [tokenClient, setTokenClient] = useState<any>(null);
   
+  // Textos según el modo
+  const buttonText = mode === 'register' 
+    ? 'Registrarse con Google'
+    : 'Iniciar sesión con Google';
+  
+  const loadingText = mode === 'register'
+    ? 'Registrando...'
+    : 'Conectando...';
+
   const handleCredentialResponse = useCallback(async (response: any) => {
     if (!response?.credential) return;
 
@@ -37,18 +56,22 @@ export function GoogleLoginButton() {
         method: 'POST',
         body: JSON.stringify({
           id_token: response.credential,
+          mode, // Enviar el modo para analytics en backend
         }),
       });
 
       login(data);
-      router.push('/clips');
+      router.push(redirectTo);
     } catch (err: any) {
-      console.error('Error en One Tap:', err);
-      setError('El inicio de sesión con Google falló.');
+      console.error(`Error en One Tap (${mode}):`, err);
+      const errorMessage = mode === 'register'
+        ? 'El registro con Google falló.'
+        : 'El inicio de sesión con Google falló.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [login, router]);
+  }, [login, router, mode, redirectTo]);
 
   const handleTokenResponse = useCallback(async (response: any) => {
     if (!response?.access_token) {
@@ -65,18 +88,22 @@ export function GoogleLoginButton() {
         method: 'POST',
         body: JSON.stringify({
           access_token: response.access_token,
+          mode, // Enviar el modo para analytics en backend
         }),
       });
 
       login(data);
-      router.push('/clips');
+      router.push(redirectTo);
     } catch (err: any) {
-      console.error('Error en botón manual:', err);
-      setError('El inicio de sesión con Google falló.');
+      console.error(`Error en botón manual (${mode}):`, err);
+      const errorMessage = mode === 'register'
+        ? 'El registro con Google falló.'
+        : 'El inicio de sesión con Google falló.';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, [login, router]);
+  }, [login, router, mode, redirectTo]);
 
   useEffect(() => {
     if (!GOOGLE_CLIENT_ID) {
@@ -88,13 +115,18 @@ export function GoogleLoginButton() {
       return;
     }
 
+    // Inicializar One Tap de Google
     window.google.accounts.id.initialize({
       client_id: GOOGLE_CLIENT_ID,
       callback: handleCredentialResponse,
     });
     
-    window.google.accounts.id.prompt();
+    // Solo mostrar One Tap automático en login (opcional)
+    if (mode === 'login') {
+      window.google.accounts.id.prompt();
+    }
 
+    // Inicializar cliente OAuth2 para el botón manual
     const client = window.google.accounts.oauth2.initTokenClient({
       client_id: GOOGLE_CLIENT_ID,
       scope: 'openid email profile',
@@ -102,7 +134,7 @@ export function GoogleLoginButton() {
     });
 
     setTokenClient(client);
-  }, [handleCredentialResponse, handleTokenResponse]);
+  }, [handleCredentialResponse, handleTokenResponse, mode]);
 
   const handleGoogleLogin = () => {
     setError(null);
@@ -113,7 +145,6 @@ export function GoogleLoginButton() {
     }
 
     // Cancelar One Tap antes de iniciar OAuth manual
-    // 🚨 Usamos 'as any' para evitar el error de TypeScript
     if (window.google?.accounts?.id) {
       (window.google.accounts.id as any).cancel?.();
     }
@@ -123,14 +154,14 @@ export function GoogleLoginButton() {
   };
 
   return (
-    <>
+    <div className="w-full">
       <Button
         onClick={handleGoogleLogin}
         disabled={loading}
-        className="w-full bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 shadow-sm"
+        className={`w-full bg-white text-gray-700 border border-gray-300 hover:bg-gray-100 shadow-sm ${className}`}
       >
         <GoogleLogo className="mr-2 h-6 w-6 text-blue-600" /> 
-        {loading ? 'Conectando...' : 'Continuar con Google'}
+        {loading ? loadingText : buttonText}
       </Button>
       
       {error && (
@@ -138,6 +169,6 @@ export function GoogleLoginButton() {
           {error}
         </div>
       )}
-    </>
+    </div>
   );
 }
