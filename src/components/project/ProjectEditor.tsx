@@ -166,9 +166,10 @@ const sizeNotCompleted = project && !project.print_size_id ? "Tamaño de impresi
 const orientationNotCompleted = project && !project.print_orientation_id ? "Orientación de impresión" : null;
 const aspectNotCompleted = project && !project.print_aspect_id ? "Posición de impresión" : null;
 const bindingNotCompleted = project && !project.print_binding_id ? "Encuadernación" : null;
+const sheetPaperNotCompleted = project && !project.print_sheet_paper_id ? "Tipo de papel" : null;
 
 // 2. Crear una lista de los campos que faltan.
-const missingFields = [qualityNotCompleted, sizeNotCompleted, orientationNotCompleted, aspectNotCompleted, bindingNotCompleted].filter(Boolean) as string[];
+const missingFields = [qualityNotCompleted, sizeNotCompleted, orientationNotCompleted, aspectNotCompleted, bindingNotCompleted, sheetPaperNotCompleted].filter(Boolean) as string[];
 const missingFieldsMessage = missingFields.length > 0 ? missingFields.join(', ') : null;
 
 // 3. Definición del mensaje de estado (statusMessage)
