@@ -13,7 +13,7 @@ export type VideoItem = {
   format: string | null
   url?: string | null
   file?: string | null
-  frame_status?: 'pending' | 'processing' | 'ready' | 'error' | null 
+  frame_status?: 'pending' | 'processing' | 'processing' | 'ready_partial' |  'ready_full' | 'error' | 'error_transient' | null 
 }
 
 type VideoPickerModalProps = {
@@ -27,8 +27,10 @@ type VideoPickerModalProps = {
 const FRAME_STATUS = {
     PENDING: "pending",
     PROCESSING: "processing",
-    READY: "ready",
+    READYFULL: "ready_full",
+    READYPARTIAL: "ready_partial",
     ERROR: "error",
+    ERRORTRANSIENT: "error_transient",
 }
 
 export default function VideoPickerModal({ open, onClose, apiBase, accessToken, onSelect }: VideoPickerModalProps) {
@@ -104,7 +106,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
           // ⭐️ Log para depuración
           console.log(`frame_status actual: ${updatedVideo.frame_status}`) 
 
-          if (updatedVideo.frame_status === FRAME_STATUS.READY) {
+          if (updatedVideo.frame_status === FRAME_STATUS.READYFULL) {
             clearInterval(intervalId)
             resolve(updatedVideo) 
           } else if (updatedVideo.frame_status === FRAME_STATUS.ERROR) {
@@ -126,7 +128,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
     // ⭐️ Corrección 2: Asegurar que estamos leyendo el frame_status del objeto seleccionado
     const currentStatus = selectedVideo.frame_status;
 
-    if (currentStatus !== FRAME_STATUS.READY) {
+    if (currentStatus !== FRAME_STATUS.READYFULL) {
       setIsCheckingFrames(true) 
       try {
         const readyVideo = await checkFrameStatus(selectedVideo)

@@ -21,6 +21,7 @@ import CartButtonIcon from '@/components/CartButtonIcon'
 import CartButtonString from '@/components/CartButtonString'
 import { Menu as MenuIcon, X } from 'lucide-react' // Importar iconos
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
+import { fascinate, fascinateFontStack } from '@/fonts/fascinate'
 import { borelFontStack } from '@/fonts/borel'
 import { cookieFontStack } from '@/fonts/cookie'
 import BookLogo from './BookLogo'
@@ -48,10 +49,21 @@ export default function Menu() {
   return (
     // Añadimos 'relative' para que el menú móvil absoluto se posicione correctamente
 <header className="sticky top-0 inset-x-0 h-16 w-full border-b bg-white/90 backdrop-blur flex items-center justify-between px-4 z-50">
-<Link
+{/* <Link
   href="/"
   className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
   style={{ fontFamily: pacificoFontStack, fontSize: '2rem', lineHeight: 2}}
+  onClick={() => setIsMobileMenuOpen(false)}
+>  
+  <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
+    papel video
+
+  </span>
+</Link> */}
+<Link
+  href="/"
+  className={`flex items-center gap-4 ml-1 ${fascinate.className} text-lg font-semibold leading-none`}
+  style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
   onClick={() => setIsMobileMenuOpen(false)}
 >  
   <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
@@ -66,6 +78,16 @@ export default function Menu() {
   onClick={() => setIsMobileMenuOpen(false)}
 >
   <span className="block px-1 text-[#c6613f]">
+    papel video
+  </span>
+</Link> */}
+{/* <Link
+  href="/"
+  className={`flex items-center gap-4 ml-1 ${fascinate.className} text-lg font-semibold leading-none`}
+  style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
+  onClick={() => setIsMobileMenuOpen(false)}
+>
+  <span className="block px-1 text-[#CB5FED]">
     papel video
   </span>
 </Link> */}
