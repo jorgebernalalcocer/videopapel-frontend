@@ -25,6 +25,8 @@ import { fascinate, fascinateFontStack } from '@/fonts/fascinate'
 import { borelFontStack } from '@/fonts/borel'
 import { cookieFontStack } from '@/fonts/cookie'
 import BookLogo from './BookLogo'
+import AnimatedLogo from '@/components/AnimatedLogoType'
+// import '@/styles/animated-logo-type.css'
 
 export default function Menu() {
   // Estado para controlar la apertura del menú móvil
@@ -87,10 +89,36 @@ export default function Menu() {
   style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
   onClick={() => setIsMobileMenuOpen(false)}
 >
-  <span className="block px-1 text-[#CB5FED]">
+  <span className="block px-1 text-[#c6613f]">
+    papel video
+  </span>
+</Link>
+<Link
+  href="/"
+  className={`flex items-center gap-4 ml-1 ${fascinate.className} text-lg font-semibold leading-none`}
+  style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
+  onClick={() => setIsMobileMenuOpen(false)}
+>
+  <span 
+    className="block px-1 text-[#F0E7D1]"
+    style={{
+      textShadow: `
+        -1px -1px 0 #c6613f,
+        1px -1px 0 #c6613f,
+        -1px 1px 0 #c6613f,
+        1px 1px 0 #c6613f,
+        -2px 0 0 #c6613f,
+        2px 0 0 #c6613f,
+        0 -2px 0 #c6613f,
+        0 2px 0 #c6613f
+      `
+    }}
+  >
     papel video
   </span>
 </Link> */}
+  {/* <AnimatedLogo /> */}
+
 
       {/* Navegación de ESCRITORIO (visible desde 'md' hacia arriba) */}
       <nav className="hidden md:flex items-center gap-3">
