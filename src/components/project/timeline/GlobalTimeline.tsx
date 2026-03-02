@@ -50,7 +50,7 @@ export default function GlobalTimeline(props: {
                     type="button"
                     onClick={() => onSelect(it)}
                     className={`relative block rounded-md overflow-hidden border ${
-                      selected ? 'ring-2 ring-blue-500 border-blue-500' : 'border-gray-200 hover:border-gray-400'
+                      selected ? 'ring-2 ring-yellow-500 border-yellow-500' : 'border-gray-200 hover:border-gray-400'
                     }`}
                   >
                     {previewUrl ? (

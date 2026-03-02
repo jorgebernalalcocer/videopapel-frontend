@@ -67,6 +67,9 @@ export default function BigFrameViewer(props: {
   printQualityDpi?: number | null
   printQualityPpi?: number | null
   printEffectName?: string | null
+  showViewerControls?: boolean
+  forceFull?: boolean
+  isPresentation?: boolean
 }) {
   const {
     current,
@@ -89,6 +92,9 @@ export default function BigFrameViewer(props: {
     printQualityDpi,
     printQualityPpi,
     printEffectName,
+    showViewerControls = true,
+    forceFull = false,
+    isPresentation = false,
   } = props
 
   // 👇 te faltaban estos
@@ -96,7 +102,7 @@ export default function BigFrameViewer(props: {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
 
-  const [isFull, setIsFull] = useState(false)
+  const [isFull, setIsFull] = useState(forceFull)
   const [paintError, setPaintError] = useState(false)
   const [flash, setFlash] = useState(false)
   const [showPrintArea, setShowPrintArea] = useState(true)
@@ -262,10 +268,17 @@ export default function BigFrameViewer(props: {
 
   const canvasClassName = isFull
     ? 'block bg-black'
-    : 'block h-auto w-auto max-h-full max-w-full bg-black'
+    : 'block h-auto w-full sm:w-auto max-h-full max-w-full bg-black'
+
+  useEffect(() => {
+    if (forceFull) setIsFull(true)
+  }, [forceFull])
 
   return (
-    <div className="rounded-lg overflow-hidden bg-black relative flex-1 min-h-0 flex items-center justify-center">
+    <div className={clsx(
+      'overflow-hidden bg-black relative flex-1 min-h-0 flex items-center justify-center w-full h-full',
+      isPresentation ? '' : 'rounded-lg',
+    )}>
       {/* Estado de carga/generación */}
       {(generating || !isCacheLoaded) && (
         <BusyOverlay
@@ -445,7 +458,8 @@ export default function BigFrameViewer(props: {
       )}
 
       {/* Botón de visualización arriba-izquierda */}
-      <div className="absolute top-2 left-2 z-30 pointer-events-auto flex gap-2">
+      {showViewerControls && (
+        <div className="absolute top-2 left-2 z-30 pointer-events-auto flex gap-2">
         <button
           type="button"
           onClick={() => setIsFull((p) => !p)}
@@ -457,7 +471,7 @@ export default function BigFrameViewer(props: {
           ) : (
             <Maximize2 className="h-3.5 w-3.5" />
           )}
-          Visualización
+          Zoom
         </button>
         <button
           type="button"
@@ -473,6 +487,7 @@ export default function BigFrameViewer(props: {
           {showPrintArea ? 'Ocultar zona imp.' : 'Ver zona impresión'}
         </button>
       </div>
+      )}
 
       {/* HUD inyectables (abajo-izq / abajo-der) */}
       {leftHud && (

@@ -510,7 +510,7 @@ const statusMessage = project
 
         {/* Columna 1 (2/3): Visor y Edición de Clips (lg:col-span-2) */}
         {/* En móvil (por defecto), aparece primero. En desktop, usamos lg:order-1 para forzarlo a la izquierda. */}
-        <div className="lg:col-span-2 bg-white rounded-xl shadow p-4 lg:order-1">
+        <div className="lg:col-span-2 bg-white rounded-xl shadow p-1 lg:order-1">
           {/* <h2 className="text-xl font-semibold mb-3">Previsualización y Edición de Clips</h2> */}
 
        <div className="space-y-3 text-sm">

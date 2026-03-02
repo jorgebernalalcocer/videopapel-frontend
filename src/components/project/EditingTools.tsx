@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Film, Camera, Type, Save, Captions, RotateCcw, Frame as FrameIcon } from 'lucide-react'
+import { Play, Film, Camera, Type, Save, Captions, RotateCcw, Frame as FrameIcon, MonitorPlay } from 'lucide-react'
 import { toast } from 'sonner'
 
 type EditingToolsProps = {
@@ -18,6 +18,7 @@ type EditingToolsProps = {
   onGenerateSubtitles?: () => void
   isGeneratingSubtitles?: boolean
   hasFrame?: boolean
+  onOpenPresentation?: () => void
 }
 
 export default function EditingTools({
@@ -34,6 +35,7 @@ export default function EditingTools({
   onGenerateSubtitles,
   isGeneratingSubtitles = false,
   hasFrame = false,
+  onOpenPresentation,
 }: EditingToolsProps) {
   const hasPendingChanges = canSave && !isSaving
   const actionsLocked = isGeneratingSubtitles
@@ -101,6 +103,16 @@ export default function EditingTools({
       >
         <Play className="h-4 w-4 text-yellow-600" />
         {!hasPendingChanges && (isPlaying ? 'Pausar' : 'Reproducir')}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={onOpenPresentation}
+        className="inline-flex items-center gap-2"
+        title="Presentación"
+      >
+        <MonitorPlay className="h-4 w-4 text-blue-700" />
+        {!hasPendingChanges && 'Presentación'}
       </Button>
 
       {showActionButtons && (
@@ -192,7 +204,7 @@ export default function EditingTools({
             className="inline-flex items-center gap-2"
           >
             <RotateCcw className="h-4 w-4 text-blue-600" />
-            <span>Descartar</span>
+            <span>Recuperar eliminados</span>
           </Button>
 
           <Button
@@ -204,7 +216,7 @@ export default function EditingTools({
             className="inline-flex items-center gap-2"
           >
             <Save className="h-4 w-4 text-green-600" />
-            <span>{isSaving ? 'Guardando…' : 'Guardar'}</span>
+            <span>{isSaving ? 'Guardando…' : 'Guardar cambios'}</span>
           </Button>
         </div>
       )}

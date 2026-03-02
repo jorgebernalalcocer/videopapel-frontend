@@ -13,6 +13,7 @@ import FrameModal, { type FrameFormPayload } from '@/components/project/FrameMod
 import { Modal } from '@/components/ui/Modal'
 import ProgressIndicator from '@/components/ui/ProgressIndicator'
 import LockDeleteFrameLowDensity from '@/components/project/LockDeleteFrameLowDensity'
+import { Minimize, SkipBack } from 'lucide-react'
 
 import { useCombinedThumbs } from '@/hooks/useCombinedThumbs'
 import { usePlaybackStepper } from '@/hooks/usePlaybackStepper'
@@ -299,9 +300,10 @@ const textPresenceLookup = useMemo(() => {
 
   // Play/Step
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isPresentationOpen, setIsPresentationOpen] = useState(false)
   const togglePlay = () => setIsPlaying((p) => !p)
 
- const stepForward = useCallback(() => {
+const stepForward = useCallback(() => {
   if (!visibleThumbs.length) return
   const idx = selectedId ? visibleThumbs.findIndex(t => t.id === selectedId)
     : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
@@ -319,6 +321,25 @@ const textPresenceLookup = useMemo(() => {
     scrollThumbIntoView(n.id)
   } else {
     setIsPlaying(false)
+  }
+}, [visibleThumbs, loop, selectedId, selectedGlobalMs])
+
+const stepBackward = useCallback(() => {
+  if (!visibleThumbs.length) return
+  const idx = selectedId ? visibleThumbs.findIndex(t => t.id === selectedId)
+    : nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
+
+  const prevIdx = idx - 1
+  if (prevIdx >= 0) {
+    const p = visibleThumbs[prevIdx]
+    setSelectedId(p.id)
+    setSelectedGlobalMs(p.tGlobal)
+    scrollThumbIntoView(p.id)
+  } else if (loop) {
+    const p = visibleThumbs[visibleThumbs.length - 1]
+    setSelectedId(p.id)
+    setSelectedGlobalMs(p.tGlobal)
+    scrollThumbIntoView(p.id)
   }
 }, [visibleThumbs, loop, selectedId, selectedGlobalMs])
 
@@ -634,6 +655,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   printHeightMm={printHeightMm ?? undefined}
   printQualityDpi={qualityDpi ?? undefined}
   printEffectName={printEffectName ?? undefined}
+  showViewerControls
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton
@@ -710,6 +732,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   onGenerateSubtitles={handleGenerateSubtitles}
   isGeneratingSubtitles={isGeneratingSubtitles}
   hasFrame={Boolean(frameSetting && frameSetting.frame)}
+  onOpenPresentation={() => setIsPresentationOpen(true)}
 />
       </div>
 
@@ -756,6 +779,62 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
         onClose={() => setLockLowDensityModal(false)}
         onConfirm={handleConfirmDensityChange}
       />
+
+      {isPresentationOpen && (
+        <div className="fixed inset-0 z-[120] bg-black">
+          <BigFrameViewer
+            current={currentThumb ? {
+              videoSrc: currentThumb.videoSrc,
+              tLocal: currentThumb.tLocal,
+              previewUrl: currentThumb.url ?? undefined,
+            } : null}
+            generating={generating}
+            isCacheLoaded={isCacheLoaded}
+            activeTextFrames={activeTextFrames}
+            apiBase={apiBase}
+            accessToken={accessToken}
+            onEditText={openEditTextEditor}
+            onPositionChange={updateTextFrameLocal}
+            getLinkedOverlayIds={getOverlayIdsForText}
+            onDeleteText={handleTextDeleted}
+            printAspect={printAspectSlug ?? 'fill'}
+            printSizeLabel={printSizeLabel ?? undefined}
+            frameSetting={frameSetting ?? undefined}
+            printWidthMm={printWidthMm ?? undefined}
+            printHeightMm={printHeightMm ?? undefined}
+            printQualityDpi={qualityDpi ?? undefined}
+            printEffectName={printEffectName ?? undefined}
+            showViewerControls={false}
+            forceFull
+            isPresentation
+          />
+          <div className="absolute bottom-6 left-0 right-0 z-[130] px-6">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={stepBackward}
+                title="Fotograma anterior"
+                aria-label="Fotograma anterior"
+                className="inline-grid place-items-center rounded-full bg-white text-black shadow ring-1 ring-black/10 transition"
+                style={{ width: 80, height: 80 }}
+              >
+                <SkipBack className="h-10 w-10" />
+              </button>
+              <PlayButton onClick={stepForward} size="presentation" />
+            </div>
+          </div>
+          <div className="absolute top-4 right-4 z-[130]">
+            <button
+              type="button"
+              onClick={() => setIsPresentationOpen(false)}
+              className="inline-flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-black shadow"
+            >
+              <Minimize className="h-4 w-4" />
+              Salir
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
