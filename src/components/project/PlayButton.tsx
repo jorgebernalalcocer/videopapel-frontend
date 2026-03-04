@@ -28,15 +28,15 @@ export default function PlayButton({
         transition
       "
       style={{
-        width: isPresentation ? 80 : 40,
-        height: isPresentation ? 80 : 40,
+        width: isPresentation ? 60 : 40,
+        height: isPresentation ? 60 : 40,
       }}
     >
       {/* Icono triangular clásico de “play” (sin texto) */}
       {/* <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true">
         <path fill="currentColor" d="M8 5v14l11-7z" />
       </svg> */}
-      <Clapperboard className={isPresentation ? 'h-10 w-10' : 'h-5 w-5'} />
+      <Clapperboard className={isPresentation ? 'h-7 w-7' : 'h-5 w-5'} />
 
       <span className="sr-only">{title}</span>
     </button>

@@ -816,14 +816,14 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
                 title="Fotograma anterior"
                 aria-label="Fotograma anterior"
                 className="inline-grid place-items-center rounded-full bg-white text-black shadow ring-1 ring-black/10 transition"
-                style={{ width: 80, height: 80 }}
+                style={{ width: 60, height: 60 }}
               >
-                <SkipBack className="h-10 w-10" />
+                <SkipBack className="h-7 w-7" />
               </button>
               <PlayButton onClick={stepForward} size="presentation" />
             </div>
           </div>
-          <div className="absolute top-4 right-4 z-[130]">
+          <div className="absolute top-4 left-1/2 z-[130] -translate-x-1/2">
             <button
               type="button"
               onClick={() => setIsPresentationOpen(false)}
