@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Film, Camera, Type, Save, Captions, RotateCcw, Frame as FrameIcon, MonitorPlay } from 'lucide-react'
+import { Play, Film, Camera, Type, Save, Captions, RotateCcw, Frame as FrameIcon, MonitorPlay, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 type EditingToolsProps = {
@@ -19,6 +19,7 @@ type EditingToolsProps = {
   isGeneratingSubtitles?: boolean
   hasFrame?: boolean
   onOpenPresentation?: () => void
+  onOpenCover?: () => void
 }
 
 export default function EditingTools({
@@ -36,6 +37,7 @@ export default function EditingTools({
   isGeneratingSubtitles = false,
   hasFrame = false,
   onOpenPresentation,
+  onOpenCover,
 }: EditingToolsProps) {
   const hasPendingChanges = canSave && !isSaving
   const actionsLocked = isGeneratingSubtitles
@@ -113,6 +115,16 @@ export default function EditingTools({
       >
         <MonitorPlay className="h-4 w-4 text-blue-700" />
         {!hasPendingChanges && 'Presentación'}
+      </Button>
+      <Button
+        type="button"
+        variant="secondary"
+        onClick={onOpenCover}
+        className="inline-flex items-center gap-2"
+        title="Portada"
+      >
+        <ImageIcon className="h-4 w-4 text-indigo-700" />
+        {!hasPendingChanges && 'Portada'}
       </Button>
 
       {showActionButtons && (

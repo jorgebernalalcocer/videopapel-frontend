@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { Modal } from '@/components/ui/Modal'
 import UploadVideoTriggerButton from '@/components/UploadVideoTriggerButton'
-import GlobalSpinner from '@/components/GlobalSpinner' 
+import GlobalSpinner from '@/components/GlobalSpinner'
+import PickerSelector from '@/components/project/PickerSelector'
 
 export type VideoItem = {
   id: number
@@ -13,7 +13,7 @@ export type VideoItem = {
   format: string | null
   url?: string | null
   file?: string | null
-  frame_status?: 'pending' | 'processing' | 'processing' | 'ready_partial' |  'ready_full' | 'error' | 'error_transient' | null 
+  frame_status?: 'pending' | 'processing' | 'processing' | 'ready_partial' | 'ready_full' | 'error' | 'error_transient' | null
 }
 
 type VideoPickerModalProps = {
@@ -27,12 +27,10 @@ type VideoPickerModalProps = {
 }
 
 const FRAME_STATUS = {
-    PENDING: "pending",
-    PROCESSING: "processing",
-    READYFULL: "ready_full",
-    READYPARTIAL: "ready_partial",
-    ERROR: "error",
-    ERRORTRANSIENT: "error_transient",
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  READYFULL: 'ready_full',
+  ERROR: 'error',
 }
 
 export default function VideoPickerModal({
@@ -48,7 +46,7 @@ export default function VideoPickerModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
-  const [isCheckingFrames, setIsCheckingFrames] = useState(false) 
+  const [isCheckingFrames, setIsCheckingFrames] = useState(false)
 
   const fetchVideos = useCallback(async () => {
     if (!accessToken) return
@@ -63,15 +61,10 @@ export default function VideoPickerModal({
       const data = await res.json()
       const list: VideoItem[] = Array.isArray(data) ? data : data.results ?? []
       setVideos(list)
-
-      // ⭐️ Corrección 1: Asegurar que si el video seleccionado existe, el objeto esté actualizado
-      setSelectedVideo(prev => {
+      setSelectedVideo((prev) => {
         if (!prev) return null
-        const updatedVideo = list.find(v => v.id === prev.id)
-        // Devolver el objeto completo actualizado, si existe. Si no, deseleccionar.
-        return updatedVideo || null 
+        return list.find((v) => v.id === prev.id) || null
       })
-
     } catch (e: any) {
       setError(e.message || 'No se pudieron cargar los videos')
     } finally {
@@ -81,99 +74,87 @@ export default function VideoPickerModal({
 
   useEffect(() => {
     if (open) {
-      fetchVideos()
-      setIsCheckingFrames(false) 
+      void fetchVideos()
+      setIsCheckingFrames(false)
     }
   }, [open, fetchVideos])
-  
-  // Función para hacer polling del estado del video
-  const checkFrameStatus = useCallback((video: VideoItem) => {
-    if (!accessToken) return Promise.reject(new Error("No hay token de acceso."))
 
-    return new Promise<VideoItem>((resolve, reject) => {
-      const maxRetries = 40 // ~2 minutos de espera (40 * 3s)
-      let retries = 0
-      
-      const intervalId = setInterval(async () => {
-        if (retries >= maxRetries) {
+  const checkFrameStatus = useCallback(
+    (video: VideoItem) => {
+      if (!accessToken) return Promise.reject(new Error('No hay token de acceso.'))
+
+      return new Promise<VideoItem>((resolve, reject) => {
+        const maxRetries = 40
+        let retries = 0
+
+        const intervalId = setInterval(async () => {
+          if (retries >= maxRetries) {
             clearInterval(intervalId)
-            reject(new Error("Tiempo de espera agotado para la generación de imágenes."))
+            reject(new Error('Tiempo de espera agotado para la generación de imágenes.'))
             return
-        }
-        retries++
-
-        try {
-          const res = await fetch(`${apiBase}/videos/${video.id}/`, {
-            headers: { Authorization: `Bearer ${accessToken}` },
-            credentials: 'include',
-          })
-          if (!res.ok) {
-            clearInterval(intervalId)
-            throw new Error(`Error ${res.status} al verificar el estado de frames.`)
           }
-          const updatedVideo: VideoItem = await res.json()
-          
-          // ⭐️ Log para depuración
-          console.log(`frame_status actual: ${updatedVideo.frame_status}`) 
+          retries += 1
 
-          if (updatedVideo.frame_status === FRAME_STATUS.READYFULL) {
+          try {
+            const res = await fetch(`${apiBase}/videos/${video.id}/`, {
+              headers: { Authorization: `Bearer ${accessToken}` },
+              credentials: 'include',
+            })
+            if (!res.ok) {
+              clearInterval(intervalId)
+              throw new Error(`Error ${res.status} al verificar el estado de frames.`)
+            }
+            const updatedVideo: VideoItem = await res.json()
+
+            if (updatedVideo.frame_status === FRAME_STATUS.READYFULL) {
+              clearInterval(intervalId)
+              resolve(updatedVideo)
+            } else if (updatedVideo.frame_status === FRAME_STATUS.ERROR) {
+              clearInterval(intervalId)
+              reject(new Error('Error al generar las imágenes del video.'))
+            }
+          } catch (e) {
             clearInterval(intervalId)
-            resolve(updatedVideo) 
-          } else if (updatedVideo.frame_status === FRAME_STATUS.ERROR) {
-            clearInterval(intervalId)
-            reject(new Error('Error al generar las imágenes del video.')) 
+            reject(e)
           }
-        } catch (e) {
-          clearInterval(intervalId)
-          reject(e)
-        }
-      }, 3000) 
-    })
-  }, [apiBase, accessToken])
-
+        }, 3000)
+      })
+    },
+    [apiBase, accessToken],
+  )
 
   const handleConfirm = async () => {
     if (!selectedVideo || !accessToken || busy) return
-    
-    // ⭐️ Corrección 2: Asegurar que estamos leyendo el frame_status del objeto seleccionado
-    const currentStatus = selectedVideo.frame_status;
+
+    const currentStatus = selectedVideo.frame_status
 
     if (currentStatus !== FRAME_STATUS.READYFULL) {
-      setIsCheckingFrames(true) 
+      setIsCheckingFrames(true)
       try {
         const readyVideo = await checkFrameStatus(selectedVideo)
-        
-        // ⭐️ Corrección 3: Usamos el objeto actualizado readyVideo para el flujo final
         await onSelect(readyVideo)
-        
-        // La limpieza del estado se hace en el finally
       } catch (e: any) {
-        console.error(e)
         setError(e.message || 'Error desconocido al verificar la preparación del video.')
-        // Al ocurrir un error, reseteamos el error pero mantenemos el modal abierto
-        setIsCheckingFrames(false) 
-        return // Detenemos el flujo
+        setIsCheckingFrames(false)
+        return
       } finally {
-        setIsCheckingFrames(false) // Ocultar el spinner (esto debería ocurrir)
+        setIsCheckingFrames(false)
         setSelectedVideo(null)
         onClose()
       }
-
     } else {
-      // Si ya está READY, continuar con el flujo normal
       await onSelect(selectedVideo)
       setSelectedVideo(null)
       onClose()
     }
   }
 
-  // Si estamos comprobando frames, mostramos el GlobalSpinner y bloqueamos la interfaz
   if (isCheckingFrames) {
     return <GlobalSpinner force message="Generando imágenes de tu video" />
   }
 
   return (
-    <Modal
+    <PickerSelector
       open={open}
       onClose={() => {
         setIsCheckingFrames(false)
@@ -181,95 +162,59 @@ export default function VideoPickerModal({
         onClose()
       }}
       title="Elige un video"
-      size="lg"
-      footer={
-        <div className="flex justify-between w-full">
-          {(externalError || error) && <span className="text-sm text-red-600">{externalError || error}</span>}
-          <div className="flex gap-2 ml-auto">
-            <button
-              type="button"
-              className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50"
-              onClick={() => {
-                setSelectedVideo(null)
-                onClose()
-              }}
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              disabled={!selectedVideo || loading || busy}
-              className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
-              onClick={handleConfirm}
-            >
-              {busy ? 'Insertando…' : 'Insertar'}
-            </button>
-          </div>
+      items={videos}
+      selectedItem={selectedVideo}
+      onSelectItem={setSelectedVideo}
+      onConfirm={handleConfirm}
+      confirmLabel="Insertar"
+      confirmBusyLabel="Insertando…"
+      busy={busy}
+      loading={loading}
+      error={externalError || error}
+      emptyLabel="No tienes videos todavía."
+      preListSlot={
+        <div className="mb-3 flex justify-start">
+          <UploadVideoTriggerButton disabled={!accessToken || loading} onUploaded={fetchVideos} />
         </div>
       }
-    >
-      <div className="mb-3 flex justify-start">
-        <UploadVideoTriggerButton
-          disabled={!accessToken || loading}
-          onUploaded={fetchVideos}
-        />
-      </div>
-      {loading ? (
-        <p className="text-gray-500 text-sm">Cargando videos…</p>
-      ) : videos.length === 0 ? (
-        <p className="text-gray-500 text-sm">No tienes videos todavía.</p>
-      ) : (
-        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-auto pr-1">
-          {videos.map((v) => {
-            const selected = selectedVideo?.id === v.id
-            const isPending = v.frame_status === FRAME_STATUS.PENDING || v.frame_status === FRAME_STATUS.PROCESSING
-            const isError = v.frame_status === FRAME_STATUS.ERROR
-            
-            return (
-              <li
-                key={v.id}
-                className={`rounded-lg border overflow-hidden cursor-pointer relative ${
-                  selected ? 'ring-2 ring-blue-500' : 'hover:border-gray-400'
-                } ${isPending ? 'opacity-70' : ''}`}
-                onClick={() => setSelectedVideo(v)}
-              >
-                {isPending && (
-                    <div className="absolute top-1 right-1 bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded z-10">
-                        Extrayendo imagenes
-                    </div>
-                )}
-                {isError && (
-                    <div className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded z-10">
-                        Error
-                    </div>
-                )}
-                <div className="aspect-video bg-black">
-                  {v.url || v.file ? (
-                    <video
-                      src={v.url || v.file || undefined}
-                      poster={v.thumbnail ?? undefined}
-                      className="w-full h-full object-cover bg-black"
-                      muted
-                      playsInline
-                      preload="metadata"
-                    />
-                  ) : (
-                    <div className="w-full h-full grid place-items-center text-white text-xs">
-                      {v.title || `Video #${v.id}`}
-                    </div>
-                  )}
+      renderItem={({ item: v }) => {
+        const isPending = v.frame_status === FRAME_STATUS.PENDING || v.frame_status === FRAME_STATUS.PROCESSING
+        const isError = v.frame_status === FRAME_STATUS.ERROR
+        return (
+          <>
+            <div className="relative">
+              {isPending && (
+                <div className="absolute top-1 right-1 bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded z-10">
+                  Extrayendo imagenes
                 </div>
-                <div className="p-2">
-                  <p className="text-sm font-medium truncate">{v.title || `Video #${v.id}`}</p>
-                  <p className="text-xs text-gray-500">
-                    {(v.duration_ms / 1000).toFixed(1)}s • {v.format?.toUpperCase() || '—'}
-                  </p>
+              )}
+              {isError && (
+                <div className="absolute top-1 right-1 bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded z-10">
+                  Error
                 </div>
-              </li>
-            )
-          })}
-        </ul>
-      )}
-    </Modal>
+              )}
+              <div className="aspect-video bg-black">
+                {v.url || v.file ? (
+                  <video
+                    src={v.url || v.file || undefined}
+                    poster={v.thumbnail ?? undefined}
+                    className="w-full h-full object-cover bg-black"
+                    muted
+                    playsInline
+                    preload="metadata"
+                  />
+                ) : (
+                  <div className="w-full h-full grid place-items-center text-white text-xs">{v.title || `Video #${v.id}`}</div>
+                )}
+              </div>
+            </div>
+            <div className="p-2">
+              <p className="text-sm font-medium truncate">{v.title || `Video #${v.id}`}</p>
+              <p className="text-xs text-gray-500">{(v.duration_ms / 1000).toFixed(1)}s • {v.format?.toUpperCase() || '—'}</p>
+            </div>
+          </>
+        )
+      }}
+    />
   )
 }

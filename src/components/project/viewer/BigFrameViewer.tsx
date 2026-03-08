@@ -3,7 +3,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Maximize2, Minimize2, Crop } from 'lucide-react'
+import { Maximize2, Minimize2, Crop, Image as ImageIcon } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
 import FrameStyleOverlay from '@/components/project/viewer/FrameStyleOverlay'
@@ -67,6 +67,7 @@ export default function BigFrameViewer(props: {
   printQualityDpi?: number | null
   printQualityPpi?: number | null
   printEffectName?: string | null
+  isCoverPhoto?: boolean
   showViewerControls?: boolean
   forceFull?: boolean
   isPresentation?: boolean
@@ -92,6 +93,7 @@ export default function BigFrameViewer(props: {
     printQualityDpi,
     printQualityPpi,
     printEffectName,
+    isCoverPhoto = false,
     showViewerControls = true,
     forceFull = false,
     isPresentation = false,
@@ -350,6 +352,14 @@ export default function BigFrameViewer(props: {
                 opacity: 1, //opacidad borde amarillo
               }}
             >
+              {isCoverPhoto && (
+                <div className="absolute top-2 left-2 z-30 pointer-events-none">
+                  <span className="inline-flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs font-semibold text-white">
+                    <ImageIcon className="h-3.5 w-3.5" />
+                    Foto de portada
+                  </span>
+                </div>
+              )}
               {activeFrameSetting && (
                 printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight ? (
                   <div

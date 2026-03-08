@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
 import EditingCanvas from '@/components/project/EditingCanvas'
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
+import FramePickerModal, { type FramePickerItem } from '@/components/project/FramePickerModal'
 import QualitySelector from '@/components/project/QualitySelector'
 import PrintQualityBadge from '@/components/project/PrintQualityBadge'
 import SizeSelector from '@/components/project/SizeSelector'
@@ -92,6 +93,14 @@ type Project = {
   print_sheet_paper_label?: string | null
   print_sheet_paper_weight?: number | null
   print_sheet_paper_finishing?: string | null
+  cover_image?: {
+    id: number
+    project_clip_id: number
+    video_id: number
+    frame_time_ms: number
+    image_url: string | null
+    video_url: string | null
+  } | null
 }
 
 type ProjectPricePreview = {
@@ -153,8 +162,11 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [error, setError] = useState<string | null>(null)
   const [pickerOpen, setPickerOpen] = useState(false)
   const [effectsModalOpen, setEffectsModalOpen] = useState(false)
+  const [coverPickerOpen, setCoverPickerOpen] = useState(false)
   const [actionError, setActionError] = useState<string | null>(null)
+  const [coverError, setCoverError] = useState<string | null>(null)
   const [creatingClip, setCreatingClip] = useState(false)
+  const [coverBusy, setCoverBusy] = useState(false)
   const [editTitleOpen, setEditTitleOpen] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
   const isProjectExported = project?.status === 'exported'
@@ -379,6 +391,24 @@ const statusMessage = project
     return resolveClipPreview(clips[0]) ?? resolveClipPreview(project?.primary_clip ?? null)
   }, [clips, project?.primary_clip])
 
+  const coverItems = useMemo<FramePickerItem[]>(() => {
+    const out: FramePickerItem[] = []
+    for (const clip of clips) {
+      const thumbs = Array.isArray(clip.thumbnails) ? clip.thumbnails : []
+      for (const thumb of thumbs) {
+        out.push({
+          id: `${clip.id}-${thumb.frame_time_ms}`,
+          clipId: clip.id,
+          clipPosition: clip.position ?? null,
+          frameTimeMs: thumb.frame_time_ms,
+          imageUrl: thumb.image_url ?? null,
+          videoUrl: clip.video_url ?? null,
+        })
+      }
+    }
+    return out
+  }, [clips])
+
   /* --------- insertar video (crear clip) --------- */
   const handleSelectVideo = useCallback(async (video: VideoItem) => {
     if (!accessToken || isInteractionDisabled) {
@@ -398,8 +428,14 @@ const statusMessage = project
         body: JSON.stringify({ video_id: video.id }),
       })
       if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `Error ${res.status} al crear el clip`)
+        let detail = ''
+        try {
+          const payload = await res.json()
+          detail = payload?.detail || payload?.error || ''
+        } catch {
+          detail = await res.text()
+        }
+        throw new Error(detail || `Error ${res.status} al crear el clip`)
       }
       // Refrescamos clips y cerramos modal
       await fetchClips()
@@ -410,6 +446,42 @@ const statusMessage = project
       setCreatingClip(false)
     }
   }, [API_BASE, accessToken, projectId, fetchClips, isInteractionDisabled])
+
+  const handleSelectCover = useCallback(async (item: FramePickerItem) => {
+    if (!accessToken || isInteractionDisabled) {
+      if (isInteractionDisabled) toast.error('Duplica el proyecto para poder editarlo.')
+      return
+    }
+    setCoverError(null)
+    setCoverBusy(true)
+    try {
+      const res = await fetch(`${API_BASE}/projects/${projectId}/cover-image/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          project_clip_id: item.clipId,
+          frame_time_ms: item.frameTimeMs,
+          image_url: item.imageUrl,
+        }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(text || `Error ${res.status} al guardar la portada`)
+      }
+      const data = await res.json()
+      setProject(data)
+      setCoverPickerOpen(false)
+      toast.success('Portada actualizada.')
+    } catch (e: any) {
+      setCoverError(e.message || 'No se pudo guardar la portada.')
+    } finally {
+      setCoverBusy(false)
+    }
+  }, [API_BASE, accessToken, isInteractionDisabled, projectId])
 
   const handleAddToCart = useCallback(async () => {
     if (!project) return
@@ -721,6 +793,10 @@ const statusMessage = project
                 printHeightMm={project.print_size_height_mm ?? null}
                 printQualityDpi={project.print_quality_dpi ?? project.print_quality_ppi ?? null}
                 printEffectName={project.print_effect_label ?? null}
+                coverFrame={project.cover_image ? {
+                  projectClipId: project.cover_image.project_clip_id,
+                  frameTimeMs: project.cover_image.frame_time_ms,
+                } : null}
                 onFrameChange={() => void fetchProject()}
                 playbackFps={2}
                 onChange={() => {}}
@@ -728,6 +804,11 @@ const statusMessage = project
                   if (isInteractionDisabled) return
                   setPickerOpen(true)
                 }}   // <<— ABRIR MODAL
+                onOpenCover={() => {
+                  if (isInteractionDisabled) return
+                  setCoverError(null)
+                  setCoverPickerOpen(true)
+                }}
               />
             ) : (
               <div className="h-full w-full grid place-items-center text-white/50">
@@ -1095,6 +1176,14 @@ const statusMessage = project
         onSelect={handleSelectVideo}
         busy={creatingClip}
         error={actionError || undefined}
+      />
+      <FramePickerModal
+        open={coverPickerOpen}
+        onClose={() => setCoverPickerOpen(false)}
+        items={coverItems}
+        busy={coverBusy}
+        error={coverError || undefined}
+        onSelect={handleSelectCover}
       />
       <EditTitleModal
         open={editTitleOpen}

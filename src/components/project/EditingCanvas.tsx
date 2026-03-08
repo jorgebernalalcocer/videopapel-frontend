@@ -41,6 +41,7 @@ type EditingCanvasProps = {
   initialFrames?: number[]; initialTimeMs?: number; thumbsPerSecond?: number;
   thumbnailsCount?: number; thumbnailHeight?: number; onChange?: (timeMs: number) => void;
   disableAutoThumbnails?: boolean; playbackFps?: number; loop?: boolean; onInsertVideo?: () => void;
+  onOpenCover?: () => void;
   printAspectSlug?: string | null;
   onThumbsDensityChange?: (value: number) => void;
   printSizeLabel?: string | null;
@@ -51,6 +52,7 @@ type EditingCanvasProps = {
   printQualityDpi?: number | null;
   printQualityPpi?: number | null;
   printEffectName?: string | null;
+  coverFrame?: { projectClipId: number; frameTimeMs: number } | null;
 }
 
 /* ===== Componente ===== */
@@ -60,6 +62,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     projectId, apiBase, accessToken, clips, clipId, videoSrc, durationMs, initialFrames,
     initialTimeMs = 0, thumbnailsCount, thumbsPerSecond = 8, thumbnailHeight = 68,
     onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo,
+    onOpenCover,
     printAspectSlug = 'fill',
     onThumbsDensityChange,
     printSizeLabel,
@@ -69,6 +72,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     printQualityDpi = null,
     printQualityPpi = null,
     printEffectName = null,
+    coverFrame = null,
   } = props
   const { onFrameChange } = props
   const qualityDpi = printQualityDpi ?? printQualityPpi ?? null
@@ -296,6 +300,13 @@ const textPresenceLookup = useMemo(() => {
   }
   return map
 }, [visibleThumbs, textFramesByClip])
+
+const isCurrentCoverFrame = useMemo(() => {
+  if (!coverFrame || !currentThumb) return false
+  const sameClip = Number((currentThumb as any).clipId) === Number(coverFrame.projectClipId)
+  const sameTime = Math.round(Number((currentThumb as any).tLocal ?? -1)) === Math.round(Number(coverFrame.frameTimeMs))
+  return sameClip && sameTime
+}, [coverFrame, currentThumb])
 
 
   // Play/Step
@@ -655,6 +666,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   printHeightMm={printHeightMm ?? undefined}
   printQualityDpi={qualityDpi ?? undefined}
   printEffectName={printEffectName ?? undefined}
+  isCoverPhoto={isCurrentCoverFrame}
   showViewerControls
   leftHud={
     <div className="flex items-center gap-3">
@@ -733,6 +745,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   isGeneratingSubtitles={isGeneratingSubtitles}
   hasFrame={Boolean(frameSetting && frameSetting.frame)}
   onOpenPresentation={() => setIsPresentationOpen(true)}
+  onOpenCover={onOpenCover}
 />
       </div>
 
@@ -804,6 +817,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
             printHeightMm={printHeightMm ?? undefined}
             printQualityDpi={qualityDpi ?? undefined}
             printEffectName={printEffectName ?? undefined}
+            isCoverPhoto={isCurrentCoverFrame}
             showViewerControls={false}
             forceFull
             isPresentation
