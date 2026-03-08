@@ -22,6 +22,8 @@ type VideoPickerModalProps = {
   apiBase: string
   accessToken: string | null
   onSelect: (video: VideoItem) => void | Promise<void>
+  busy?: boolean
+  error?: string
 }
 
 const FRAME_STATUS = {
@@ -33,7 +35,15 @@ const FRAME_STATUS = {
     ERRORTRANSIENT: "error_transient",
 }
 
-export default function VideoPickerModal({ open, onClose, apiBase, accessToken, onSelect }: VideoPickerModalProps) {
+export default function VideoPickerModal({
+  open,
+  onClose,
+  apiBase,
+  accessToken,
+  onSelect,
+  busy = false,
+  error: externalError,
+}: VideoPickerModalProps) {
   const [videos, setVideos] = useState<VideoItem[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -123,7 +133,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
 
 
   const handleConfirm = async () => {
-    if (!selectedVideo || !accessToken) return
+    if (!selectedVideo || !accessToken || busy) return
     
     // ⭐️ Corrección 2: Asegurar que estamos leyendo el frame_status del objeto seleccionado
     const currentStatus = selectedVideo.frame_status;
@@ -134,7 +144,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
         const readyVideo = await checkFrameStatus(selectedVideo)
         
         // ⭐️ Corrección 3: Usamos el objeto actualizado readyVideo para el flujo final
-        onSelect(readyVideo)
+        await onSelect(readyVideo)
         
         // La limpieza del estado se hace en el finally
       } catch (e: any) {
@@ -151,7 +161,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
 
     } else {
       // Si ya está READY, continuar con el flujo normal
-      onSelect(selectedVideo)
+      await onSelect(selectedVideo)
       setSelectedVideo(null)
       onClose()
     }
@@ -174,7 +184,7 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
       size="lg"
       footer={
         <div className="flex justify-between w-full">
-          {error && <span className="text-sm text-red-600">{error}</span>}
+          {(externalError || error) && <span className="text-sm text-red-600">{externalError || error}</span>}
           <div className="flex gap-2 ml-auto">
             <button
               type="button"
@@ -188,11 +198,11 @@ export default function VideoPickerModal({ open, onClose, apiBase, accessToken, 
             </button>
             <button
               type="button"
-              disabled={!selectedVideo || loading}
+              disabled={!selectedVideo || loading || busy}
               className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               onClick={handleConfirm}
             >
-              Insertar
+              {busy ? 'Insertando…' : 'Insertar'}
             </button>
           </div>
         </div>
