@@ -8,11 +8,14 @@ import TopProgress from "@/components/TopProgress";
 import { ToasterProvider } from '@/components/ToasterProvider'
 import ClientProviders from '@/components/ClientProviders'
 import Script from 'next/script';
+import { GoogleAnalytics } from "@next/third-parties/google";
 
 export const metadata: Metadata = {
   title: "VideoPapel",
   description: "Herramienta para generar productos de impresión",
 };
+
+const gaId = process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -33,6 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <ToasterProvider />
           </ClientProviders>
         </Providers>
+        {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
       </body>
     </html>
   );
