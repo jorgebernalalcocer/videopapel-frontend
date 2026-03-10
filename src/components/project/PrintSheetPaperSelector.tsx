@@ -64,57 +64,69 @@ export default function PrintSheetPaperSelector({
     return () => { cancelled = true }
   }, [apiBase, accessToken, canRequest, projectId])
 
-  const handleChange = useCallback(async (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const nextId = e.target.value ? Number(e.target.value) : ''
-    setSelectedId(nextId)
-    if (!canRequest) return
+  const handleChange = useCallback(
+    async (nextId: number) => {
+      if (!canRequest || nextId === selectedId) return
+      const previous = selectedId
+      setSelectedId(nextId)
 
-    try {
-      setSaving(true)
-      setError(null)
-      const res = await fetch(`${apiBase}/projects/${projectId}/print-sheet-paper/`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        credentials: 'include',
-        body: JSON.stringify({ print_sheet_paper_id: nextId === '' ? null : nextId }),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(text || `PATCH ${res.status}`)
+      try {
+        setSaving(true)
+        setError(null)
+        const res = await fetch(`${apiBase}/projects/${projectId}/print-sheet-paper/`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: 'include',
+          body: JSON.stringify({ print_sheet_paper_id: nextId }),
+        })
+        if (!res.ok) {
+          const text = await res.text()
+          throw new Error(text || `PATCH ${res.status}`)
+        }
+        const saved = options.find((opt) => opt.id === nextId) ?? null
+        if (onSaved) onSaved(saved)
+      } catch (e: any) {
+        setError(e.message || 'No se pudo guardar el papel de impresión.')
+        setSelectedId(previous)
+      } finally {
+        setSaving(false)
       }
-      const saved = nextId === '' ? null : options.find((opt) => opt.id === nextId) ?? null
-      if (onSaved) onSaved(saved)
-    } catch (e: any) {
-      setError(e.message || 'No se pudo guardar el papel de impresión.')
-    } finally {
-      setSaving(false)
-    }
-  }, [apiBase, accessToken, projectId, canRequest, options, onSaved])
+    },
+    [apiBase, accessToken, projectId, canRequest, options, onSaved, selectedId]
+  )
 
   return (
     <div className={className}>
-      <label htmlFor="print-sheet-paper-select" className="block text-sm font-medium text-gray-700 mb-1">
-        Papel de impresión
-      </label>
-      <select
-        id="print-sheet-paper-select"
-        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-        value={selectedId}
-        onChange={handleChange}
-        disabled={!canRequest || loadingOptions || saving}
-      >
-        <option value="">{loadingOptions ? 'Cargando…' : 'Elegir papel'}</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label} — {option.weight} g/m2 — {option.finishing}
-          </option>
-        ))}
-      </select>
-      {saving && <p className="mt-1 text-xs text-gray-500">Guardando…</p>}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-medium text-gray-700">Papel de impresión</legend>
+        <div className="flex flex-col gap-2">
+          {options.map((option) => (
+            <label key={option.id} className="inline-flex items-start gap-3 rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">
+              <input
+                type="radio"
+                name="project-print-sheet-paper"
+                value={option.id}
+                checked={selectedId === option.id}
+                onChange={() => handleChange(option.id)}
+                disabled={!canRequest || saving}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                <span className="font-medium text-sm text-gray-900">{option.label}</span>
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  {option.weight} g/m2 — {option.finishing}
+                </span>
+              </span>
+            </label>
+          ))}
+        </div>
+        {loadingOptions && <p className="text-xs text-gray-500">Cargando opciones…</p>}
+        {saving && <p className="text-xs text-gray-500">Guardando…</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </fieldset>
     </div>
   )
 }

@@ -69,11 +69,11 @@ export default function BindingSelector({
   }, [apiBase, accessToken, projectId, canRequest])
 
   const handleChange = useCallback(
-    async (event: React.ChangeEvent<HTMLSelectElement>) => {
-      const raw = event.target.value
-      const nextId = raw === '' ? '' : Number(raw)
+    async (nextId: number | '') => {
+      if (!canRequest || nextId === selectedId) return
+      const previous = selectedId
       setSelectedId(nextId)
-      if (!canRequest) return
+
       try {
         setSaving(true)
         setError(null)
@@ -96,36 +96,57 @@ export default function BindingSelector({
         if (onSaved) onSaved(saved)
       } catch (e: any) {
         setError(e.message || 'No se pudo guardar la encuadernación seleccionada.')
+        setSelectedId(previous)
       } finally {
         setSaving(false)
       }
     },
-    [apiBase, accessToken, projectId, canRequest, options, onSaved],
+    [apiBase, accessToken, projectId, canRequest, options, onSaved, selectedId],
   )
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-700 mb-1">Encuadernación</label>
-
-      <select
-        value={selectedId}
-        onChange={handleChange}
-        disabled={!canRequest || loadingOptions || saving}
-        className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-60"
-      >
-        <option value="">
-          {loadingOptions ? 'Cargando…' : 'Sin encuadernación / predeterminada'}
-        </option>
-        {options.map(opt => (
-          <option key={opt.id} value={opt.id}>
-            {opt.name}
-            {opt.description ? ` — ${opt.description}` : ''}
-          </option>
-        ))}
-      </select>
-
-      {saving && <p className="mt-1 text-xs text-gray-500">Guardando…</p>}
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      <fieldset className="space-y-3">
+        <legend className="text-sm font-medium text-gray-700">Encuadernación</legend>
+        <div className="flex flex-col gap-2">
+          <label className="inline-flex items-start gap-3 rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">
+            <input
+              type="radio"
+              name="project-print-binding"
+              value=""
+              checked={selectedId === ''}
+              onChange={() => handleChange('')}
+              disabled={!canRequest || saving}
+              className="mt-1 h-4 w-4"
+            />
+            <span className="font-medium text-sm text-gray-900">
+              {loadingOptions ? 'Cargando…' : 'Sin encuadernación / predeterminada'}
+            </span>
+          </label>
+          {options.map((opt) => (
+            <label key={opt.id} className="inline-flex items-start gap-3 rounded-lg border border-gray-200 px-3 py-2 hover:bg-gray-50">
+              <input
+                type="radio"
+                name="project-print-binding"
+                value={opt.id}
+                checked={selectedId === opt.id}
+                onChange={() => handleChange(opt.id)}
+                disabled={!canRequest || saving}
+                className="mt-1 h-4 w-4"
+              />
+              <span>
+                <span className="font-medium text-sm text-gray-900">{opt.name}</span>
+                {opt.description && (
+                  <span className="block text-xs text-gray-500 mt-0.5">{opt.description}</span>
+                )}
+              </span>
+            </label>
+          ))}
+        </div>
+        {loadingOptions && <p className="text-xs text-gray-500">Cargando opciones…</p>}
+        {saving && <p className="text-xs text-gray-500">Guardando…</p>}
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </fieldset>
     </div>
   )
 }
