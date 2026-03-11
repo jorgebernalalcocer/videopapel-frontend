@@ -317,7 +317,7 @@ export default function ShippingPage() {
               />
             </label>
             <label className="text-sm font-medium text-gray-700">
-              Provincia / Estado
+              Provincia
               <input
                 type="text"
                 value={form.state_province}

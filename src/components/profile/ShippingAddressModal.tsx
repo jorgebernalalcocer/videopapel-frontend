@@ -144,7 +144,7 @@ export default function ShippingAddressModal({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Dirección (línea 2)</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Dirección (línea 2, opcional)</label>
           <input
             type="text"
             value={form.line2 ?? ''}
@@ -165,7 +165,7 @@ export default function ShippingAddressModal({
             />
           </label>
           <label className="text-sm font-medium text-gray-700">
-            Provincia / Estado
+            Provincia
             <input
               type="text"
               value={form.state_province}
