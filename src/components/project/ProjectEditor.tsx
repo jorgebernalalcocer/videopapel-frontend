@@ -389,8 +389,20 @@ const statusMessage = project
   )
 
   const effectsPreviewClip = useMemo<EffectPreviewClip | null>(() => {
+    const cover = project?.cover_image
+    if (cover) {
+      const coverClip = clips.find((clip) => clip.id === cover.project_clip_id)
+      const coverVideoUrl = cover.video_url ?? coverClip?.video_url ?? project?.primary_clip?.video_url ?? null
+      if (coverVideoUrl) {
+        return {
+          videoUrl: coverVideoUrl,
+          frameTimeMs: cover.frame_time_ms,
+          imageUrl: cover.image_url ?? null,
+        }
+      }
+    }
     return resolveClipPreview(clips[0]) ?? resolveClipPreview(project?.primary_clip ?? null)
-  }, [clips, project?.primary_clip])
+  }, [clips, project?.cover_image, project?.primary_clip])
 
   const coverItems = useMemo<FramePickerItem[]>(() => {
     const out: FramePickerItem[] = []
