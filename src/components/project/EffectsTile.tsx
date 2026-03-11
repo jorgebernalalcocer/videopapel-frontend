@@ -15,6 +15,7 @@ type PrintEffect = {
 export type EffectPreviewClip = {
   videoUrl: string
   frameTimeMs: number
+  imageUrl?: string | null
 }
 
 type EffectsTileProps = {
@@ -27,8 +28,6 @@ type EffectsTileProps = {
   onSaved?: (effect: PrintEffect | null) => void
   previewClip?: EffectPreviewClip | null
 }
-
-const PREVIEW_PLACEHOLDER = '/samples/sample-1.jpg'
 
 export default function EffectsTile({
   open,
@@ -94,13 +93,14 @@ export default function EffectsTile({
       id: effect.id,
       label: effect.name,
       description: effect.description ?? undefined,
-      imageUrl: effect.preview_url ?? PREVIEW_PLACEHOLDER,
+      imageUrl: effect.preview_url ?? null,
       disabled: savingId !== null && savingId !== effect.id,
     }))
   }, [effects, savingId])
 
   const previewImage = useMemo(() => {
     if (!previewClip) return null
+    if (previewClip.imageUrl) return previewClip.imageUrl
     try {
       return cloudinaryFrameUrlFromVideoUrl(previewClip.videoUrl, previewClip.frameTimeMs, 360)
     } catch {
@@ -144,10 +144,16 @@ export default function EffectsTile({
       <ApplyEffect effectName={tile.label}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={previewImage ?? PREVIEW_PLACEHOLDER}
+          src={previewImage ?? tile.imageUrl ?? undefined}
           alt={`Vista previa con ${tile.label}`}
           className="h-full w-full object-cover"
           loading="lazy"
+          onError={(event) => {
+            const img = event.currentTarget
+            if (img.dataset.fallbackApplied === '1') return
+            img.dataset.fallbackApplied = '1'
+            if (tile.imageUrl) img.src = tile.imageUrl
+          }}
         />
       </ApplyEffect>
     ),

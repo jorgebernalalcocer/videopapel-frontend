@@ -126,6 +126,7 @@ const resolveClipPreview = (clip?: ProjectClipPayload | null): EffectPreviewClip
     return {
       videoUrl: clip.video_url,
       frameTimeMs: firstThumb.frame_time_ms,
+      imageUrl: firstThumb.image_url ?? null,
     }
   }
 
