@@ -19,7 +19,7 @@ import OrdersButton from './OrdersButton'
 import ProfileButton from '@/components/ProfileButton'
 import CartButtonIcon from '@/components/CartButtonIcon'
 import CartButtonString from '@/components/CartButtonString'
-import { Menu as MenuIcon, X } from 'lucide-react' // Importar iconos
+import { Menu as MenuIcon, Minimize, X } from 'lucide-react' // Importar iconos
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
 import { fascinate, fascinateFontStack } from '@/fonts/fascinate'
 import { borelFontStack } from '@/fonts/borel'
@@ -161,7 +161,7 @@ export default function Menu() {
       {isMobileMenuOpen && (
         <div
           id="mobile-menu"
-          className="md:hidden absolute top-16 left-0 w-full bg-white border-b shadow-lg shadow-black/5"
+          className="md:hidden absolute top-16 left-0 w-full min-h-[calc(100vh-4rem)] bg-white border-b shadow-lg shadow-black/5 overflow-y-auto"
         >
           {/* Envolvemos los botones en un componente simple 
             para que al hacer clic en ellos se cierre el menú.
@@ -193,6 +193,16 @@ export default function Menu() {
               </>
             )}
           </MobileMenuWrapper>
+          <div className="flex justify-center pb-4">
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(false)}
+              aria-label="Cerrar menú"
+              className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
+            >
+              <Minimize size={35} />
+            </button>
+          </div>
         </div>
       )}
     </header>
