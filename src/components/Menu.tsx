@@ -26,6 +26,7 @@ import { borelFontStack } from '@/fonts/borel'
 import { cookieFontStack } from '@/fonts/cookie'
 import BookLogo from './BookLogo'
 import AnimatedLogo from '@/components/AnimatedLogoType'
+import ProfileActionCards from '@/components/profile/ProfileActionCards'
 // import '@/styles/animated-logo-type.css'
 
 export default function Menu() {
@@ -171,13 +172,18 @@ export default function Menu() {
                 {/* <span className="text-sm text-gray-600 px-4 pt-2">
                   Hola {user.email}
                 </span> */}
-                <ProjectsButton />
+                <ProfileActionCards
+                  className="grid grid-cols-2 gap-3 pb-3"
+                  onCardClick={() => setIsMobileMenuOpen(false)}
+                  showProfileCard
+                />
+                {/* <ProjectsButton />
                 <ClipsButton />
                 
                 <OrdersButton />
                 
                 <CartButtonString />
-                <ProfileButton />
+                <ProfileButton /> */}
                 {/* <LogoutButton /> */}
               </>
             ) : (

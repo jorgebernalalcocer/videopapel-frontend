@@ -4,13 +4,6 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   MapPin,
   Plus,
-  List,
-  Home,
-  ShoppingBasket,
-  Book,
-  BookOpen,
-  Film,
-  User, // Added User icon for the main profile card
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
@@ -20,6 +13,7 @@ import ShippingAddressModal, {
 import { MyOrders } from '@/components/orders/MyOrders'
 import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
 import LogoutButton from '@/components/LogoutButton'
+import ProfileActionCards from '@/components/profile/ProfileActionCards'
 
 import Link from 'next/link' // Import Link for navigation
 
@@ -37,38 +31,8 @@ const ProfileStat = ({ label, count }: { label: string; count: number }) => (
   </div>
 )
 
-// --- NEW DATA: Action Cards Configuration ---
-const actionCards = [
-  { href: '/projects', icon: BookOpen, label: 'Proyectos', color: 'purple-700' },
-  { href: '/clips', icon: Film, label: 'Videos', color: 'purple-700' },
-  { href: '/orders', icon: List, label: 'Pedidos', color: 'purple-700' },
-  { href: '/shipping', icon: Home, label: 'Dirección de entrega', color: 'purple-700' },
-  { href: '/cart', icon: ShoppingBasket, label: 'Cesta de la compra', color: 'purple-700' },
-  
-  
-]
-
-// --- NEW COMPONENT: Action Card ---
-const ActionCard = ({
-  href,
-  icon: Icon,
-  label,
-  color
-}: {
-  href: string
-  icon: React.ElementType
-  label: string
-  color: string
-}) => (
-  <Link
-    href={href}
-    className="flex aspect-square flex-col items-center justify-center rounded-xl border border-gray-200 bg-white p-4 text-center shadow-sm transition hover:shadow-md"
-  >
-    {/* ¡AQUÍ ESTÁ EL CAMBIO! text-${color} para inyectar la clase completa */}
-    <Icon className={`h-8 w-8 text-${color} mb-2`} /> 
-    <span className="text-sm font-medium text-gray-700">{label}</span>
-  </Link>
-)
+const pluralizeStat = (count: number, singular: string, plural: string) =>
+  count === 1 ? singular : plural
 
 export default function ProfilePage() {
   const hasHydrated = useAuth((s) => s.hasHydrated)
@@ -86,6 +50,7 @@ export default function ProfilePage() {
     projects: 0,
     videos: 0,
     orders: 0,
+    cart: 0,
   })
 
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -99,6 +64,7 @@ export default function ProfilePage() {
     if (!payload) return 0
     if (typeof payload.count === 'number') return payload.count
     if (Array.isArray(payload.results)) return payload.results.length
+    if (Array.isArray(payload.items)) return payload.items.length
     if (Array.isArray(payload)) return payload.length
     return 0
   }
@@ -117,15 +83,17 @@ export default function ProfilePage() {
       return res.json()
     }
     try {
-      const [projectsData, videosData, ordersData] = await Promise.all([
+      const [projectsData, videosData, ordersData, cartData] = await Promise.all([
         fetch(`${API_BASE}/projects/`, withAuth).then(resolvePayload),
         fetch(`${API_BASE}/videos/`, withAuth).then(resolvePayload),
         fetch(`${API_BASE}/orders/`, withAuth).then(resolvePayload),
+        fetch(`${API_BASE}/cart/`, withAuth).then(resolvePayload),
       ])
       setStats({
         projects: countFromPayload(projectsData),
         videos: countFromPayload(videosData),
         orders: countFromPayload(ordersData),
+        cart: countFromPayload(cartData),
       })
     } catch (err) {
       console.error('Error obteniendo las estadísticas del perfil:', err)
@@ -244,20 +212,30 @@ export default function ProfilePage() {
         {/* Stats List */}
         <div className="mt-4 pt-4 border-t border-gray-100 sm:border-t-0 sm:pt-0 sm:mt-0">
           <div className="flex space-x-6">
-            <ProfileStat label="Proyectos" count={stats.projects} />
-            <ProfileStat label="Videos" count={stats.videos} />
-            <ProfileStat label="Pedidos" count={stats.orders} />
+            <ProfileStat
+              label={pluralizeStat(stats.projects, 'Proyecto', 'Proyectos')}
+              count={stats.projects}
+            />
+            <ProfileStat
+              label={pluralizeStat(stats.videos, 'Video', 'Videos')}
+              count={stats.videos}
+            />
+            <ProfileStat
+              label={pluralizeStat(stats.orders, 'Pedido', 'Pedidos')}
+              count={stats.orders}
+            />
+            <ProfileStat
+              label={pluralizeStat(addresses.length, 'Dirección', 'Direcciones')}
+              count={addresses.length}
+            />
+            <ProfileStat label="Cesta" count={stats.cart} />
           </div>
         </div>
       </div>
       {/* --- END NEW CARD --- */}
 
       {/* --- NEW SECTION: Action Cards Grid --- */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {actionCards.map((card) => (
-          <ActionCard key={card.label} {...card} />
-        ))}
-      </div>
+      <ProfileActionCards />
       {/* --- END NEW SECTION --- */}
 
       <header>
