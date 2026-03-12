@@ -580,8 +580,21 @@ const statusMessage = project
             <SquarePen className="h-5 w-5" />
           </button>
         </div>
-        <div className="flex items-center gap-3 text-sm text-gray-500">
-          <StatusBadge status={project.status} compact/>
+        <div className="flex w-full justify-center items-center gap-3 text-sm text-gray-500 sm:w-auto">
+          <StatusBadge
+            status={project.status}
+            compact
+            onAddToCart={handleAddToCart}
+            addToCartDisabled={
+              !project ||
+              addingToCart ||
+              exporting ||
+              project.status === 'exported' ||
+              project.status === 'draft' ||
+              isForeignOwner
+            }
+            addingToCart={addingToCart}
+          />
           <DuplicateProjectButton
             projectId={project.id}
             size="large"

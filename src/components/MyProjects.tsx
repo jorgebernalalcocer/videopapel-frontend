@@ -257,7 +257,7 @@ export default function MyProjects() {
                     className="px-3 py-1.5 text-xs rounded-lg bg-blue-200 text-black hover:bg-blue-700 flex items-center justify-center gap-1"
                   >
                     <ExternalLink className="w-3 h-3" />
-                    Abrir
+                    Abrir proyecto
                   </Link>
 
                   <DuplicateProjectButton
