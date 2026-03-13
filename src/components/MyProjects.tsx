@@ -21,6 +21,7 @@ type Project = {
   is_public: boolean;
   duplicate_of: string | null;
   duplicate_of_name?: string | null;
+  membership_invited_by?: string | null;
   clip_count: number;
   print_size_label?: string | null;
   orientation_name?: string | null;
@@ -159,15 +160,22 @@ export default function MyProjects() {
                 />
 
                 {p.duplicate_of && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    <Link
-                      href={`/projects/${p.duplicate_of}`}
-                      className="font-medium text-purple-600 hover:text-purple-400"
-                    >
-                      Proyecto duplicado de{" "}
-                      {p.duplicate_of_name || p.duplicate_of}
-                    </Link>
-                  </p>
+                  <div className="mt-1 space-y-1">
+                    <p className="text-xs text-gray-400">
+                      <Link
+                        href={`/projects/${p.duplicate_of}`}
+                        className="font-medium text-purple-600 hover:text-purple-400"
+                      >
+                        Proyecto duplicado de{" "}
+                        {p.duplicate_of_name || p.duplicate_of}
+                      </Link>
+                    </p>
+                    {p.membership_invited_by && (
+                      <p className="text-xs text-gray-400">
+                        Creado por: {p.membership_invited_by}
+                      </p>
+                    )}
+                  </div>
                 )}
 
                 <div className="mt-4 flex gap-2">
