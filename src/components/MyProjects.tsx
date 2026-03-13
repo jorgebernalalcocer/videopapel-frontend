@@ -5,9 +5,7 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/store/auth";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
-import { toast } from "sonner";
 import { Share2, ExternalLink } from "lucide-react";
-import { ShareConfirmationModal } from "@/components/ShareConfirmationModal";
 import { ShareModal } from "@/components/ShareModal";
 import { DateFormat } from "@/components/DateFormat";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
@@ -49,17 +47,7 @@ export default function MyProjects() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Estado para la modal de CONFIRMACIÓN (hacer público)
-  const [shareConfirmationProject, setShareConfirmationProject] =
-    useState<Project | null>(null);
-
-  // Estado para la modal de COMPARTIR (redes sociales)
-  const [sharePublicProject, setSharePublicProject] = useState<Project | null>(
-    null
-  );
-
-  const [sharingId, setSharingId] = useState<string | null>(null);
-  const [updatingPrivacy, setUpdatingPrivacy] = useState(false);
+  const [shareProject, setShareProject] = useState<Project | null>(null);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
   const hasHydrated = useAuth((s) => s.hasHydrated);
@@ -96,78 +84,9 @@ export default function MyProjects() {
     };
   }, [fetchProjects]);
 
-  const shareProject = useCallback(async (project: Project) => {
-    if (typeof window === "undefined") return;
-    const shareUrl = `${window.location.origin}/clips/${project.id}`;
-    setSharingId(project.id);
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: project.name || "Proyecto de VideoPapel",
-          text: "Mira este proyecto en VideoPapel",
-          url: shareUrl,
-        });
-        toast.success("Proyecto compartido correctamente (vía nativa).");
-      } else {
-        setSharePublicProject(project);
-      }
-    } catch (err: any) {
-      if (err?.name === "AbortError") return;
-      setSharePublicProject(project);
-      toast.info("Abriendo opciones de compartición...");
-    } finally {
-      setSharingId(null);
-    }
-  }, []);
-
   const handleShareClick = useCallback((project: Project) => {
-    if (!project.is_public) {
-      setShareConfirmationProject(project);
-      return;
-    }
-    setSharePublicProject(project);
+    setShareProject(project);
   }, []);
-
-  const handleMakePublic = useCallback(
-    async (project: Project) => {
-      if (!accessToken) return;
-      const projectId = project.id;
-      setUpdatingPrivacy(true);
-      try {
-        const res = await fetch(`${API_BASE}/projects/${projectId}/`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          credentials: "include",
-          body: JSON.stringify({ is_public: true }),
-        });
-        if (!res.ok) {
-          const text = await res.text();
-          throw new Error(text || `Error ${res.status}`);
-        }
-        const updated = (await res.json()) as Project;
-        setProjects((prev) =>
-          prev.map((proj) =>
-            proj.id === projectId ? { ...proj, is_public: true } : proj
-          )
-        );
-        toast.success(
-          "El proyecto ahora es público. Abriendo opciones para compartir."
-        );
-
-        setShareConfirmationProject(null);
-        setUpdatingPrivacy(false);
-        setSharePublicProject(updated);
-      } catch (err: any) {
-        toast.error(err?.message || "No se pudo actualizar la privacidad.");
-      } finally {
-        setUpdatingPrivacy(false);
-      }
-    },
-    [API_BASE, accessToken]
-  );
 
   if (!hasHydrated) return <p className="text-gray-500">Preparando…</p>;
   if (!accessToken)
@@ -273,11 +192,9 @@ export default function MyProjects() {
                   <button
                     type="button"
                     onClick={() => handleShareClick(p)}
-                    disabled={sharingId === p.id}
                     title="Compartir proyecto"
                     className="
                       px-3 py-1.5 text-xs rounded-lg bg-purple-100 text-black hover:bg-gray-50
-                      disabled:opacity-60 disabled:cursor-not-allowed
                       flex items-center justify-center gap-1
                     "
                   >
@@ -302,20 +219,23 @@ export default function MyProjects() {
         </ul>
       </section>
 
-      {/* Modal de Confirmación (Privado -> Público) */}
-      <ShareConfirmationModal
-        project={shareConfirmationProject}
-        onClose={() =>
-          updatingPrivacy ? undefined : setShareConfirmationProject(null)
-        }
-        onMakePublic={handleMakePublic}
-        isUpdating={updatingPrivacy}
-      />
-
-      {/* Modal de Compartir (Público -> Redes Sociales) */}
       <ShareModal
-        project={sharePublicProject}
-        onClose={() => setSharePublicProject(null)}
+        project={shareProject}
+        onClose={() => setShareProject(null)}
+        onProjectUpdated={(updatedProject) => {
+          setProjects((prev) =>
+            prev.map((projectItem) =>
+              projectItem.id === updatedProject.id
+                ? { ...projectItem, ...updatedProject }
+                : projectItem
+            )
+          );
+          setShareProject((current) =>
+            current && current.id === updatedProject.id
+              ? { ...current, ...updatedProject }
+              : current
+          );
+        }}
       />
     </>
   );

@@ -60,6 +60,9 @@ type Project = {
   id: string
   name: string | null
   owner_id: number
+  current_user_role?: 'owner' | 'edit' | 'view' | null
+  current_user_can_edit?: boolean
+  current_user_can_manage_sharing?: boolean
   status: 'draft' | 'ready' | 'exported'
   created_at: string
   updated_at?: string
@@ -208,11 +211,17 @@ const statusMessage = project
   const [duplicateError, setDuplicateError] = useState<string | null>(null)
   const router = useRouter()
 
-  const isForeignOwner = useMemo(() => {
+  const canEditProject = useMemo(() => {
+    if (!project || !currentUser) return false
+    if (project.owner_id === currentUser.id) return true
+    return Boolean(project.current_user_can_edit)
+  }, [project, currentUser])
+  const isNonOwner = useMemo(() => {
     if (!project || !currentUser) return false
     return project.owner_id !== currentUser.id
   }, [project, currentUser])
-  const isInteractionDisabled = isProjectExported || isForeignOwner
+  const isForeignOwner = useMemo(() => isNonOwner && !canEditProject, [isNonOwner, canEditProject])
+  const isInteractionDisabled = isProjectExported || !canEditProject
 
 
   /* --------- fetch proyecto --------- */
@@ -294,12 +303,12 @@ const statusMessage = project
       setPricePreview(null)
       return
     }
-    if (project && currentUser && project.owner_id !== currentUser.id) {
+    if (isNonOwner) {
       setPricePreview(null)
       return
     }
     void fetchProjectPrice()
-  }, [project, fetchProjectPrice, currentUser])
+  }, [project, fetchProjectPrice, isNonOwner])
 
   useEffect(() => {
     if (isForeignOwner && !ownershipModalDismissed) {
@@ -498,8 +507,8 @@ const statusMessage = project
 
   const handleAddToCart = useCallback(async () => {
     if (!project) return
-    if (isForeignOwner) {
-      toast.error('Duplica el proyecto para añadirlo a tu cesta.')
+    if (isNonOwner) {
+      toast.error('Solo el titular puede añadir el proyecto a la cesta.')
       return
     }
     if (!accessToken) {
@@ -527,7 +536,7 @@ const statusMessage = project
     } finally {
       setAddingToCart(false)
     }
-  }, [API_BASE, accessToken, project, isForeignOwner])
+  }, [API_BASE, accessToken, project, isNonOwner])
 
   /* --------- Render: estados --------- */
 
@@ -591,7 +600,7 @@ const statusMessage = project
               exporting ||
               project.status === 'exported' ||
               project.status === 'draft' ||
-              isForeignOwner
+              isNonOwner
             }
             addingToCart={addingToCart}
           />
@@ -636,7 +645,7 @@ const statusMessage = project
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
-                  disabled={isInteractionDisabled}
+                  disabled={isInteractionDisabled || isNonOwner}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintQualityBadge}
@@ -1048,7 +1057,7 @@ const statusMessage = project
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
-                  disabled={isInteractionDisabled}
+                  disabled={isInteractionDisabled || isNonOwner}
                 />
               </div>
 
@@ -1069,7 +1078,7 @@ const statusMessage = project
                   exporting ||
                   project.status === 'exported' ||
                   project.status === 'draft' ||
-                  isForeignOwner
+                  isNonOwner
                 }
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
               >
@@ -1098,7 +1107,7 @@ const statusMessage = project
               <button
                 type="button"
                 onClick={() => void fetchProjectPrice()}
-                disabled={priceLoading || !project || isForeignOwner}
+                disabled={priceLoading || !project || isNonOwner}
                 className="text-sm font-medium text-purple-600 hover:text-purple-500 disabled:opacity-40"
               >
                 Actualizar
@@ -1137,7 +1146,7 @@ const statusMessage = project
                   void exportPdf(project.id)
                 }
               }}
-              disabled={exporting || isForeignOwner}
+              disabled={exporting || isNonOwner}
             >
               {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
             </button>
