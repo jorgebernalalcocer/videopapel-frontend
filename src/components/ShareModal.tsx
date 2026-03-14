@@ -27,10 +27,21 @@ type ProjectMembership = {
   updated_at: string
 }
 
+type ProjectInvitation = {
+  token: string
+  email: string
+  role: MembershipRole
+  role_label: string
+  created_at: string
+  expires_at: string | null
+  accepted_at: string | null
+}
+
 type MembershipResponse = {
   project_id: string
   is_public: boolean
   memberships: ProjectMembership[]
+  invitations?: ProjectInvitation[]
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -74,6 +85,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   const [message, setMessage] = useState('')
   const [isPublic, setIsPublic] = useState(false)
   const [memberships, setMemberships] = useState<ProjectMembership[]>([])
+  const [invitations, setInvitations] = useState<ProjectInvitation[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [updatingAccess, setUpdatingAccess] = useState(false)
@@ -92,6 +104,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     setMessage('')
     setIsPublic(Boolean(project.is_public))
     setMemberships([])
+    setInvitations([])
     setMembersError(null)
 
     let cancelled = false
@@ -108,6 +121,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
         const payload = (await response.json()) as MembershipResponse
         if (cancelled) return
         setMemberships(payload.memberships ?? [])
+        setInvitations(payload.invitations ?? [])
         setIsPublic(Boolean(payload.is_public))
       } catch (error: any) {
         if (cancelled) return
@@ -218,6 +232,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
       }
 
       setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : memberships)
+      setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : invitations)
       toast.success('Invitación enviada correctamente.')
       resetComposer()
     } catch (error: any) {
@@ -291,6 +306,24 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                   <p className="min-w-0 flex-1 truncate text-sm text-gray-900">{membership.email}</p>
                   <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
                     {membership.role === 'edit' ? 'Editor' : 'Ver'}
+                  </span>
+                </div>
+              ))}
+
+              {invitations.map((invitation) => (
+                <div
+                  key={invitation.token}
+                  className="flex items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-4 py-3"
+                >
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(invitation.email)}`}>
+                    {emailInitial(invitation.email)}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm text-gray-900">{invitation.email}</p>
+                    <p className="text-xs text-amber-600">Invitación pendiente</p>
+                  </div>
+                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
+                    {invitation.role === 'edit' ? 'Editar' : 'Ver'}
                   </span>
                 </div>
               ))}
