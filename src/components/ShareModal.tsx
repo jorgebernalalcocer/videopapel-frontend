@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, CircleX, Globe, Search, Users } from 'lucide-react'
+import { ArrowLeft, CircleX, Crown, Globe, Search, User, Users } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiFetch } from '@/lib/api'
-import { useAuth } from '@/store/auth'
 import { Modal } from '@/components/ui/Modal'
+import { useAuth } from '@/store/auth'
 import { type Project } from './MyProjects'
 
 type ShareModalProps = {
@@ -40,6 +40,9 @@ type ProjectInvitation = {
 type MembershipResponse = {
   project_id: string
   is_public: boolean
+  owner_email?: string | null
+  owner_name?: string | null
+  current_user_can_manage_sharing?: boolean
   memberships: ProjectMembership[]
   invitations?: ProjectInvitation[]
 }
@@ -78,17 +81,22 @@ function extractErrorMessage(payload: unknown, fallback: string) {
 }
 
 export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalProps) {
-  const user = useAuth((state) => state.user)
+  const currentUserEmail = useAuth((state) => state.user?.email?.trim().toLowerCase() ?? '')
   const [step, setStep] = useState<ShareStep>('shareInfo')
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<MembershipRole>('edit')
   const [message, setMessage] = useState('')
   const [isPublic, setIsPublic] = useState(false)
+  const [ownerEmail, setOwnerEmail] = useState('')
+  const [ownerName, setOwnerName] = useState('')
+  const [canManageSharing, setCanManageSharing] = useState(false)
   const [memberships, setMemberships] = useState<ProjectMembership[]>([])
   const [invitations, setInvitations] = useState<ProjectInvitation[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [updatingAccess, setUpdatingAccess] = useState(false)
+  const [updatingMembershipId, setUpdatingMembershipId] = useState<number | null>(null)
+  const [deletingMembershipId, setDeletingMembershipId] = useState<number | null>(null)
   const [membersError, setMembersError] = useState<string | null>(null)
   const stepOneInputRef = useRef<HTMLInputElement>(null)
   const stepTwoInputRef = useRef<HTMLInputElement>(null)
@@ -103,6 +111,9 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     setRole('edit')
     setMessage('')
     setIsPublic(Boolean(project.is_public))
+    setOwnerEmail(project.owner_email ?? '')
+    setOwnerName(project.owner_name ?? project.owner_email ?? '')
+    setCanManageSharing(Boolean(project.current_user_can_manage_sharing))
     setMemberships([])
     setInvitations([])
     setMembersError(null)
@@ -123,6 +134,13 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
         setMemberships(payload.memberships ?? [])
         setInvitations(payload.invitations ?? [])
         setIsPublic(Boolean(payload.is_public))
+        setOwnerEmail(payload.owner_email ?? project.owner_email ?? '')
+        setOwnerName(payload.owner_name ?? payload.owner_email ?? project.owner_name ?? project.owner_email ?? '')
+        setCanManageSharing(
+          typeof payload.current_user_can_manage_sharing === 'boolean'
+            ? payload.current_user_can_manage_sharing
+            : Boolean(project.current_user_can_manage_sharing)
+        )
       } catch (error: any) {
         if (cancelled) return
         setMembersError(error?.message || 'No se pudo cargar la lista de accesos.')
@@ -153,10 +171,11 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   }, [step])
 
   if (!project) return null
-
-  const ownerEmail = user?.email ?? ''
+  const ownerIdentity = ownerName || ownerEmail || 'Titular del proyecto'
+  const ownerEmailNormalized = ownerEmail.trim().toLowerCase()
 
   const handleComposerValue = (value: string) => {
+    if (!canManageSharing) return
     setEmail(value)
     if (value.trim().length > 0) {
       setStep('sharing')
@@ -175,7 +194,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   }
 
   const handleAccessChange = async (nextValue: boolean) => {
-    if (!project || nextValue === isPublic) return
+    if (!project || !canManageSharing || nextValue === isPublic) return
 
     const previousValue = isPublic
     setIsPublic(nextValue)
@@ -210,7 +229,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   }
 
   const handleShare = async () => {
-    if (!project || !isValidEmail) return
+    if (!project || !canManageSharing || !isValidEmail) return
 
     setSharing(true)
     try {
@@ -242,17 +261,73 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     }
   }
 
+  const handleDeleteAccess = async (membership: ProjectMembership) => {
+    if (!project || !canManageSharing) return
+
+    setDeletingMembershipId(membership.id)
+    try {
+      const response = await apiFetch(`/projects/${project.id}/memberships/${membership.id}/`, {
+        method: 'DELETE',
+        headers: {
+          Accept: 'application/json',
+        },
+      })
+
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(extractErrorMessage(payload, 'No se pudo eliminar el acceso.'))
+      }
+
+      setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : [])
+      setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : [])
+      toast.success('Acceso eliminado correctamente.')
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo eliminar el acceso.')
+    } finally {
+      setDeletingMembershipId(null)
+    }
+  }
+
+  const handleMembershipRoleChange = async (membership: ProjectMembership, nextRole: MembershipRole) => {
+    if (!project || !canManageSharing || membership.role === nextRole) return
+
+    setUpdatingMembershipId(membership.id)
+    try {
+      const response = await apiFetch(`/projects/${project.id}/memberships/${membership.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Accept: 'application/json',
+        },
+        body: JSON.stringify({ role: nextRole }),
+      })
+
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) {
+        throw new Error(extractErrorMessage(payload, 'No se pudo actualizar el rol.'))
+      }
+
+      setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : [])
+      setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : [])
+      toast.success('Rol actualizado correctamente.')
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo actualizar el rol.')
+    } finally {
+      setUpdatingMembershipId(null)
+    }
+  }
+
   const accessOptions = [
     {
       value: false,
       icon: Users,
-      title: 'Solo tienen acceso las personas añadidas',
+      title: 'Solo tienen acceso las personas añadidas (Privado)',
       description: 'Solo las personas que tienen acceso al diseño pueden utilizar este enlace.',
     },
     {
       value: true,
       icon: Globe,
-      title: 'Cualquier persona que tenga el enlace',
+      title: 'Cualquier persona que tenga el enlace (Público)',
       description: 'Cualquiera puede acceder al diseño a través de este enlace. No hace falta iniciar sesión.',
     },
   ] as const
@@ -262,7 +337,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
       open={Boolean(project)}
       onClose={onClose}
       title="Compartir proyecto"
-      size={step === 'sharing' ? 'md' : 'lg'}
+      size="lg"
     >
       {step === 'shareInfo' ? (
         <div className="space-y-8">
@@ -279,23 +354,40 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                 value={email}
                 onChange={(event) => handleComposerValue(event.target.value)}
                 placeholder="Añade el mail de las personas"
+                readOnly={!canManageSharing}
                 className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-gray-400"
               />
             </div>
 
+            {!canManageSharing && (
+              <p className="text-sm text-red-700">Solo el titular puede invitar personas o cambiar el nivel de acceso.</p>
+            )}
+
             <div className="space-y-3">
               <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(ownerEmail || project.id)}`}>
-                  {emailInitial(ownerEmail || project.id)}
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(ownerEmail || ownerIdentity || project.id)}`}>
+                  {emailInitial(ownerEmail || ownerIdentity || project.id)}
                 </div>
-                <p className="min-w-0 flex-1 truncate text-sm text-gray-900">{ownerEmail || 'Titular del proyecto'}</p>
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <p className="truncate text-sm text-gray-900">{ownerIdentity}</p>
+                  {ownerEmailNormalized === currentUserEmail && (
+                    <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
+                      <User className="h-3.5 w-3.5" />
+                      (Yo)
+                    </span>
+                  )}
+                  <Crown className="h-5 w-5 shrink-0 text-yellow-500" />
+                </div>
                 <span className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-white">Titular</span>
               </div>
 
               {loadingMembers && <p className="text-sm text-gray-500">Cargando accesos...</p>}
               {membersError && <p className="text-sm text-red-600">{membersError}</p>}
 
-              {memberships.map((membership) => (
+              {memberships.map((membership) => {
+                const membershipEmail = membership.email.trim().toLowerCase()
+                const isCurrentUser = membershipEmail === currentUserEmail
+                return (
                 <div
                   key={membership.id}
                   className="flex items-center gap-3 rounded-2xl border border-gray-100 px-4 py-3"
@@ -303,12 +395,37 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                   <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(membership.email)}`}>
                     {emailInitial(membership.email)}
                   </div>
-                  <p className="min-w-0 flex-1 truncate text-sm text-gray-900">{membership.email}</p>
-                  <span className="rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                    {membership.role === 'edit' ? 'Editor' : 'Ver'}
-                  </span>
+                  <div className="flex min-w-0 flex-1 items-center gap-2">
+                    <p className="truncate text-sm text-gray-900">{membership.email}</p>
+                    {isCurrentUser && (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
+                        <User className="h-5 w-5" />
+                        (Yo)
+                      </span>
+                    )}
+                  </div>
+                  <select
+                    value={membership.role}
+                    onChange={(event) => void handleMembershipRoleChange(membership, event.target.value as MembershipRole)}
+                    disabled={!canManageSharing || updatingMembershipId === membership.id}
+                    className="rounded-full border border-gray-200 bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700 outline-none transition focus:border-gray-400 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    <option value="edit">Permiso editor</option>
+                    <option value="view">Permiso para ver</option>
+                  </select>
+                  {canManageSharing && (
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteAccess(membership)}
+                      disabled={deletingMembershipId === membership.id || updatingMembershipId === membership.id}
+                      className="px-3 py-1 text-xs font-medium bg-red-200 text-black rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-200 disabled:text-white disabled:cursor-not-allowed"
+                    >
+                      {deletingMembershipId === membership.id ? 'Eliminando...' : 'Eliminar acceso'}
+                    </button>
+                  )}
                 </div>
-              ))}
+                )
+              })}
 
               {invitations.map((invitation) => (
                 <div
@@ -323,7 +440,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                     <p className="text-xs text-amber-600">Invitación pendiente</p>
                   </div>
                   <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                    {invitation.role === 'edit' ? 'Editar' : 'Ver'}
+                    {invitation.role === 'edit' ? 'Rol editor' : 'Rol lectura'}
                   </span>
                 </div>
               ))}
@@ -341,11 +458,11 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                     key={option.title}
                     type="button"
                     onClick={() => void handleAccessChange(option.value)}
-                    disabled={updatingAccess}
+                    disabled={updatingAccess || !canManageSharing}
                     className={[
                       'flex items-start gap-3 rounded-2xl border px-4 py-4 text-left transition',
                       active ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-400',
-                      updatingAccess ? 'opacity-70' : '',
+                      updatingAccess || !canManageSharing ? 'opacity-70' : '',
                     ].join(' ')}
                   >
                     <span className="mt-0.5 rounded-full bg-white p-2 shadow-sm">
@@ -384,6 +501,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                 value={email}
                 onChange={(event) => handleComposerValue(event.target.value)}
                 placeholder="Añade el mail de las personas"
+                readOnly={!canManageSharing}
                 className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-11 text-sm text-gray-900 outline-none transition focus:border-gray-400"
               />
               {email.trim().length > 0 && (
@@ -401,10 +519,11 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
             <select
               value={role}
               onChange={(event) => setRole(event.target.value as MembershipRole)}
+              disabled={!canManageSharing}
               className="h-12 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium text-gray-900 outline-none transition focus:border-gray-400"
             >
-              <option value="edit">Editar</option>
-              <option value="view">Ver</option>
+              <option value="edit">Rol editor</option>
+              <option value="view">Rol lectura</option>
             </select>
           </div>
 
@@ -413,13 +532,14 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
             onChange={(event) => setMessage(event.target.value)}
             placeholder="Añadir mensaje (opcional)"
             rows={4}
+            readOnly={!canManageSharing}
             className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-400"
           />
 
           <button
             type="button"
             onClick={() => void handleShare()}
-            disabled={!isValidEmail || sharing}
+            disabled={!canManageSharing || !isValidEmail || sharing}
             className="w-full rounded-2xl bg-purple-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-purple-50 disabled:text-gray-500"
           >
             {sharing ? 'Compartiendo...' : 'Compartir'}

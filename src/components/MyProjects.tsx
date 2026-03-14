@@ -5,10 +5,11 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useAuth } from "@/store/auth";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
-import { Share2, ExternalLink } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import { ShareModal } from "@/components/ShareModal";
 import { DateFormat } from "@/components/DateFormat";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
+import ShareProjectButton from "@/components/ShareProjectButton";
 import ProjectPrivacyBadge from "@/components/project/ProjectPrivacyBadge";
 import StatusBadge from "@/components/project/StatusBadge";
 
@@ -19,9 +20,13 @@ type Project = {
   created_at: string;
   updated_at: string;
   is_public: boolean;
+  owner_email?: string | null;
+  owner_name?: string | null;
+  current_user_can_manage_sharing?: boolean;
   duplicate_of: string | null;
   duplicate_of_name?: string | null;
   membership_invited_by?: string | null;
+  shared_with_emails?: string[];
   clip_count: number;
   print_size_label?: string | null;
   orientation_name?: string | null;
@@ -178,6 +183,20 @@ export default function MyProjects() {
                   </div>
                 )}
 
+                {Array.isArray(p.shared_with_emails) &&
+                  p.shared_with_emails.length > 0 && (
+                    <div className="mt-1 space-y-1">
+                      {p.owner_email && (
+                        <p className="text-xs text-gray-400">
+                          Creado por: {p.owner_email}
+                        </p>
+                      )}
+                      <p className="text-xs text-gray-400">
+                        Compartido con: {p.shared_with_emails.join(", ")}
+                      </p>
+                    </div>
+                  )}
+
                 <div className="mt-4 flex gap-2">
                   <Link
                     href={`/projects/${p.id}`}
@@ -197,18 +216,7 @@ export default function MyProjects() {
                     title="Duplicar proyecto"
                   />
 
-                  <button
-                    type="button"
-                    onClick={() => handleShareClick(p)}
-                    title="Compartir proyecto"
-                    className="
-                      px-3 py-1.5 text-xs rounded-lg bg-purple-100 text-black hover:bg-gray-50
-                      flex items-center justify-center gap-1
-                    "
-                  >
-                    <Share2 className="w-3 h-3" />
-                    Compartir
-                  </button>
+                  <ShareProjectButton onClick={() => handleShareClick(p)} />
                 </div>
 
                 <DeleteProjectButton

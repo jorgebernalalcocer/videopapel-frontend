@@ -30,6 +30,8 @@ import type { FrameSettingClient } from '@/types/frame'
 import { toast } from 'sonner'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
 import DuplicateProjectButton from '@/components/DuplicateProjectButton'
+import ShareProjectButton from '@/components/ShareProjectButton'
+import { ShareModal } from '@/components/ShareModal'
 import EditTitleModal from '@/components/project/EditTitleModal'
 import { SquarePen } from 'lucide-react'
 import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/ProjectPriceCard'
@@ -60,6 +62,8 @@ type Project = {
   id: string
   name: string | null
   owner_id: number
+  owner_email?: string | null
+  owner_name?: string | null
   current_user_role?: 'owner' | 'edit' | 'view' | null
   current_user_can_edit?: boolean
   current_user_can_manage_sharing?: boolean
@@ -172,6 +176,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [creatingClip, setCreatingClip] = useState(false)
   const [coverBusy, setCoverBusy] = useState(false)
   const [editTitleOpen, setEditTitleOpen] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
   const isProjectExported = project?.status === 'exported'
   const currentUser = useAuth((s) => s.user)
@@ -216,11 +221,15 @@ const statusMessage = project
     if (project.owner_id === currentUser.id) return true
     return Boolean(project.current_user_can_edit)
   }, [project, currentUser])
-  const isNonOwner = useMemo(() => {
+  const canManageProject = useMemo(() => {
     if (!project || !currentUser) return false
-    return project.owner_id !== currentUser.id
+    if (project.owner_id === currentUser.id) return true
+    return Boolean(project.current_user_can_manage_sharing)
   }, [project, currentUser])
-  const isForeignOwner = useMemo(() => isNonOwner && !canEditProject, [isNonOwner, canEditProject])
+  const isForeignOwner = useMemo(
+    () => Boolean(project) && !canManageProject && !canEditProject,
+    [project, canManageProject, canEditProject]
+  )
   const isInteractionDisabled = isProjectExported || !canEditProject
 
 
@@ -303,12 +312,8 @@ const statusMessage = project
       setPricePreview(null)
       return
     }
-    if (isNonOwner) {
-      setPricePreview(null)
-      return
-    }
     void fetchProjectPrice()
-  }, [project, fetchProjectPrice, isNonOwner])
+  }, [project, fetchProjectPrice])
 
   useEffect(() => {
     if (isForeignOwner && !ownershipModalDismissed) {
@@ -507,10 +512,6 @@ const statusMessage = project
 
   const handleAddToCart = useCallback(async () => {
     if (!project) return
-    if (isNonOwner) {
-      toast.error('Solo el titular puede añadir el proyecto a la cesta.')
-      return
-    }
     if (!accessToken) {
       toast.error('Debes iniciar sesión para añadir al cesta.')
       return
@@ -536,7 +537,7 @@ const statusMessage = project
     } finally {
       setAddingToCart(false)
     }
-  }, [API_BASE, accessToken, project, isNonOwner])
+  }, [API_BASE, accessToken, project])
 
   /* --------- Render: estados --------- */
 
@@ -599,8 +600,7 @@ const statusMessage = project
               addingToCart ||
               exporting ||
               project.status === 'exported' ||
-              project.status === 'draft' ||
-              isNonOwner
+              project.status === 'draft'
             }
             addingToCart={addingToCart}
           />
@@ -610,6 +610,7 @@ const statusMessage = project
             className="px-3 py-1 text-xs rounded-lg"
             title="Duplicar proyecto"
           />
+          <ShareProjectButton onClick={() => setShareOpen(true)} />
         </div>
       </header>
 
@@ -645,7 +646,7 @@ const statusMessage = project
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
-                  disabled={isInteractionDisabled || isNonOwner}
+                  disabled={isProjectExported || !canManageProject}
                 />
                 <SelectableBadgeWrapper
                   BadgeComponent={PrintQualityBadge}
@@ -1057,7 +1058,7 @@ const statusMessage = project
                   })}
                   modalTitle="Privacidad del proyecto"
                   modalDescription="Define si este proyecto es público o privado."
-                  disabled={isInteractionDisabled || isNonOwner}
+                  disabled={isProjectExported || !canManageProject}
                 />
               </div>
 
@@ -1077,8 +1078,7 @@ const statusMessage = project
                   addingToCart ||
                   exporting ||
                   project.status === 'exported' ||
-                  project.status === 'draft' ||
-                  isNonOwner
+                  project.status === 'draft'
                 }
                 className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
               >
@@ -1107,7 +1107,7 @@ const statusMessage = project
               <button
                 type="button"
                 onClick={() => void fetchProjectPrice()}
-                disabled={priceLoading || !project || isNonOwner}
+                disabled={priceLoading || !project}
                 className="text-sm font-medium text-purple-600 hover:text-purple-500 disabled:opacity-40"
               >
                 Actualizar
@@ -1146,7 +1146,7 @@ const statusMessage = project
                   void exportPdf(project.id)
                 }
               }}
-              disabled={exporting || isNonOwner}
+              disabled={exporting}
             >
               {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
             </button>
@@ -1173,8 +1173,8 @@ const statusMessage = project
       <Modal
         open={ownershipModalOpen}
         onClose={handleCloseOwnershipModal}
-        title="Este proyecto pertenece a otro usuario"
-        description="Duplícalo para tener una copia propia y poder editarlo."
+        title="Solo tienes permiso de visualización en este proyecto"
+        description="Duplícalo para tener una copia propia y poder editarlo a tu gusto."
         footer={
           <>
             <button
@@ -1183,7 +1183,7 @@ const statusMessage = project
               onClick={handleCloseOwnershipModal}
               disabled={duplicatingForeign}
             >
-              Cancelar
+              Ver proyecto
             </button>
             <button
               type="button"
@@ -1196,10 +1196,13 @@ const statusMessage = project
           </>
         }
       >
-        <div className="space-y-2 text-sm text-gray-700">
+        {/* <div className="space-y-2 text-sm text-gray-700">
           <p>Este proyecto es público, pero pertenece a otra cuenta. Crea una copia para guardarlo en tu espacio.</p>
           {duplicateError && <p className="text-red-600">{duplicateError}</p>}
-        </div>
+        </div> */}
+                       {/* <p className="text-sm text-gray-700">
+          Duplícalo para tener una copia propia y poder editarlo a tu gusto
+        </p> */}
       </Modal>
 
       {/* Modal de selección de video */}
@@ -1225,6 +1228,13 @@ const statusMessage = project
         currentTitle={project.name}
         onClose={() => setEditTitleOpen(false)}
         onSave={handleSaveTitle}
+      />
+      <ShareModal
+        project={shareOpen ? project : null}
+        onClose={() => setShareOpen(false)}
+        onProjectUpdated={(updatedProject) => {
+          setProject((current) => (current ? { ...current, ...updatedProject } : current))
+        }}
       />
     </div>
   )
