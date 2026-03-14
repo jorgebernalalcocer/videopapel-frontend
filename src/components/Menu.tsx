@@ -5,6 +5,7 @@ import Link from 'next/link'
 import {
   Children,
   isValidElement,
+  type ElementType,
   ReactNode,
   useEffect,
   useState,
@@ -19,7 +20,7 @@ import OrdersButton from './OrdersButton'
 import ProfileButton from '@/components/ProfileButton'
 import CartButtonIcon from '@/components/CartButtonIcon'
 import CartButtonString from '@/components/CartButtonString'
-import { Menu as MenuIcon, Minimize, X } from 'lucide-react' // Importar iconos
+import { LogIn, Menu as MenuIcon, Minimize, UserPlus, X } from 'lucide-react' // Importar iconos
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
 import { fascinate, fascinateFontStack } from '@/fonts/fascinate'
 import { borelFontStack } from '@/fonts/borel'
@@ -28,6 +29,37 @@ import BookLogo from './BookLogo'
 import AnimatedLogo from '@/components/AnimatedLogoType'
 import ProfileActionCards from '@/components/profile/ProfileActionCards'
 // import '@/styles/animated-logo-type.css'
+
+type MobileGuestActionCardProps = {
+  href: string
+  label: string
+  icon: ElementType
+  iconClassName: string
+  cardClassName: string
+  textClassName: string
+  onClick: () => void
+}
+
+function MobileGuestActionCard({
+  href,
+  label,
+  icon: Icon,
+  iconClassName,
+  cardClassName,
+  textClassName,
+  onClick,
+}: MobileGuestActionCardProps) {
+  return (
+    <Link
+      href={href}
+      onClick={onClick}
+      className={`flex aspect-square flex-col items-center justify-center rounded-xl border p-4 text-center shadow-sm transition hover:shadow-md ${cardClassName}`}
+    >
+      <Icon className={`mb-2 h-8 w-8 ${iconClassName}`} />
+      <span className={`text-sm font-medium ${textClassName}`}>{label}</span>
+    </Link>
+  )
+}
 
 export default function Menu() {
   // Estado para controlar la apertura del menú móvil
@@ -187,10 +219,26 @@ export default function Menu() {
                 {/* <LogoutButton /> */}
               </>
             ) : (
-              <>
-                <LoginButton />
-                <RegisterButton />
-              </>
+              <div className="grid grid-cols-2 gap-3 pb-3">
+                <MobileGuestActionCard
+                  href="/login"
+                  label="Iniciar sesión"
+                  icon={LogIn}
+                  iconClassName="text-sky-700"
+                  cardClassName="bg-sky-50 border-sky-100"
+                  textClassName="text-sky-900"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                />
+                <MobileGuestActionCard
+                  href="/register"
+                  label="Registrarse"
+                  icon={UserPlus}
+                  iconClassName="text-emerald-700"
+                  cardClassName="bg-emerald-50 border-emerald-100"
+                  textClassName="text-emerald-900"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                />
+              </div>
             )}
           </MobileMenuWrapper>
           <div className="flex justify-center pb-4">
