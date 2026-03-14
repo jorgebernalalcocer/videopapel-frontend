@@ -3,6 +3,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/auth";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
 import { ExternalLink } from "lucide-react";
@@ -12,6 +13,8 @@ import DuplicateProjectButton from "@/components/DuplicateProjectButton";
 import ShareProjectButton from "@/components/ShareProjectButton";
 import ProjectPrivacyBadge from "@/components/project/ProjectPrivacyBadge";
 import StatusBadge from "@/components/project/StatusBadge";
+import { acceptProjectInvitation } from "@/lib/projectInvitations";
+import { toast } from "sonner";
 
 type Project = {
   id: string;
@@ -27,6 +30,14 @@ type Project = {
   duplicate_of_name?: string | null;
   membership_invited_by?: string | null;
   shared_with_emails?: string[];
+  pending_invitation?: {
+    token: string;
+    email: string;
+    role: "edit" | "view";
+    role_label: string;
+    expires_at?: string | null;
+    is_expired: boolean;
+  } | null;
   clip_count: number;
   print_size_label?: string | null;
   orientation_name?: string | null;
@@ -52,12 +63,14 @@ export default function MyProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [acceptingInvitationToken, setAcceptingInvitationToken] = useState<string | null>(null);
 
   const [shareProject, setShareProject] = useState<Project | null>(null);
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
   const hasHydrated = useAuth((s) => s.hasHydrated);
   const accessToken = useAuth((s) => s.accessToken);
+  const router = useRouter();
 
   const fetchProjects = useCallback(async () => {
     setLoading(true);
@@ -94,6 +107,23 @@ export default function MyProjects() {
     setShareProject(project);
   }, []);
 
+  const handleAcceptInvitation = useCallback(async (project: Project) => {
+    const token = project.pending_invitation?.token;
+    if (!token) return;
+
+    setAcceptingInvitationToken(token);
+    try {
+      const payload = await acceptProjectInvitation(token);
+      toast.success(payload.detail);
+      await fetchProjects();
+      router.push(`/projects/${payload.project_id}`);
+    } catch (e: any) {
+      toast.error(e?.message || "No se pudo aceptar la invitación.");
+    } finally {
+      setAcceptingInvitationToken(null);
+    }
+  }, [fetchProjects, router]);
+
   if (!hasHydrated) return <p className="text-gray-500">Preparando…</p>;
   if (!accessToken)
     return (
@@ -110,9 +140,13 @@ export default function MyProjects() {
         <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((p) => (
             <li
-              key={p.id}
+              key={`${p.id}-${p.pending_invitation?.token ?? "project"}`}
               className="bg-white rounded-xl shadow-sm border overflow-hidden"
             >
+              {(() => {
+                const hasPendingInvitation = Boolean(p.pending_invitation);
+                return (
+                  <>
               {p.primary_clip && p.primary_clip.video_url && (
                 <div className="bg-gray-100">
                   <div className="grid grid-cols-2 gap-0.5 aspect-video overflow-hidden">
@@ -150,6 +184,11 @@ export default function MyProjects() {
                 <div className="mt-2 flex items-center gap-3">
                   <ProjectPrivacyBadge isPublic={p.is_public} compact />
                   <StatusBadge status={p.status} compact />
+                  {hasPendingInvitation && (
+                    <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                      Invitación pendiente
+                    </span>
+                  )}
                 </div>
 
                 <p className="text-xs text-gray-500 mt-1">
@@ -188,7 +227,7 @@ export default function MyProjects() {
                     <div className="mt-1 space-y-1">
                       {p.owner_email && (
                         <p className="text-xs text-gray-400">
-                          Creado por: {p.owner_email}
+                          Propietario: {p.owner_email}
                         </p>
                       )}
                       <p className="text-xs text-gray-400">
@@ -198,38 +237,65 @@ export default function MyProjects() {
                   )}
 
                 <div className="mt-4 flex gap-2">
-                  <Link
-                    href={`/projects/${p.id}`}
-                    className="px-3 py-1.5 text-xs rounded-lg bg-blue-200 text-black hover:bg-blue-700 flex items-center justify-center gap-1"
-                  >
-                    <ExternalLink className="w-3 h-3" />
-                    Abrir proyecto
-                  </Link>
+                  {hasPendingInvitation ? (
+                    <>
+                      {/* <Link
+                        href={`/projects/${p.id}`}
+                        className="px-3 py-1.5 text-xs rounded-lg bg-blue-200 text-black hover:bg-blue-700 flex items-center justify-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Ver proyecto
+                      </Link> */}
+                      <button
+                        type="button"
+                        onClick={() => void handleAcceptInvitation(p)}
+                        disabled={Boolean(p.pending_invitation?.is_expired) || acceptingInvitationToken === p.pending_invitation?.token}
+                        className="px-3 py-1.5 text-xs rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60"
+                      >
+                        {acceptingInvitationToken === p.pending_invitation?.token ? "Aceptando..." : "Aceptar invitación"}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <Link
+                        href={`/projects/${p.id}`}
+                        className="px-3 py-1.5 text-xs rounded-lg bg-blue-200 text-black hover:bg-blue-700 flex items-center justify-center gap-1"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        Abrir proyecto
+                      </Link>
 
-                  <DuplicateProjectButton
-                    projectId={p.id}
-                    size="compact"
-                    onDuplicated={(clone) => {
-                      setProjects((prev) => [clone as Project, ...prev]);
-                    }}
-                    onError={setError}
-                    title="Duplicar proyecto"
-                  />
+                      <DuplicateProjectButton
+                        projectId={p.id}
+                        size="compact"
+                        onDuplicated={(clone) => {
+                          setProjects((prev) => [clone as Project, ...prev]);
+                        }}
+                        onError={setError}
+                        title="Duplicar proyecto"
+                      />
 
-                  <ShareProjectButton onClick={() => handleShareClick(p)} />
+                      <ShareProjectButton onClick={() => handleShareClick(p)} />
+                    </>
+                  )}
                 </div>
 
-                <DeleteProjectButton
-                  projectId={p.id}
-                  projectName={p.name}
-                  disabled={p.status === "exported"}
-                  onDeleted={() => {
-                    setProjects((prev) =>
-                      prev.filter((proj) => proj.id !== p.id)
-                    );
-                  }}
-                />
+                {!hasPendingInvitation && (
+                  <DeleteProjectButton
+                    projectId={p.id}
+                    projectName={p.name}
+                    disabled={p.status === "exported"}
+                    onDeleted={() => {
+                      setProjects((prev) =>
+                        prev.filter((proj) => proj.id !== p.id)
+                      );
+                    }}
+                  />
+                )}
               </div>
+                  </>
+                );
+              })()}
             </li>
           ))}
         </ul>

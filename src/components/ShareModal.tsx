@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, CircleX, Crown, Eye, Globe, PencilLine, Search, User, Users } from 'lucide-react'
+import { ArrowLeft, ChevronDown, MessageCircle, CircleX, Crown, Eye, Facebook, Globe, Instagram, Link as LinkIcon, PencilLine, Search, Send, User, Users, X as XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiFetch } from '@/lib/api'
@@ -178,6 +178,15 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   const stepTwoInputRef = useRef<HTMLInputElement>(null)
 
   const isValidEmail = useMemo(() => EMAIL_RE.test(email.trim()), [email])
+  const projectUrl = useMemo(() => {
+    if (!project) return ''
+    if (typeof window === 'undefined') return ''
+    return `${window.location.origin}/projects/${project.id}`
+  }, [project])
+  const projectText = useMemo(
+    () => `Mira este proyecto en Papel Video: ${project?.name || 'Proyecto'}`,
+    [project]
+  )
 
   useEffect(() => {
     if (!project) return
@@ -393,6 +402,63 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     }
   }
 
+  const openShareWindow = (url: string) => {
+    if (typeof window === 'undefined') return
+    window.open(url, '_blank', 'noopener,noreferrer,width=640,height=720')
+  }
+
+  const copyLink = async () => {
+    if (!projectUrl) return
+    try {
+      await navigator.clipboard.writeText(projectUrl)
+      toast.success('Enlace copiado al portapapeles.')
+    } catch {
+      toast.error('No se pudo copiar el enlace.')
+    }
+  }
+
+  const shareOptions = [
+    {
+      name: 'Copiar enlace',
+      icon: <LinkIcon className="h-5 w-5" />,
+      action: copyLink,
+      color: 'bg-purple-500 hover:bg-purple-600',
+    },
+    {
+      name: 'Facebook',
+      icon: <Facebook className="h-5 w-5" />,
+      action: () => openShareWindow(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(projectUrl)}&quote=${encodeURIComponent(projectText)}`),
+      color: 'bg-blue-600 hover:bg-blue-700',
+    },
+    {
+      name: '',
+      icon: <XIcon className="h-5 w-5" />,
+      action: () => openShareWindow(`https://twitter.com/intent/tweet?url=${encodeURIComponent(projectUrl)}&text=${encodeURIComponent(projectText)}`),
+      color: 'bg-black hover:bg-gray-800',
+    },
+    {
+      name: 'WhatsApp',
+      icon: <MessageCircle className="h-5 w-5" />,
+      action: () => openShareWindow(`https://wa.me/?text=${encodeURIComponent(`${projectText} ${projectUrl}`)}`),
+      color: 'bg-green-500 hover:bg-green-600',
+    },
+    {
+      name: 'Telegram',
+      icon: <Send className="h-5 w-5" />,
+      action: () => openShareWindow(`https://t.me/share/url?url=${encodeURIComponent(projectUrl)}&text=${encodeURIComponent(projectText)}`),
+      color: 'bg-sky-500 hover:bg-sky-600',
+    },
+    {
+      name: 'Instagram',
+      icon: <Instagram className="h-5 w-5" />,
+      action: async () => {
+        await copyLink()
+        openShareWindow('https://www.instagram.com/')
+      },
+      color: 'bg-pink-500 hover:bg-pink-600',
+    },
+  ]
+
   const accessOptions = [
     {
       value: false,
@@ -403,7 +469,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     {
       value: true,
       icon: Globe,
-      title: 'Cualquier persona que tenga el enlace (Público)',
+      title: 'Cualquier persona que le pases el enlace por WhatsApp  o Redes Sociales (Público)',
       description: 'Cualquiera puede acceder al diseño a través de este enlace. No hace falta iniciar sesión.',
     },
   ] as const
@@ -415,8 +481,15 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
       title="Compartir proyecto"
       size="lg"
     >
-      {step === 'shareInfo' ? (
-        <div className="space-y-8">
+      <div className="relative min-h-[720px]">
+        <div
+          aria-hidden={step !== 'shareInfo'}
+          className={[
+            'transition-opacity duration-200',
+            step === 'shareInfo' ? 'opacity-100' : 'pointer-events-none absolute inset-0 opacity-0',
+          ].join(' ')}
+        >
+          <div className="space-y-8">
           <section className="space-y-4">
             <div>
               <p className="text-sm font-semibold text-gray-900">Personas con acceso</p>
@@ -480,11 +553,7 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                       </span>
                     )}
                   </div>
-                  <RoleSelector
-                    value={membership.role}
-                    onChange={(nextRole) => void handleMembershipRoleChange(membership, nextRole)}
-                    disabled={!canManageSharing || updatingMembershipId === membership.id}
-                  />
+           
                   {canManageSharing && (
                     <button
                       type="button"
@@ -495,6 +564,11 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
                       {deletingMembershipId === membership.id ? 'Eliminando...' : 'Eliminar acceso'}
                     </button>
                   )}
+                         <RoleSelector
+                    value={membership.role}
+                    onChange={(nextRole) => void handleMembershipRoleChange(membership, nextRole)}
+                    disabled={!canManageSharing || updatingMembershipId === membership.id}
+                  />
                 </div>
                 )
               })}
@@ -549,9 +623,36 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
               })}
             </div>
           </section>
+
+          {isPublic && (
+            <section className="space-y-4 border-t border-gray-100 pt-6">
+              <p className="text-sm font-semibold text-gray-900">Compartir enlace público</p>
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                {shareOptions.map((option) => (
+                  <button
+                    key={option.name}
+                    type="button"
+                    onClick={() => void option.action()}
+                    className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white transition ${option.color}`}
+                  >
+                    {option.icon}
+                    <span>{option.name}</span>
+                  </button>
+                ))}
+              </div>
+            </section>
+          )}
+          </div>
         </div>
-      ) : (
-        <div className="space-y-4">
+
+        <div
+          aria-hidden={step !== 'sharing'}
+          className={[
+            'transition-opacity duration-200',
+            step === 'sharing' ? 'opacity-100' : 'pointer-events-none absolute inset-0 opacity-0',
+          ].join(' ')}
+        >
+          <div className="space-y-4">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -612,8 +713,9 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
           >
             {sharing ? 'Compartiendo...' : 'Compartir'}
           </button>
+          </div>
         </div>
-      )}
+      </div>
     </Modal>
   )
 }

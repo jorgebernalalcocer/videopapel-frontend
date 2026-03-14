@@ -4,26 +4,8 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
-import { apiFetch } from '@/lib/api'
+import { acceptProjectInvitation, fetchProjectInvitationDetail, type InvitationDetail } from '@/lib/projectInvitations'
 import { useAuth } from '@/store/auth'
-
-type InvitationDetail = {
-  token: string
-  email: string
-  role: 'edit' | 'view'
-  role_label: string
-  is_expired: boolean
-  is_accepted: boolean
-  project: {
-    id: string
-    name: string | null
-  }
-}
-
-type AcceptResponse = {
-  detail: string
-  project_id: string
-}
 
 export default function InvitationPage({ params }: { params: Promise<{ token: string }> }) {
   const router = useRouter()
@@ -52,20 +34,12 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
     if (!token) return
 
     let cancelled = false
-    const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
     const loadInvitation = async () => {
       setLoading(true)
       setError(null)
       try {
-        const response = await fetch(`${API_BASE}/project-invitations/${token}/`, {
-          headers: { Accept: 'application/json' },
-          credentials: 'include',
-        })
-        if (!response.ok) {
-          throw new Error('No se pudo cargar la invitación.')
-        }
-        const payload = (await response.json()) as InvitationDetail
+        const payload = await fetchProjectInvitationDetail(token)
         if (cancelled) return
         setInvitation(payload)
       } catch (err: any) {
@@ -90,16 +64,7 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
     setAccepting(true)
     setError(null)
     try {
-      const response = await apiFetch(`/project-invitations/${token}/accept/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      })
-      const payload = (await response.json()) as AcceptResponse
-      if (!response.ok) {
-        throw new Error(payload?.detail || 'No se pudo aceptar la invitación.')
-      }
+      const payload = await acceptProjectInvitation(token)
       setSuccess(payload.detail)
       router.push(`/projects/${payload.project_id}`)
     } catch (err: any) {
@@ -184,10 +149,10 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
         <div className="mt-8 flex flex-wrap gap-3">
 
           <Link
-            href={invitation.project.id ? `/projects/${invitation.project.id}` : '/projects'}
-              className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
+            href="/projects"
+            className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
           >
-            Ver proyecto
+            Ver proyectos
           </Link>
                     <button
             type="button"
