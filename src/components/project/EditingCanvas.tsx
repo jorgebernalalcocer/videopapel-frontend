@@ -5,11 +5,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
+import CutClipButton from '@/components/project/CutClipButton'
 import { toast } from 'sonner'
 import BigFrameViewer from '@/components/project/viewer/BigFrameViewer'
 import GlobalTimeline from '@/components/project/timeline/GlobalTimeline'
 import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextFrameEditorModal'
 import FrameModal, { type FrameFormPayload } from '@/components/project/FrameModal'
+import CutClipModal from '@/components/project/CutClipModal'
 import { Modal } from '@/components/ui/Modal'
 import ProgressIndicator from '@/components/ui/ProgressIndicator'
 import LockDeleteFrameLowDensity from '@/components/project/LockDeleteFrameLowDensity'
@@ -379,6 +381,7 @@ const stepBackward = useCallback(() => {
   const shouldConfirmFrameDeletion =
     selectedFrameIndex > 0 && selectedFrameIndex < visibleThumbs.length - 1
   const [lockLowDensityModal, setLockLowDensityModal] = useState(false)
+  const [cutClipModalOpen, setCutClipModalOpen] = useState(false)
 
   const deleteSelectedFrame = useCallback(() => {
     if (!visibleThumbs.length) return
@@ -426,6 +429,40 @@ const stepBackward = useCallback(() => {
     deleteSelectedFrame()
   }, [deleteSelectedFrame, thumbsDensity])
 
+  const handleCutClipButtonClick = useCallback(() => {
+    if (thumbsDensity < MAX_DENSITY) {
+      setLockLowDensityModal(true)
+      return
+    }
+    setCutClipModalOpen(true)
+  }, [thumbsDensity])
+
+  const handleCutClipConfirm = useCallback((selection: { startIndex: number; endIndex: number }) => {
+    if (!visibleThumbs.length) return
+
+    const startThumb = visibleThumbs[selection.startIndex]
+    const endThumb = visibleThumbs[selection.endIndex]
+    if (!startThumb || !endThumb) return
+
+    const rangeStart = Math.min(startThumb.tGlobal, endThumb.tGlobal)
+    const rangeEnd = Math.max(startThumb.tGlobal, endThumb.tGlobal)
+    const nextCombined = combinedThumbs.filter((thumb) => thumb.tGlobal < rangeStart || thumb.tGlobal > rangeEnd)
+    setCombinedThumbs(nextCombined)
+
+    const nextVisible = applyDensityToThumbs(nextCombined, thumbsDensity)
+    const nextSelection = nextVisible[selection.startIndex] ?? nextVisible[Math.max(0, selection.startIndex - 1)] ?? null
+
+    if (nextSelection) {
+      setSelectedId(nextSelection.id)
+      setSelectedGlobalMs(nextSelection.tGlobal)
+    } else {
+      setSelectedId(null)
+      setSelectedGlobalMs(0)
+    }
+
+    setHasPendingChanges(true)
+  }, [combinedThumbs, setCombinedThumbs, setHasPendingChanges, thumbsDensity, visibleThumbs])
+
   const handleConfirmDensityChange = useCallback(() => {
     setThumbsDensity(MAX_DENSITY)
     setLockLowDensityModal(false)
@@ -436,6 +473,9 @@ const stepBackward = useCallback(() => {
     if (!hasPendingChanges || !accessToken) return
     setIsSaving(true)
     const byClip = new Map<number, number[]>()
+    for (const clip of clipsOrdered) {
+      byClip.set(clip.clipId, [])
+    }
     for (const item of combinedThumbs) {
       const arr = byClip.get(item.clipId) ?? []; arr.push(item.tLocal); byClip.set(item.clipId, arr)
     }
@@ -681,6 +721,10 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
         disabled={!combinedThumbs.length || generating}
         shouldConfirm={shouldConfirmFrameDeletion && thumbsDensity >= MAX_DENSITY}
       />
+      <CutClipButton
+        onClick={handleCutClipButtonClick}
+        disabled={!combinedThumbs.length || generating}
+      />
       <p className="text-white font-bold text-sm">{visibleThumbs.length} Páginas</p>
       <label className="flex items-center gap-1 text-[11px] text-white/90">
         Fotos / Seg
@@ -797,6 +841,16 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
         maxDensity={MAX_DENSITY}
         onClose={() => setLockLowDensityModal(false)}
         onConfirm={handleConfirmDensityChange}
+      />
+      <CutClipModal
+        open={cutClipModalOpen}
+        onClose={() => setCutClipModalOpen(false)}
+        items={visibleThumbs}
+        selectedId={selectedId}
+        thumbnailHeight={thumbnailHeight}
+        isReady={isCacheLoaded && !generating}
+        error={error}
+        onConfirm={handleCutClipConfirm}
       />
 
       {isPresentationOpen && (
