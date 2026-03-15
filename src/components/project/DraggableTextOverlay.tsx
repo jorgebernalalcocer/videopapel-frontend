@@ -21,6 +21,9 @@ export type DraggableTextItem = {
   y: number
   fontSize?: number | null
   color?: string | null
+  backgroundEnabled?: boolean | null
+  backgroundStyle?: 'fill' | 'outline' | 'transparent' | null
+  backgroundColor?: string | null
 }
 
 /** Acepta tanto RefObject como MutableRefObject y siempre como nullable */
@@ -241,6 +244,9 @@ export default function DraggableTextOverlay({
             typography={it.typography}
             fontSize={it.fontSize ?? undefined}
             colorHex={it.color ?? undefined}
+            backgroundEnabled={it.backgroundEnabled ?? undefined}
+            backgroundStyle={it.backgroundStyle ?? undefined}
+            backgroundColorHex={it.backgroundColor ?? undefined}
             editable={Boolean(onEdit || onDeleteText)}
             onEdit={onEdit ? () => onEdit(it.id) : undefined}
             dragging={draggingId === it.id}

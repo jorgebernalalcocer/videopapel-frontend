@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ArrowLeft, ChevronDown, MessageCircle, CircleX, Crown, Eye, Facebook, Globe, Instagram, Link as LinkIcon, PencilLine, Search, Send, User, Users, X as XIcon } from 'lucide-react'
+import { ArrowLeft, MessageCircle, CircleX, Crown, Eye, Facebook, Globe, Instagram, Link as LinkIcon, PencilLine, Search, Send, User, Users, X as XIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { apiFetch } from '@/lib/api'
 import { Modal } from '@/components/ui/Modal'
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import SelectPersonalize, { type SelectPersonalizeOption } from '@/components/SelectPersonalize'
 import { useAuth } from '@/store/auth'
 import { type Project } from './MyProjects'
 
@@ -62,20 +62,20 @@ const AVATAR_COLORS = [
   'bg-fuchsia-500',
 ]
 
-const ROLE_OPTIONS = {
-  edit: {
-    value: 'edit' as const,
+const ROLE_OPTIONS: SelectPersonalizeOption<MembershipRole>[] = [
+  {
+    value: 'edit',
     label: 'Editor',
     description: 'Hacer cambios',
     icon: PencilLine,
   },
-  view: {
-    value: 'view' as const,
+  {
+    value: 'view',
     label: 'Ver',
     description: 'Solo lectura',
     icon: Eye,
   },
-}
+]
 
 function avatarColorFor(value: string) {
   const seed = Array.from(value).reduce((total, char) => total + char.charCodeAt(0), 0)
@@ -103,56 +103,13 @@ type RoleSelectorProps = {
 }
 
 function RoleSelector({ value, onChange, disabled = false }: RoleSelectorProps) {
-  const option = ROLE_OPTIONS[value]
-  const Icon = option.icon
-
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={disabled}>
-        <button
-          type="button"
-          disabled={disabled}
-          className="inline-flex min-w-[170px] items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-2 text-left shadow-sm transition hover:border-gray-300 disabled:cursor-not-allowed disabled:opacity-70"
-        >
-          <span className="flex min-w-0 items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100">
-              <Icon className="h-4 w-4 text-gray-700" />
-            </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-semibold text-gray-900">{option.label}</span>
-              <span className="block truncate text-xs text-gray-500">{option.description}</span>
-            </span>
-          </span>
-          <ChevronDown className="h-4 w-4 shrink-0 text-gray-400" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-[220px] rounded-2xl p-2">
-        {Object.values(ROLE_OPTIONS).map((item) => {
-          const ItemIcon = item.icon
-          const active = item.value === value
-          return (
-            <DropdownMenuItem
-              key={item.value}
-              onSelect={() => onChange(item.value)}
-              className={[
-                'rounded-xl px-3 py-3',
-                active ? 'bg-gray-100' : '',
-              ].join(' ')}
-            >
-              <span className="flex items-center gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
-                  <ItemIcon className="h-4 w-4 text-gray-700" />
-                </span>
-                <span>
-                  <span className="block text-sm font-semibold text-gray-900">{item.label}</span>
-                  <span className="block text-xs text-gray-500">{item.description}</span>
-                </span>
-              </span>
-            </DropdownMenuItem>
-          )
-        })}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <SelectPersonalize
+      value={value}
+      options={ROLE_OPTIONS}
+      onChange={onChange}
+      disabled={disabled}
+    />
   )
 }
 

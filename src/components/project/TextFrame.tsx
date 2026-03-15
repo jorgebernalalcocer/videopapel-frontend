@@ -22,18 +22,21 @@ const clampFontSize = (value?: number | null) => {
   return Math.min(60, Math.max(5, parsed))
 }
 
-const normalizeColor = (value?: string | null) => {
-  const raw = (value || '#FFFFFF').trim()
+const normalizeColor = (value?: string | null, fallback = '#FFFFFF') => {
+  const raw = (value || fallback).trim()
   if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) {
     return raw.toUpperCase()
   }
-  return '#FFFFFF'
+  return fallback
 }
 
 type Props = {
   typography?: string | null
   fontSize?: number | null
   colorHex?: string | null
+  backgroundEnabled?: boolean | null
+  backgroundStyle?: 'fill' | 'outline' | 'transparent' | null
+  backgroundColorHex?: string | null
   editable?: boolean
   onEdit?: () => void
   dragging?: boolean
@@ -50,6 +53,9 @@ export default function TextFrame({
   typography,
   fontSize,
   colorHex,
+  backgroundEnabled,
+  backgroundStyle,
+  backgroundColorHex,
   editable = true,
   onEdit,
   dragging = false,
@@ -62,24 +68,35 @@ export default function TextFrame({
   const extraClass = fontInfo?.className ?? ''
   const resolvedFontSize = clampFontSize(fontSize)
   const resolvedColor = normalizeColor(colorHex)
+  const resolvedBackgroundColor = normalizeColor(backgroundColorHex, '#000000')
+  const resolvedBackgroundStyle = backgroundStyle ?? (backgroundEnabled ? 'fill' : 'transparent')
 
   
 
   return (
     <div
-      className={`relative px-4 py-2 rounded-xl bg-black/60 text-white text-center shadow-lg
+      className={`relative px-4 py-2 rounded-xl text-white text-center shadow-lg
                   ${dragging ? 'cursor-grabbing' : 'cursor-grab'} ${extraClass}`}
       style={{
         fontFamily,
         fontSize: `${resolvedFontSize}px`,
         lineHeight: 1.25,
         color: resolvedColor,
+        backgroundColor: resolvedBackgroundStyle === 'fill' ? resolvedBackgroundColor : 'transparent',
+        border: resolvedBackgroundStyle === 'outline' ? `1.5px solid ${resolvedBackgroundColor}` : 'none',
         userSelect: 'none',
         touchAction: 'none',
         // width auto por defecto; el max-width lo controla el contenedor exterior
       }}
     >
-      {children}
+      <span
+        className="block whitespace-pre-wrap"
+        style={{
+          transform: 'translateY(0.08em)',
+        }}
+      >
+        {children}
+      </span>
       {editable && deleteConfig && (
         <div className="absolute -top-3 -left-3">
           <DeleteTextButton {...deleteConfig} />

@@ -1,10 +1,12 @@
 'use client'
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { CaseSensitive, Circle, PaintRoller } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import ColorPickerField from '@/components/project/ColorPickerField'
 import { toast } from 'sonner'
 import TypographyTiles, { type TypographyOption } from '@/components/project/TypographyTiles'
+import SelectPersonalize, { type SelectPersonalizeOption } from '@/components/SelectPersonalize'
 
 export type TextFrameModel = {
   id: number
@@ -15,6 +17,9 @@ export type TextFrameModel = {
   typography: string | null
   font_size?: number | null
   color_hex?: string | null
+  text_background_enabled?: boolean | null
+  text_background_style?: 'fill' | 'outline' | 'transparent' | null
+  text_background_color_hex?: string | null
   frame_start: number | null
   frame_end: number | null
   specific_frames: number[]
@@ -47,6 +52,12 @@ const FONT_SIZE_MIN = 10
 const FONT_SIZE_MAX = 30
 const DEFAULT_FONT_SIZE = 14
 const DEFAULT_COLOR = '#FFFFFF'
+const DEFAULT_BACKGROUND_COLOR = '#000000'
+const TEXT_BACKGROUND_STYLE_OPTIONS: SelectPersonalizeOption<'fill' | 'outline' | 'transparent'>[] = [
+  { value: 'fill', label: 'Relleno', description: 'Color de fondo', icon: PaintRoller },
+  { value: 'outline', label: 'Contorno', description: 'Marco ligero', icon: Circle },
+  { value: 'transparent', label: 'Transparente', description: 'Sin fondo', icon: CaseSensitive },
+]
 
 const clampFontSize = (value: number | null | undefined) => {
   const parsed = Number(value)
@@ -54,12 +65,12 @@ const clampFontSize = (value: number | null | undefined) => {
   return Math.min(FONT_SIZE_MAX, Math.max(FONT_SIZE_MIN, parsed))
 }
 
-const normalizeColor = (value?: string | null) => {
-  const raw = (value || DEFAULT_COLOR).trim()
+const normalizeColor = (value?: string | null, fallback = DEFAULT_COLOR) => {
+  const raw = (value || fallback).trim()
   if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) {
     return raw.toUpperCase()
   }
-  return DEFAULT_COLOR
+  return fallback
 }
 
 export default function TextFrameEditorModal({
@@ -78,12 +89,19 @@ export default function TextFrameEditorModal({
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const initialBackgroundStyle =
+    initial?.text_background_style ??
+    (initial?.text_background_enabled ? 'fill' : 'transparent')
   const [content, setContent] = useState(initial?.content ?? '')
   const [typography, setTypography] = useState(initial?.typography ?? '')
   const [typographyName, setTypographyName] = useState(initial?.typography ?? '')
   const [typographyFontPreview, setTypographyFontPreview] = useState('')
   const [fontSize, setFontSize] = useState(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
   const [colorHex, setColorHex] = useState(normalizeColor(initial?.color_hex))
+  const [textBackgroundStyle, setTextBackgroundStyle] = useState<'fill' | 'outline' | 'transparent'>(initialBackgroundStyle)
+  const [textBackgroundColorHex, setTextBackgroundColorHex] = useState(
+    normalizeColor(initial?.text_background_color_hex, DEFAULT_BACKGROUND_COLOR)
+  )
   const [modeValue, setModeValue] = useState<'range' | 'specific'>(
     initial?.specific_frames?.length ? 'specific' : 'range'
   )
@@ -170,6 +188,11 @@ export default function TextFrameEditorModal({
     setTypographyFontPreview(initial?.typography ?? '')
     setFontSize(clampFontSize(initial?.font_size ?? DEFAULT_FONT_SIZE))
     setColorHex(normalizeColor(initial?.color_hex))
+    setTextBackgroundStyle(
+      initial?.text_background_style ??
+      (initial?.text_background_enabled ? 'fill' : 'transparent')
+    )
+    setTextBackgroundColorHex(normalizeColor(initial?.text_background_color_hex, DEFAULT_BACKGROUND_COLOR))
     setModeValue(initial?.specific_frames?.length ? 'specific' : 'range')
     const startIndex = msToStartIndex(initial?.frame_start ?? null)
     const endIndex = msToEndIndex(initial?.frame_end ?? null)
@@ -235,12 +258,16 @@ export default function TextFrameEditorModal({
 
       const typographyVal = typography.trim() || null
       const colorValue = normalizeColor(colorHex)
+      const backgroundColorValue = normalizeColor(textBackgroundColorHex, DEFAULT_BACKGROUND_COLOR)
       const body: Record<string, any> = {
         project: projectId,
         content: contentVal,
         typography: typographyVal,
         font_size: fontSize,
         color_hex: colorValue,
+        text_background_enabled: textBackgroundStyle !== 'transparent',
+        text_background_style: textBackgroundStyle,
+        text_background_color_hex: backgroundColorValue,
         frame_start,
         frame_end,
         specific_frames,
@@ -361,6 +388,31 @@ export default function TextFrameEditorModal({
           onChange={setColorHex}
           helpText="Se aplicará tanto en el visor como en el PDF exportado."
         />
+
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <div>
+              <p className="text-sm font-medium text-gray-700">Color fondo de texto</p>
+              <p className="text-xs text-gray-500">Elige cómo quieres renderizar el fondo o contorno del texto.</p>
+            </div>
+            <SelectPersonalize
+              value={textBackgroundStyle}
+              options={TEXT_BACKGROUND_STYLE_OPTIONS}
+              onChange={setTextBackgroundStyle}
+              align="start"
+              triggerClassName="w-full"
+              menuClassName="w-[260px]"
+            />
+          </div>
+
+          <ColorPickerField
+            label="Color de fondo"
+            value={textBackgroundColorHex}
+            onChange={setTextBackgroundColorHex}
+            helpText="Se aplicará al fondo del texto en el visor y en el PDF exportado."
+            disabled={textBackgroundStyle === 'transparent'}
+          />
+        </div>
 
         {mode === 'edit' && initial?.text_id && (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">

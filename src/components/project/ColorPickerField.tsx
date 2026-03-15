@@ -7,6 +7,7 @@ type Props = {
   value: string
   onChange: (value: string) => void
   helpText?: string
+  disabled?: boolean
   inputProps?: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'value' | 'onChange'>
 }
 
@@ -15,6 +16,7 @@ export default function ColorPickerField({
   value,
   onChange,
   helpText,
+  disabled = false,
   inputProps,
 }: Props) {
   const textValue = value ?? ''
@@ -29,17 +31,19 @@ export default function ColorPickerField({
       <div className="flex items-center gap-3">
         <input
           type="color"
-          className="h-10 w-16 rounded border border-gray-300"
+          className="h-10 w-16 rounded border border-gray-300 disabled:cursor-not-allowed disabled:opacity-60"
           value={colorInputValue}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
+          disabled={disabled}
           {...inputProps}
         />
         <input
           type="text"
           value={textValue}
           onChange={(e) => onChange(e.target.value.toUpperCase())}
-          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+          className="flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:cursor-not-allowed disabled:bg-gray-100"
           placeholder="#FFFFFF"
+          disabled={disabled}
         />
       </div>
       {helpText && (

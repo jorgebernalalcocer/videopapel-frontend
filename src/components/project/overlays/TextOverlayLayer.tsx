@@ -10,6 +10,9 @@ type Item = {
   typography: string | null
   font_size?: number | null
   color_hex?: string | null
+  text_background_enabled?: boolean | null
+  text_background_style?: 'fill' | 'outline' | 'transparent' | null
+  text_background_color_hex?: string | null
   x: number
   y: number
 }
@@ -37,6 +40,9 @@ export default function TextOverlayLayer(props: {
         typography: tf.typography,
         fontSize: tf.font_size ?? undefined,
         color: tf.color_hex ?? undefined,
+        backgroundEnabled: tf.text_background_enabled ?? undefined,
+        backgroundStyle: tf.text_background_style ?? undefined,
+        backgroundColor: tf.text_background_color_hex ?? undefined,
         x: clamp01(tf.x),
         y: clamp01(tf.y),
       }))}

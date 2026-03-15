@@ -9,6 +9,9 @@ export type ProjectTextApiModel = {
   id: number; project: string; content: string; typography: string | null;
   font_size?: number | null;
   color_hex?: string | null;
+  text_background_enabled?: boolean | null;
+  text_background_style?: 'fill' | 'outline' | 'transparent' | null;
+  text_background_color_hex?: string | null;
   frame_start: number | null; frame_end: number | null; specific_frames: number[];
   overlays: ProjectTextOverlayApi[];
   kind?: 'manual' | 'subtitle';
@@ -16,6 +19,7 @@ export type ProjectTextApiModel = {
 export type TextFrame = {
   id: number; clip: number; text_id?: number; project_id?: string;
   content: string; typography: string | null; font_size?: number | null; color_hex?: string | null;
+  text_background_enabled?: boolean | null; text_background_style?: 'fill' | 'outline' | 'transparent' | null; text_background_color_hex?: string | null;
   frame_start: number | null; frame_end: number | null; specific_frames: number[];
   position_x: number; position_y: number;
   frame_start_global?: number | null; frame_end_global?: number | null;
@@ -28,12 +32,21 @@ const clampFontSize = (value: number | null | undefined) => {
   return Math.min(60, Math.max(5, parsed))
 }
 
-const normalizeColor = (value?: string | null) => {
-  const raw = (value || '#FFFFFF').trim()
+const normalizeColor = (value?: string | null, fallback = '#FFFFFF') => {
+  const raw = (value || fallback).trim()
   if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(raw)) {
     return raw.toUpperCase()
   }
-  return '#FFFFFF'
+  return fallback
+}
+
+const normalizeBackgroundEnabled = (value?: boolean | null) => Boolean(value)
+const normalizeBackgroundStyle = (
+  style?: 'fill' | 'outline' | 'transparent' | null,
+  enabled?: boolean | null,
+) => {
+  if (style === 'fill' || style === 'outline' || style === 'transparent') return style
+  return enabled ? 'fill' : 'transparent'
 }
 
 type ClipMetaMap = Record<number, { offset: number; start: number; end: number }>
@@ -158,6 +171,9 @@ export function useProjectTexts(
         const normalized: TextFrame = {
           id: overlay.id, clip: overlay.clip, text_id: item.id, project_id: item.project,
           content: item.content, typography: item.typography, font_size: clampFontSize(item.font_size), color_hex: normalizeColor(item.color_hex),
+          text_background_enabled: normalizeBackgroundEnabled(item.text_background_enabled),
+          text_background_style: normalizeBackgroundStyle(item.text_background_style, item.text_background_enabled),
+          text_background_color_hex: normalizeColor(item.text_background_color_hex, '#000000'),
           frame_start: localStart == null ? null : Math.max(0, Math.min(localStart, clipDuration)),
           frame_end: localEnd == null ? null : Math.max(0, Math.min(localEnd, clipDuration)),
           specific_frames: normalizeSpecific(overlay.specific_frames),

@@ -18,6 +18,9 @@ type ActiveTextItem = {
   typography: string | null
   font_size?: number | null
   color_hex?: string | null
+  text_background_enabled?: boolean | null
+  text_background_style?: 'fill' | 'outline' | 'transparent' | null
+  text_background_color_hex?: string | null
   position_x: number
   position_y: number
 }
@@ -427,6 +430,9 @@ export default function BigFrameViewer(props: {
             typography: tf.typography ?? null,
             font_size: tf.font_size ?? null,
             color_hex: tf.color_hex ?? null,
+            text_background_enabled: tf.text_background_enabled ?? null,
+            text_background_style: tf.text_background_style ?? null,
+            text_background_color_hex: tf.text_background_color_hex ?? null,
             x: Number(tf.position_x ?? 0.5),
             y: Number(tf.position_y ?? 0.5),
           }))}

@@ -493,6 +493,9 @@ const stepBackward = useCallback(() => {
       typography: '',
       font_size: 18,
       color_hex: '#FFFFFF',
+      text_background_enabled: false,
+      text_background_style: 'transparent',
+      text_background_color_hex: '#000000',
     })
     setEditorOpen(true)
   }
@@ -510,6 +513,9 @@ const stepBackward = useCallback(() => {
       typography: aggregate.typography ?? '',
       font_size: aggregate.font_size ?? 18,
       color_hex: aggregate.color_hex ?? '#FFFFFF',
+      text_background_enabled: aggregate.text_background_enabled ?? false,
+      text_background_style: aggregate.text_background_style ?? ((aggregate.text_background_enabled ?? false) ? 'fill' : 'transparent'),
+      text_background_color_hex: aggregate.text_background_color_hex ?? '#000000',
       frame_start: fallbackStart,
       frame_end: fallbackEnd,
       specific_frames: fallbackSpecific,
