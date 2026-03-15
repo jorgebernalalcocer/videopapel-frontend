@@ -2,7 +2,7 @@
 'use client'
 import { useEffect } from 'react'
 import { formatTime } from '@/utils/time'
-import { Type } from 'lucide-react'
+import { Scissors, Type } from 'lucide-react'
 
 export type TimelineItem = {
   id: string
@@ -20,8 +20,9 @@ export default function GlobalTimeline(props: {
   error?: string | null
   onKeyDown?: React.KeyboardEventHandler<HTMLDivElement>
   textPresence?: Map<string, boolean>
+  markedForCutIds?: Set<string>
 }) {
-  const { items, selectedId, onSelect, isReady, thumbnailHeight, error, onKeyDown, textPresence } = props
+  const { items, selectedId, onSelect, isReady, thumbnailHeight, error, onKeyDown, textPresence, markedForCutIds } = props
   useEffect(() => {
     console.log('[GlobalTimeline] items received', items)
   }, [items])
@@ -44,6 +45,7 @@ export default function GlobalTimeline(props: {
               const selected = it.id === selectedId
               const previewUrl = it.url ?? it.imageUrl ?? it.image_url
               const hasText = textPresence?.get(it.id)
+              const isMarkedForCut = markedForCutIds?.has(it.id) ?? false
               return (
                 <li key={it.id} id={`thumb-${it.id}`}>
                   <button
@@ -69,6 +71,11 @@ export default function GlobalTimeline(props: {
                       >
                         ···
                       </div>
+                    )}
+                    {isMarkedForCut && (
+                      <span className="absolute left-1/2 top-1 -translate-x-1/2 h-5 min-w-5 rounded-full bg-white/95 px-1 flex items-center justify-center shadow ring-1 ring-orange-200">
+                        <Scissors className="h-3 w-3 text-orange-500" />
+                      </span>
                     )}
                     {hasText && (
                       <span className="absolute bottom-1 left-1 h-5 w-5 rounded-full bg-white flex items-center justify-center shadow">

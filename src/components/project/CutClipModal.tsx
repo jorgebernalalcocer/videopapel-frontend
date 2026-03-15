@@ -54,6 +54,10 @@ export default function CutClipModal({
   const rangeLabel = startItem && endItem
     ? `${formatTime(startItem.tGlobal)} - ${formatTime(endItem.tGlobal)}`
     : 'Sin tramo seleccionado'
+  const markedForCutIds = useMemo(
+    () => new Set(items.slice(safeStartIndex, safeEndIndex + 1).map((item) => item.id)),
+    [items, safeEndIndex, safeStartIndex]
+  )
 
   const handleTimelineSelect = useCallback((item: TimelineItem) => {
     const nextIndex = items.findIndex((entry) => entry.id === item.id)
@@ -130,6 +134,7 @@ export default function CutClipModal({
             isReady={isReady}
             thumbnailHeight={thumbnailHeight}
             error={error}
+            markedForCutIds={markedForCutIds}
           />
         </div>
 
@@ -140,7 +145,7 @@ export default function CutClipModal({
               <p className="text-gray-600">{rangeLabel}</p>
             </div>
             <p className="text-xs font-medium text-orange-700">
-              {selectionCount} fotograma{selectionCount === 1 ? '' : 's'}
+              {selectionCount} fotograma seleccionados{selectionCount === 1 ? '' : 's'}
             </p>
           </div>
 
