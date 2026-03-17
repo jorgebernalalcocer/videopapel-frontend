@@ -21,6 +21,36 @@ type FramePickerModalProps = {
   onSelect: (item: FramePickerItem) => void | Promise<void>
 }
 
+function FramePreview({ item }: { item: FramePickerItem }) {
+  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9)
+
+  return (
+    <div
+      className="bg-black w-full"
+      style={{ aspectRatio: `${aspectRatio}` }}
+    >
+      {item.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.imageUrl}
+          alt={`Frame ${item.frameTimeMs}ms`}
+          className="w-full h-full object-contain"
+          onLoad={(event) => {
+            const { naturalWidth, naturalHeight } = event.currentTarget
+            if (naturalWidth > 0 && naturalHeight > 0) {
+              setAspectRatio(naturalWidth / naturalHeight)
+            }
+          }}
+        />
+      ) : (
+        <div className="w-full h-full grid place-items-center text-white text-xs">
+          Clip {item.clipPosition ?? item.clipId} · {item.frameTimeMs}ms
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function FramePickerModal({
   open,
   onClose,
@@ -67,16 +97,7 @@ export default function FramePickerModal({
       emptyLabel="No hay fotogramas disponibles en el proyecto."
       renderItem={({ item }) => (
         <>
-          <div className="aspect-video bg-black">
-            {item.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={item.imageUrl} alt={`Frame ${item.frameTimeMs}ms`} className="w-full h-full object-cover" />
-            ) : (
-              <div className="w-full h-full grid place-items-center text-white text-xs">
-                Clip {item.clipPosition ?? item.clipId} · {item.frameTimeMs}ms
-              </div>
-            )}
-          </div>
+          <FramePreview item={item} />
           <div className="p-2">
             <p className="text-sm font-medium truncate">Clip {item.clipPosition ?? item.clipId}</p>
             <p className="text-xs text-gray-500">{(item.frameTimeMs / 1000).toFixed(2)}s</p>

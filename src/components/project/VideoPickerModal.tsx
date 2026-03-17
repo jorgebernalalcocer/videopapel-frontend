@@ -33,6 +33,38 @@ const FRAME_STATUS = {
   ERROR: 'error',
 }
 
+function VideoPreview({ video }: { video: VideoItem }) {
+  const [aspectRatio, setAspectRatio] = useState<number>(16 / 9)
+
+  return (
+    <div
+      className="bg-black w-full"
+      style={{ aspectRatio: `${aspectRatio}` }}
+    >
+      {video.url || video.file ? (
+        <video
+          src={video.url || video.file || undefined}
+          poster={video.thumbnail ?? undefined}
+          className="w-full h-full object-contain bg-black"
+          muted
+          playsInline
+          preload="metadata"
+          onLoadedMetadata={(event) => {
+            const { videoWidth, videoHeight } = event.currentTarget
+            if (videoWidth > 0 && videoHeight > 0) {
+              setAspectRatio(videoWidth / videoHeight)
+            }
+          }}
+        />
+      ) : (
+        <div className="w-full h-full grid place-items-center text-white text-xs">
+          {video.title || `Video #${video.id}`}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function VideoPickerModal({
   open,
   onClose,
@@ -193,20 +225,7 @@ export default function VideoPickerModal({
                   Error
                 </div>
               )}
-              <div className="aspect-video bg-black">
-                {v.url || v.file ? (
-                  <video
-                    src={v.url || v.file || undefined}
-                    poster={v.thumbnail ?? undefined}
-                    className="w-full h-full object-cover bg-black"
-                    muted
-                    playsInline
-                    preload="metadata"
-                  />
-                ) : (
-                  <div className="w-full h-full grid place-items-center text-white text-xs">{v.title || `Video #${v.id}`}</div>
-                )}
-              </div>
+              <VideoPreview video={v} />
             </div>
             <div className="p-2">
               <p className="text-sm font-medium truncate">{v.title || `Video #${v.id}`}</p>
