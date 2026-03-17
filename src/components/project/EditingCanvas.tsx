@@ -713,6 +713,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   printQualityDpi={qualityDpi ?? undefined}
   printEffectName={printEffectName ?? undefined}
   isCoverPhoto={isCurrentCoverFrame}
+  onOpenCover={onOpenCover}
   showViewerControls
   leftHud={
     <div className="flex items-center gap-3">
@@ -878,6 +879,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
             printQualityDpi={qualityDpi ?? undefined}
             printEffectName={printEffectName ?? undefined}
             isCoverPhoto={isCurrentCoverFrame}
+            onOpenCover={onOpenCover}
             showViewerControls={false}
             forceFull
             isPresentation

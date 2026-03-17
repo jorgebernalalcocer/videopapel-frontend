@@ -71,6 +71,7 @@ export default function BigFrameViewer(props: {
   printQualityPpi?: number | null
   printEffectName?: string | null
   isCoverPhoto?: boolean
+  onOpenCover?: () => void
   showViewerControls?: boolean
   forceFull?: boolean
   isPresentation?: boolean
@@ -97,6 +98,7 @@ export default function BigFrameViewer(props: {
     printQualityPpi,
     printEffectName,
     isCoverPhoto = false,
+    onOpenCover,
     showViewerControls = true,
     forceFull = false,
     isPresentation = false,
@@ -355,14 +357,6 @@ export default function BigFrameViewer(props: {
                 opacity: 1, //opacidad borde amarillo
               }}
             >
-              {isCoverPhoto && (
-                <div className="absolute top-2 left-2 z-30 pointer-events-none">
-                  <span className="inline-flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs font-semibold text-white">
-                    <ImageIcon className="h-3.5 w-3.5" />
-                    Foto de portada
-                  </span>
-                </div>
-              )}
               {activeFrameSetting && (
                 printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight ? (
                   <div
@@ -406,6 +400,30 @@ export default function BigFrameViewer(props: {
                   }}
                 />
               )}
+            </div>
+          </div>
+        )}
+        {showPrintArea && !paintError && printOverlay && isCoverPhoto && onOpenCover && (
+          <div
+            className="absolute z-40 pointer-events-none"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: `${printOverlay.width}px`,
+              height: `${printOverlay.height}px`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <div className="absolute top-2 left-2 pointer-events-auto">
+              <button
+                type="button"
+                onClick={onOpenCover}
+                className="inline-flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs font-semibold text-white transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
+                aria-label="Abrir modal de portada"
+              >
+                <ImageIcon className="h-3.5 w-3.5" />
+                Foto de portada
+              </button>
             </div>
           </div>
         )}
