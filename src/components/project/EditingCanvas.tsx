@@ -6,6 +6,8 @@ import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
 import CutClipButton from '@/components/project/CutClipButton'
+import RecoverDeletedButton from '@/components/project/RecoverDeletedButton'
+import SaveChangesButton from '@/components/project/SaveChangesButton'
 import { toast } from 'sonner'
 import BigFrameViewer from '@/components/project/viewer/BigFrameViewer'
 import GlobalTimeline from '@/components/project/timeline/GlobalTimeline'
@@ -514,6 +516,12 @@ const stepBackward = useCallback(() => {
     } finally { setIsSaving(false) }
   }
 
+  const handleDiscardChanges = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.location.reload()
+    }
+  }, [])
+
   // Editor de textos
   const [editorOpen, setEditorOpen] = useState(false)
   const [editorMode, setEditorMode] = useState<'create'|'edit'>('create')
@@ -726,24 +734,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
         onClick={handleCutClipButtonClick}
         disabled={!combinedThumbs.length || generating}
       />
-      <p className="text-white font-bold text-sm">{visibleThumbs.length} Páginas</p>
-      <label className="flex items-center gap-1 text-[11px] text-white/90">
-        Fotos / Seg
 
-<select
-  value={thumbsDensity}
-  onChange={(e) => setThumbsDensity(Number(e.target.value))}
-  className="rounded border border-white/40 bg-black/40 text-white text-[11px] px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-300"
-  disabled={!accessToken}
->
-  {/* 2. Mapea la constante para generar las opciones */}
-  {CUSTOM_DENSITIES.map((value) => (
-    <option key={value} value={value}>
-      {value}
-    </option>
-  ))}
-</select>
-      </label>
     </div>
   }
   rightHud={
@@ -763,9 +754,45 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
       {/* HUD inferior izquierdo y derecho sobre viewer (encapsulados arriba excepto estos botones) */}
       <div className="absolute pointer-events-none inset-0 hidden" />
 
-<p className="text-white text-xs">
-  master: {combinedThumbs.length} • visibles: {visibleThumbs.length} • densidad: {thumbsDensity}
-</p>
+{/* <p className="text-white text-xs">
+  Totales: {combinedThumbs.length} • visibles: {visibleThumbs.length} • densidad: {thumbsDensity}
+</p> */}
+      <div className="flex flex-wrap items-center gap-3">
+        {hasPendingChanges ? (
+          <div className="ml-auto flex items-center gap-2">
+            <RecoverDeletedButton
+              onClick={handleDiscardChanges}
+              disabled={isSaving || isGeneratingSubtitles}
+              className="inline-flex items-center gap-2 border-white/40 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+            />
+            <SaveChangesButton
+              onClick={handleSaveChanges}
+              disabled={!accessToken || isSaving || isGeneratingSubtitles || generating}
+              isSaving={isSaving}
+              className="inline-flex items-center gap-2 border-white/40 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+            />
+          </div>
+        ) : (
+          <>
+            <span className="text-white font-bold text-sm">{visibleThumbs.length} Páginas</span>
+            <span className="flex items-center gap-1 text-[11px] text-white/90">
+              <span>Densidad de fotos por segundo:</span>
+              <select
+                value={thumbsDensity}
+                onChange={(e) => setThumbsDensity(Number(e.target.value))}
+                className="rounded border border-white/40 bg-black/40 text-white text-sm px-2 py-0.5 focus:outline-none focus:ring-2 focus:ring-yellow-300"
+                disabled={!accessToken}
+              >
+                {CUSTOM_DENSITIES.map((value) => (
+                  <option key={value} value={value}>
+                    {value}
+                  </option>
+                ))}
+              </select>
+            </span>
+          </>
+        )}
+      </div>
 
       {/* Timeline */}
 <GlobalTimeline
@@ -797,6 +824,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   hasFrame={Boolean(frameSetting && frameSetting.frame)}
   onOpenPresentation={() => setIsPresentationOpen(true)}
   onOpenCover={onOpenCover}
+  onDiscardChanges={handleDiscardChanges}
 />
       </div>
 

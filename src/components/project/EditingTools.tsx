@@ -1,8 +1,10 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Film, Camera, Type, Save, Captions, RotateCcw, Frame as FrameIcon, MonitorPlay, Image as ImageIcon } from 'lucide-react'
+import { Play, Pause, Film, Camera, Type, Captions, Frame as FrameIcon, MonitorPlay, Image as ImageIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import RecoverDeletedButton from '@/components/project/RecoverDeletedButton'
+import SaveChangesButton from '@/components/project/SaveChangesButton'
 
 type EditingToolsProps = {
   heightPx: number
@@ -20,6 +22,7 @@ type EditingToolsProps = {
   hasFrame?: boolean
   onOpenPresentation?: () => void
   onOpenCover?: () => void
+  onDiscardChanges?: () => void
 }
 
 export default function EditingTools({
@@ -38,6 +41,7 @@ export default function EditingTools({
   hasFrame = false,
   onOpenPresentation,
   onOpenCover,
+  onDiscardChanges,
 }: EditingToolsProps) {
   const hasPendingChanges = canSave && !isSaving
   const actionsLocked = isGeneratingSubtitles
@@ -85,6 +89,11 @@ export default function EditingTools({
   }
 
   const handleDiscardChanges = () => {
+    if (onDiscardChanges) {
+      onDiscardChanges()
+      return
+    }
+
     if (typeof window !== 'undefined') {
       window.location.reload()
     }
@@ -96,36 +105,44 @@ export default function EditingTools({
       style={{ minHeight: '3rem' }}
       aria-label="Editing tools"
     >
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={onTogglePlay}
-        className="inline-flex items-center gap-2"
-        title={isPlaying ? 'Pausar' : 'Reproducir'}
-      >
-        <Play className="h-4 w-4 text-yellow-600" />
-        {!hasPendingChanges && (isPlaying ? 'Pausar' : 'Reproducir')}
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={onOpenPresentation}
-        className="inline-flex items-center gap-2"
-        title="Presentación"
-      >
-        <MonitorPlay className="h-4 w-4 text-blue-700" />
-        {!hasPendingChanges && 'Presentación'}
-      </Button>
-      <Button
-        type="button"
-        variant="secondary"
-        onClick={onOpenCover}
-        className="inline-flex items-center gap-2"
-        title="Portada"
-      >
-        <ImageIcon className="h-4 w-4 text-indigo-700" />
-        {!hasPendingChanges && 'Portada'}
-      </Button>
+      {!hasPendingChanges && (
+        <>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onTogglePlay}
+            className="inline-flex items-center gap-2"
+            title={isPlaying ? 'Pause' : 'Play'}
+          >
+            {isPlaying ? (
+              <Pause className="h-4 w-4 text-yellow-600" />
+            ) : (
+              <Play className="h-4 w-4 text-yellow-600" />
+            )}
+            {isPlaying ? 'Pause' : 'Play'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onOpenPresentation}
+            className="inline-flex items-center gap-2"
+            title="Presentación"
+          >
+            <MonitorPlay className="h-4 w-4 text-blue-700" />
+            {'Presentación'}
+          </Button>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={onOpenCover}
+            className="inline-flex items-center gap-2"
+            title="Portada"
+          >
+            <ImageIcon className="h-4 w-4 text-indigo-700" />
+            {'Portada'}
+          </Button>
+        </>
+      )}
 
       {showActionButtons && (
         <>
@@ -207,29 +224,16 @@ export default function EditingTools({
 
       {hasPendingChanges && (
         <div className="ml-auto flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
+          <RecoverDeletedButton
             onClick={handleDiscardChanges}
             disabled={isSaving || isGeneratingSubtitles}
-            aria-label="Descartar cambios"
-            className="inline-flex items-center gap-2"
-          >
-            <RotateCcw className="h-4 w-4 text-blue-600" />
-            <span>Recuperar eliminados</span>
-          </Button>
+          />
 
-          <Button
-            type="button"
-            variant="outline"
+          <SaveChangesButton
             onClick={onSave}
             disabled={!canSave || isSaving || isGeneratingSubtitles}
-            aria-label="Guardar cambios"
-            className="inline-flex items-center gap-2"
-          >
-            <Save className="h-4 w-4 text-green-600" />
-            <span>{isSaving ? 'Guardando…' : 'Guardar cambios'}</span>
-          </Button>
+            isSaving={isSaving}
+          />
         </div>
       )}
     </div>
