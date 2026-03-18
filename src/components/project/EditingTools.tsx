@@ -223,7 +223,7 @@ export default function EditingTools({
       )}
 
       {hasPendingChanges && (
-        <div className="ml-auto flex items-center gap-2">
+        <div className="flex w-full items-center justify-center gap-2 md:justify-start">
           <RecoverDeletedButton
             onClick={handleDiscardChanges}
             disabled={isSaving || isGeneratingSubtitles}

@@ -23,7 +23,7 @@ export default function RecoverDeletedButton({
       onClick={onClick}
       disabled={disabled}
       aria-label="Descartar cambios"
-      className={cn('inline-flex items-center gap-2 bg-white hover:bg-white', className)}
+      className={cn('inline-flex items-center gap-2 !bg-white hover:!bg-white text-black border-slate-200', className)}
     >
       <RotateCcw className="h-4 w-4 text-blue-600" />
       <span>Recuperar eliminados</span>

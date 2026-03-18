@@ -25,7 +25,7 @@ export default function SaveChangesButton({
       onClick={onClick}
       disabled={disabled}
       aria-label="Guardar cambios"
-      className={cn('inline-flex items-center gap-2 bg-white hover:bg-white', className)}
+      className={cn('inline-flex items-center gap-2 !bg-white hover:!bg-white text-black border-slate-200', className)}
     >
       <Save className="h-4 w-4 text-green-600" />
       <span>{isSaving ? 'Guardando…' : 'Guardar cambios'}</span>

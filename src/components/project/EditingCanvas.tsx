@@ -759,17 +759,17 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
 </p> */}
       <div className="flex flex-wrap items-center gap-3">
         {hasPendingChanges ? (
-          <div className="ml-auto flex items-center gap-2">
+          <div className="flex w-full items-center justify-center gap-2 md:justify-start">
             <RecoverDeletedButton
               onClick={handleDiscardChanges}
               disabled={isSaving || isGeneratingSubtitles}
-              className="inline-flex items-center gap-2 border-white/40 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+              className="inline-flex items-center gap-2 border-slate-200 text-black hover:text-black"
             />
             <SaveChangesButton
               onClick={handleSaveChanges}
               disabled={!accessToken || isSaving || isGeneratingSubtitles || generating}
               isSaving={isSaving}
-              className="inline-flex items-center gap-2 border-white/40 bg-black/40 text-white hover:bg-black/60 hover:text-white"
+              className="inline-flex items-center gap-2 border-slate-200 text-black hover:text-black"
             />
           </div>
         ) : (
