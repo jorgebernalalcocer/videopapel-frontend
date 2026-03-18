@@ -757,19 +757,19 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
 {/* <p className="text-white text-xs">
   Totales: {combinedThumbs.length} • visibles: {visibleThumbs.length} • densidad: {thumbsDensity}
 </p> */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex min-h-8 flex-wrap items-center gap-3">
         {hasPendingChanges ? (
           <div className="flex w-full items-center justify-center gap-2 md:justify-start">
             <RecoverDeletedButton
               onClick={handleDiscardChanges}
               disabled={isSaving || isGeneratingSubtitles}
-              className="inline-flex items-center gap-2 border-slate-200 text-black hover:text-black"
+              className="h-8 gap-1.5 px-3 text-xs border-slate-200 text-black hover:text-black"
             />
             <SaveChangesButton
               onClick={handleSaveChanges}
               disabled={!accessToken || isSaving || isGeneratingSubtitles || generating}
               isSaving={isSaving}
-              className="inline-flex items-center gap-2 border-slate-200 text-black hover:text-black"
+              className="h-8 gap-1.5 px-3 text-xs border-slate-200 text-black hover:text-black"
             />
           </div>
         ) : (
