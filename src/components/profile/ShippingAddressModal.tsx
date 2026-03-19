@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
 
@@ -23,12 +23,26 @@ export type ShippingAddressResponse = ShippingAddressPayload & {
   updated_at?: string
 }
 
+type BillingCompany = {
+  id: number
+  name: string
+}
+
+type BillingAddressResponse = ShippingAddressResponse & {
+  company: number
+  address_type: 'billing'
+}
+
+export type AddressModalResponse = ShippingAddressResponse | BillingAddressResponse
+
 type ShippingAddressModalProps = {
   open: boolean
   onClose: () => void
   apiBase: string
   accessToken: string | null
-  onCreated: (address: ShippingAddressResponse) => void
+  onCreated: (address: AddressModalResponse) => void
+  mode?: 'shipping' | 'billing'
+  companies?: BillingCompany[]
 }
 
 const EMPTY_FORM: ShippingAddressPayload = {
@@ -50,10 +64,20 @@ export default function ShippingAddressModal({
   apiBase,
   accessToken,
   onCreated,
+  mode = 'shipping',
+  companies = [],
 }: ShippingAddressModalProps) {
   const [form, setForm] = useState<ShippingAddressPayload>(EMPTY_FORM)
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>(companies[0] ? String(companies[0].id) : '')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const isBillingMode = mode === 'billing'
+
+  useEffect(() => {
+    if (!isBillingMode) return
+    setSelectedCompanyId((prev) => prev || (companies[0] ? String(companies[0].id) : ''))
+  }, [companies, isBillingMode])
 
   const updateField = <K extends keyof ShippingAddressPayload>(key: K, value: ShippingAddressPayload[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -62,6 +86,7 @@ export default function ShippingAddressModal({
   const handleClose = () => {
     if (isSubmitting) return
     setForm(EMPTY_FORM)
+    setSelectedCompanyId(companies[0] ? String(companies[0].id) : '')
     setError(null)
     onClose()
   }
@@ -70,6 +95,10 @@ export default function ShippingAddressModal({
     event.preventDefault()
     if (!accessToken) {
       toast.error('Debes iniciar sesión para guardar una dirección.')
+      return
+    }
+    if (isBillingMode && !selectedCompanyId) {
+      setError('Selecciona una empresa para la dirección de facturación.')
       return
     }
     if (
@@ -86,32 +115,45 @@ export default function ShippingAddressModal({
     setIsSubmitting(true)
     setError(null)
     try {
-      const res = await fetch(`${apiBase}/shipping-addresses/`, {
+      const payload = isBillingMode
+        ? {
+            ...form,
+            company: Number(selectedCompanyId),
+            address_type: 'billing' as const,
+            line2: form.line2?.trim() || null,
+            phone: form.phone?.trim() || null,
+            instructions: form.instructions?.trim() || null,
+            is_default: Boolean(form.is_default),
+          }
+        : {
+            ...form,
+            line2: form.line2?.trim() || null,
+            phone: form.phone?.trim() || null,
+            instructions: form.instructions?.trim() || null,
+            is_default: Boolean(form.is_default),
+          }
+
+      const res = await fetch(`${apiBase}/${isBillingMode ? 'company-addresses' : 'shipping-addresses'}/`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${accessToken}`,
         },
         credentials: 'include',
-        body: JSON.stringify({
-          ...form,
-          line2: form.line2?.trim() || null,
-          phone: form.phone?.trim() || null,
-          instructions: form.instructions?.trim() || null,
-          is_default: Boolean(form.is_default),
-        }),
+        body: JSON.stringify(payload),
       })
       if (!res.ok) {
         const detail = await res.text()
         throw new Error(detail || `Error ${res.status}`)
       }
-      const data = (await res.json()) as ShippingAddressResponse
+      const data = (await res.json()) as AddressModalResponse
       onCreated(data)
-      toast.success('Dirección guardada correctamente.')
+      toast.success(isBillingMode ? 'Dirección de facturación guardada correctamente.' : 'Dirección guardada correctamente.')
       setForm(EMPTY_FORM)
+      setSelectedCompanyId(companies[0] ? String(companies[0].id) : '')
       onClose()
     } catch (err: any) {
-      const msg = err?.message || 'No se pudo guardar la dirección.'
+      const msg = err?.message || (isBillingMode ? 'No se pudo guardar la dirección de facturación.' : 'No se pudo guardar la dirección.')
       setError(msg)
       toast.error(msg)
     } finally {
@@ -120,8 +162,26 @@ export default function ShippingAddressModal({
   }
 
   return (
-    <Modal open={open} onClose={handleClose} title="Añadir nueva dirección" size="lg">
+    <Modal open={open} onClose={handleClose} title={isBillingMode ? 'Añadir dirección de facturación' : 'Añadir nueva dirección'} size="lg">
       <form onSubmit={handleSubmit} className="space-y-4">
+        {isBillingMode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+            <select
+              value={selectedCompanyId}
+              onChange={(e) => setSelectedCompanyId(e.target.value)}
+              className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+              required
+            >
+              <option value="">Selecciona una empresa</option>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Etiqueta</label>
           <input
@@ -244,7 +304,7 @@ export default function ShippingAddressModal({
             className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Guardando…' : 'Guardar dirección'}
+            {isSubmitting ? 'Guardando…' : isBillingMode ? 'Guardar dirección de facturación' : 'Guardar dirección'}
           </button>
         </div>
       </form>

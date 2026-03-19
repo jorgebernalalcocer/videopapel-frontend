@@ -4,10 +4,12 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   MapPin,
   Plus,
+  Crown
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import ShippingAddressModal, {
+  type AddressModalResponse,
   type ShippingAddressResponse,
 } from '@/components/profile/ShippingAddressModal'
 import { MyOrders } from '@/components/orders/MyOrders'
@@ -21,6 +23,42 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
 type ShippingAddress = ShippingAddressResponse & {
   created_at?: string
+}
+
+type Company = {
+  id: number
+  name: string
+  vat_number: string
+  phone?: string | null
+  mail?: string | null
+  created_at?: string
+}
+
+type CompanyLogo = {
+  id: number
+  company: number
+  image: string | null
+  type: 'main' | 'secondary' | 'print' | 'watermark'
+  is_default: boolean
+  created_at?: string
+}
+
+type CompanyAddress = {
+  id: number
+  company: number
+  label: string
+  address_type: 'billing' | 'office' | 'shipping' | 'returns'
+  line1: string
+  line2: string | null
+  city: string
+  state_province: string
+  postal_code: string
+  country: string
+  phone: string | null
+  instructions: string | null
+  is_default: boolean
+  created_at?: string
+  updated_at?: string
 }
 
 // --- NEW COMPONENT: Profile Stat ---
@@ -54,9 +92,15 @@ export default function ProfilePage() {
   })
 
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
+  const [companies, setCompanies] = useState<Company[]>([])
+  const [companyAddresses, setCompanyAddresses] = useState<CompanyAddress[]>([])
+  const [companyLogos, setCompanyLogos] = useState<CompanyLogo[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [billingLoading, setBillingLoading] = useState(false)
+  const [billingError, setBillingError] = useState<string | null>(null)
   const [isModalOpen, setModalOpen] = useState(false)
+  const [isBillingModalOpen, setBillingModalOpen] = useState(false)
 
   const canRequest = Boolean(accessToken)
 
@@ -127,15 +171,80 @@ export default function ProfilePage() {
     }
   }, [accessToken, canRequest])
 
+  const fetchBillingData = useCallback(async () => {
+    if (!canRequest || !accessToken) return
+    setBillingLoading(true)
+    setBillingError(null)
+    try {
+      const withAuth = {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include' as const,
+      }
+      const [companiesRes, companyAddressesRes, companyLogosRes] = await Promise.all([
+        fetch(`${API_BASE}/companies/`, withAuth),
+        fetch(`${API_BASE}/company-addresses/`, withAuth),
+        fetch(`${API_BASE}/company-logos/`, withAuth),
+      ])
+
+      if (!companiesRes.ok) {
+        const detail = await companiesRes.text()
+        throw new Error(detail || `Error ${companiesRes.status}`)
+      }
+      if (!companyAddressesRes.ok) {
+        const detail = await companyAddressesRes.text()
+        throw new Error(detail || `Error ${companyAddressesRes.status}`)
+      }
+      if (!companyLogosRes.ok) {
+        const detail = await companyLogosRes.text()
+        throw new Error(detail || `Error ${companyLogosRes.status}`)
+      }
+
+      const companiesPayload = await companiesRes.json()
+      const companyAddressesPayload = await companyAddressesRes.json()
+      const companyLogosPayload = await companyLogosRes.json()
+
+      const companiesList: Company[] = Array.isArray(companiesPayload)
+        ? companiesPayload
+        : Array.isArray(companiesPayload?.results)
+        ? companiesPayload.results
+        : []
+
+      const companyAddressesList: CompanyAddress[] = Array.isArray(companyAddressesPayload)
+        ? companyAddressesPayload
+        : Array.isArray(companyAddressesPayload?.results)
+        ? companyAddressesPayload.results
+        : []
+
+      const companyLogosList: CompanyLogo[] = Array.isArray(companyLogosPayload)
+        ? companyLogosPayload
+        : Array.isArray(companyLogosPayload?.results)
+        ? companyLogosPayload.results
+        : []
+
+      setCompanies(companiesList)
+      setCompanyAddresses(companyAddressesList)
+      setCompanyLogos(companyLogosList)
+    } catch (err: any) {
+      setBillingError(err?.message || 'No se pudieron cargar las direcciones de facturación.')
+    } finally {
+      setBillingLoading(false)
+    }
+  }, [accessToken, canRequest])
+
   useEffect(() => {
     if (canRequest) {
       void fetchStats()
       void fetchAddresses()
+      void fetchBillingData()
     }
-  }, [canRequest, fetchStats, fetchAddresses])
+  }, [canRequest, fetchStats, fetchAddresses, fetchBillingData])
 
   const handleCreated = (_address: ShippingAddressResponse) => {
     void fetchAddresses()
+  }
+
+  const handleBillingCreated = (_address: AddressModalResponse) => {
+    void fetchBillingData()
   }
 
   const handleMarkDefault = async (addressId: number) => {
@@ -164,6 +273,38 @@ export default function ProfilePage() {
       toast.success('Dirección predeterminada actualizada.')
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo actualizar la dirección predeterminada.')
+    }
+  }
+
+  const handleMarkBillingDefault = async (addressId: number) => {
+    if (!accessToken) return
+    try {
+      const res = await fetch(`${API_BASE}/company-addresses/${addressId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ is_default: true }),
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const updated = (await res.json()) as CompanyAddress
+      setCompanyAddresses((prev) =>
+        prev.map((addr) => ({
+          ...addr,
+          is_default:
+            addr.company === updated.company && addr.address_type === updated.address_type
+              ? addr.id === updated.id
+              : addr.is_default,
+        }))
+      )
+      toast.success('Facturación predeterminada actualizada.')
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo actualizar la facturación predeterminada.')
     }
   }
 
@@ -204,7 +345,10 @@ export default function ProfilePage() {
             </h1>
             <p className="text-sm text-gray-500">
               {/* Assuming you have user email or another identifier */}
-              {isSuperuser ? 'SuperUser' : 'Perfil de usuario'}
+              {companies.length === 0 && isSuperuser ? 'SuperUser' : 'Perfil de usuario'}
+              {companies.length > 0 && ` / Perfil de empresa: ${companies[0].name}`}
+
+
             </p>
           </div>
         </div>
@@ -278,10 +422,14 @@ export default function ProfilePage() {
           ) : (
             <ul className="space-y-4">
               {addresses.map((address) => (
-                <li
-                  key={address.id}
-                  className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
-                >
+<li
+  key={address.id}
+  className={`rounded-xl bg-gray-50 px-4 py-3 ${
+    address.is_default 
+      ? 'border-5 border-gray-200' // Borde más grueso y verde
+      : 'border-2 border-gray-100'   // Borde más grueso y gris
+  }`}
+>
                   <div className="flex items-start gap-3">
                     <div className="mt-1 rounded-full bg-white p-2 shadow-sm">
                       <MapPin className="h-4 w-4 text-emerald-600" />
@@ -292,7 +440,7 @@ export default function ProfilePage() {
                           {address.label || 'Dirección'}
                         </p>
                         {address.is_default && (
-                          <span className="text-xs font-semibold text-emerald-600">
+                          <span className="text-md font-semibold text-emerald-600">
                             Predeterminada
                           </span>
                         )}
@@ -330,7 +478,7 @@ export default function ProfilePage() {
                         onClick={() => handleMarkDefault(address.id)}
                         className="text-xs font-medium text-purple-600 hover:text-purple-700"
                       >
-                        Marcar como predeterminada
+                        Marcar dirección predeterminada
                       </button>
                     </div>
                   )}
@@ -341,12 +489,226 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {companies.length > 0 && (
+        <header>
+          <h1 className="text-3xl font-semibold text-gray-900">Perfil de empresa</h1>
+          <p className="text-gray-600 mt-1">
+            Datos de empresa y facturación.
+          </p>
+        </header>
+      )}
+      {companies.length > 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Dirección de facturación
+              </h2>
+              <p className="text-sm text-gray-500">
+                Guarda las direcciones de facturación que necesites.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setBillingModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+              disabled={!canRequest}
+            >
+              <Plus className="h-4 w-4" />
+              Añadir dirección facturación
+            </button>
+          </div>
+
+          <div className="px-6 py-6">
+            {billingLoading ? (
+              <p className="text-sm text-gray-500">Cargando direcciones de facturación…</p>
+            ) : billingError ? (
+              <p className="text-sm text-red-600">{billingError}</p>
+            ) : companyAddresses.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Todavía no has añadido ninguna dirección de facturación.
+              </p>
+            ) : (
+              <ul className="space-y-4">
+                {companyAddresses.map((address) => {
+                  const company = companies.find((item) => item.id === address.company)
+                  return (
+<li
+  key={address.id}
+  className={`rounded-xl bg-gray-50 px-4 py-3 ${
+    address.is_default 
+      ? 'border-5 border-gray-200' // Borde más grueso y verde
+      : 'border-2 border-gray-100'   // Borde más grueso y gris
+  }`}
+>
+                      <div className="flex items-start gap-3">
+                        <div className="mt-1 rounded-full bg-white p-2 shadow-sm">
+                          <MapPin className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <div className="flex-1 space-y-1 text-sm text-gray-700">
+                          <div className="flex items-center gap-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                              {address.label || 'Facturación'}
+                            </p>
+                            {address.is_default && (
+                              <span className="text-md font-semibold text-emerald-600">
+                                Predeterminada
+                              </span>
+                            )}
+                          </div>
+                          {company && (
+                            <p className="text-sm font-medium text-gray-500">
+                              {company.name}
+                            </p>
+                          )}
+                          <p className="font-semibold text-gray-900">
+                            {address.line1}
+                            {address.line2 ? `, ${address.line2}` : ''}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {address.postal_code} {address.city} · {address.state_province} · {address.country}
+                          </p>
+                          {address.phone && (
+                            <p className="text-sm text-gray-500">
+                              Teléfono: {address.phone}
+                            </p>
+                          )}
+                          {address.instructions && (
+                            <p className="text-sm text-gray-500">
+                              Instrucciones: {address.instructions}
+                            </p>
+                          )}
+                          {address.created_at && (
+                            <p className="text-xs text-gray-400">
+                              Añadida el {new Date(address.created_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      {!address.is_default && (
+                        <div className="mt-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleMarkBillingDefault(address.id)}
+                            className="text-xs font-medium text-purple-600 hover:text-purple-700"
+                          >
+                            Marcar facturación predeterminada
+                          </button>
+                        </div>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
+      {companies.length > 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Datos de empresa
+            </h2>
+          </div>
+
+          <div className="px-6 py-6">
+            <ul className="space-y-4">
+              {companies.map((company) => (
+                <li
+                  key={company.id}
+                  className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                >
+                  <div className="space-y-1 text-sm text-gray-700">
+                    <p className="font-semibold text-gray-900">{company.name}</p>
+                    <p>NIF / CIF / VAT: {company.vat_number}</p>
+                    {company.phone && <p>Teléfono: {company.phone}</p>}
+                    {company.mail && <p>Email: {company.mail}</p>}
+                    {company.created_at && (
+                      <p className="text-xs text-gray-400">
+                        Añadida el {new Date(company.created_at).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {companies.length > 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="border-b border-gray-100 px-6 py-4">
+            <h2 className="text-xl font-semibold text-gray-900">
+              Logos
+            </h2>
+          </div>
+
+          <div className="px-6 py-6">
+            {companyLogos.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                Todavía no has añadido ningún logo.
+              </p>
+            ) : (
+              <ul className="space-y-4">
+                {companyLogos.map((logo) => {
+                  const company = companies.find((item) => item.id === logo.company)
+                  return (
+                    <li
+                      key={logo.id}
+                      className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                    >
+                      <div className="flex items-start gap-4">
+                        {logo.image ? (
+                          <img
+                            src={logo.image}
+                            alt={`Logo ${logo.type}`}
+                            className="h-16 w-16 rounded-lg border border-gray-200 bg-white object-contain p-2"
+                          />
+                        ) : (
+                          <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-gray-200 bg-white text-xs text-gray-400">
+                            Sin logo
+                          </div>
+                        )}
+                        <div className="space-y-1 text-sm text-gray-700">
+                          {company && (
+                            <p className="font-semibold text-gray-900">{company.name}</p>
+                          )}
+                          <p>Tipo: {logo.type}</p>
+                          <p>Predeterminado: {logo.is_default ? 'Sí' : 'No'}</p>
+                          {logo.created_at && (
+                            <p className="text-xs text-gray-400">
+                              Añadido el {new Date(logo.created_at).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
       <ShippingAddressModal
         open={isModalOpen}
         onClose={() => setModalOpen(false)}
         apiBase={API_BASE}
         accessToken={accessToken}
         onCreated={handleCreated}
+      />
+      <ShippingAddressModal
+        open={isBillingModalOpen}
+        onClose={() => setBillingModalOpen(false)}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        onCreated={handleBillingCreated}
+        mode="billing"
+        companies={companies.map((company) => ({ id: company.id, name: company.name }))}
       />
                   <LogoutButton />
 

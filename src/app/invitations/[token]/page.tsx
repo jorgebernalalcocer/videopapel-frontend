@@ -123,11 +123,18 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
 
         {requiresLogin && !invitation.is_expired && !invitation.is_accepted && (
           <div className="mt-6 rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-800">
-            Inicia sesión con <strong>{invitation.email}</strong> para aceptar la invitación.
+            Inicia sesión o registrate con <strong>{invitation.email}</strong> para aceptar la invitación.
             <div className="mt-3">
               <Link href="/login" className="font-semibold text-amber-900 underline">
                 Ir a iniciar sesión
               </Link>
+              <p className="mt-2 text-xs text-gray-500">
+                ¿No tienes una cuenta?{' '}
+                <Link href="/register" className="font-semibold text-amber-900 underline">
+                  Regístrate aquí
+                </Link>
+              </p>
+
             </div>
           </div>
         )}
@@ -146,23 +153,24 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
           <p className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
         )}
 
-        <div className="mt-8 flex flex-wrap gap-3">
-
-          <Link
-            href="/projects"
-            className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
-          >
-            Ver proyectos
-          </Link>
-                    <button
-            type="button"
-            onClick={() => void handleAccept()}
-            disabled={requiresLogin || invitation.is_expired || invitation.is_accepted || emailMismatch || accepting}
-              className="px-4 py-2 rounded-lg bg-purple-600 text-white hover:bg-purple-700 text-sm"
-          >
-            {accepting ? 'Aceptando...' : 'Aceptar invitación'}
-          </button>
-        </div>
+        {!requiresLogin && (
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              href="/projects"
+              className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Ver proyectos
+            </Link>
+            <button
+              type="button"
+              onClick={() => void handleAccept()}
+              disabled={invitation.is_expired || invitation.is_accepted || emailMismatch || accepting}
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm text-white hover:bg-purple-700"
+            >
+              {accepting ? 'Aceptando...' : 'Aceptar invitación'}
+            </button>
+          </div>
+        )}
       </section>
     </main>
   )
