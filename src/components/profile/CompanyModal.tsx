@@ -162,7 +162,7 @@ export default function CompanyModal({
         </label>
 
         <label className="block text-sm font-medium text-gray-700">
-          Email (opcional)
+          Email empresa (opcional)
           <input
             type="email"
             value={form.mail ?? ''}

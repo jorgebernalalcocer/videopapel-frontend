@@ -15,6 +15,7 @@ import ShippingAddressModal, {
 } from '@/components/profile/ShippingAddressModal'
 import CompanyModal from '@/components/profile/CompanyModal'
 import CompanyLogoModal from '@/components/profile/CompanyLogoModal'
+import InvoiceMailingModal from '@/components/profile/InvoiceMailingModal'
 import { MyOrders } from '@/components/orders/MyOrders'
 import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
 import LogoutButton from '@/components/LogoutButton'
@@ -34,6 +35,7 @@ type Company = {
   vat_number: string
   phone?: string | null
   mail?: string | null
+  invoice_emails?: string[]
   created_at?: string
 }
 
@@ -107,6 +109,7 @@ export default function ProfilePage() {
   const [isBillingModalOpen, setBillingModalOpen] = useState(false)
   const [isCompanyModalOpen, setCompanyModalOpen] = useState(false)
   const [isCompanyLogoModalOpen, setCompanyLogoModalOpen] = useState(false)
+  const [isInvoiceMailingModalOpen, setInvoiceMailingModalOpen] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
 
   const canRequest = Boolean(accessToken)
@@ -259,6 +262,10 @@ export default function ProfilePage() {
   }
 
   const handleCompanyLogoSaved = () => {
+    void fetchBillingData()
+  }
+
+  const handleInvoiceMailingSaved = () => {
     void fetchBillingData()
   }
 
@@ -541,7 +548,7 @@ export default function ProfilePage() {
                 Perfil de empresa
               </h2>
               <p className="text-sm text-gray-500">
-                Crea tu perfil de empresa para gestionar facturación.
+                Crea tu perfil de empresa para obtener facturas.
               </p>
             </div>
             <button
@@ -695,16 +702,47 @@ export default function ProfilePage() {
                   className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
                 >
                   <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-1 text-sm text-gray-700">
-                      <p className="font-semibold text-gray-900">Nombre de la empresa: {company.name}</p>
-                      <p>NIF / CIF / VAT: {company.vat_number}</p>
-                      {company.phone && <p>Teléfono: {company.phone}</p>}
-                      {company.mail && <p>Email: {company.mail}</p>}
-                      {company.created_at && (
-                        <p className="text-xs text-gray-400">
-                          Añadida el {new Date(company.created_at).toLocaleDateString()}
-                        </p>
-                      )}
+                    <div className="space-y-4 text-sm text-gray-700">
+                      <div className="space-y-1">
+                        <p className="font-semibold text-gray-900">Nombre de la empresa: {company.name}</p>
+                        <p>NIF / CIF / VAT: {company.vat_number}</p>
+                        {company.phone && <p>Teléfono: {company.phone}</p>}
+                        {company.mail && <p>Email: {company.mail}</p>}
+                        {company.created_at && (
+                          <p className="text-xs text-gray-400">
+                            Añadida el {new Date(company.created_at).toLocaleDateString()}
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="space-y-1">
+                            <p className="font-medium text-gray-900">Recibir facturas en:</p>
+                            {company.invoice_emails && company.invoice_emails.length > 0 ? (
+                              <ul className="space-y-1 text-sm text-gray-600">
+                                {company.invoice_emails.map((email) => (
+                                  <li key={email}>{email}</li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-sm text-gray-500">
+                                No has seleccionado ningún destinatario.
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedCompany(company)
+                              setInvoiceMailingModalOpen(true)
+                            }}
+                            className="shrink-0 rounded-md border px-3 py-2 text-sm font-medium hover:bg-gray-50"
+                          >
+                            Modificar
+                          </button>
+                        </div>
+                      </div>
                     </div>
                     <button
                       type="button"
@@ -715,7 +753,7 @@ export default function ProfilePage() {
                       className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
                     >
                       <SquarePen className="h-4 w-4" />
-                      Modificar datos
+                      Modificar
                     </button>
                   </div>
                 </li>
@@ -732,7 +770,7 @@ export default function ProfilePage() {
                 Logos
               </h2>
               <p className="text-sm text-gray-500">
-                Crea tu perfil de empresa para gestionar logos.
+                Crea tu perfil de empresa para añadir logos a tus diseños.
               </p>
             </div>
             <button
@@ -785,7 +823,11 @@ export default function ProfilePage() {
                   return (
                     <li
                       key={logo.id}
-                      className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
+                      className={`rounded-xl bg-gray-50 px-4 py-3 ${
+                        logo.is_default
+                          ? 'border-5 border-gray-200'
+                          : 'border-2 border-gray-100'
+                      }`}
                     >
                       <div className="flex items-start gap-4">
                         {logo.image ? (
@@ -803,7 +845,14 @@ export default function ProfilePage() {
                           {company && (
                             <p className="font-semibold text-gray-900">{company.name}</p>
                           )}
-                          <p>Nombre: {logo.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p>Nombre: {logo.name}</p>
+                            {logo.is_default && (
+                              <span className="text-md font-semibold text-emerald-600">
+                                Logo principal
+                              </span>
+                            )}
+                          </div>
                           <p>Tipo: {logo.type}</p>
                           <p>Predeterminado: {logo.is_default ? 'Sí' : 'No'}</p>
                           {logo.created_at && (
@@ -820,7 +869,7 @@ export default function ProfilePage() {
                             onClick={() => handleMarkLogoDefault(logo.id)}
                             className="text-xs font-medium text-purple-600 hover:text-purple-700"
                           >
-                            Marcar logo como predeterminado
+                            Marcar logo como principal
                           </button>
                         </div>
                       )}
@@ -867,6 +916,17 @@ export default function ProfilePage() {
         accessToken={accessToken}
         companies={companies.map((company) => ({ id: company.id, name: company.name }))}
         onSaved={handleCompanyLogoSaved}
+      />
+      <InvoiceMailingModal
+        open={isInvoiceMailingModalOpen}
+        onClose={() => setInvoiceMailingModalOpen(false)}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        companyId={selectedCompany?.id ?? null}
+        userEmail={mail}
+        companyEmail={selectedCompany?.mail}
+        selectedEmails={selectedCompany?.invoice_emails ?? []}
+        onSaved={handleInvoiceMailingSaved}
       />
                   <LogoutButton />
 
