@@ -4,7 +4,8 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   MapPin,
   Plus,
-  Crown
+  Crown,
+  SquarePen
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
@@ -12,6 +13,8 @@ import ShippingAddressModal, {
   type AddressModalResponse,
   type ShippingAddressResponse,
 } from '@/components/profile/ShippingAddressModal'
+import CompanyModal from '@/components/profile/CompanyModal'
+import CompanyLogoModal from '@/components/profile/CompanyLogoModal'
 import { MyOrders } from '@/components/orders/MyOrders'
 import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
 import LogoutButton from '@/components/LogoutButton'
@@ -37,6 +40,7 @@ type Company = {
 type CompanyLogo = {
   id: number
   company: number
+  name: string
   image: string | null
   type: 'main' | 'secondary' | 'print' | 'watermark'
   is_default: boolean
@@ -101,6 +105,9 @@ export default function ProfilePage() {
   const [billingError, setBillingError] = useState<string | null>(null)
   const [isModalOpen, setModalOpen] = useState(false)
   const [isBillingModalOpen, setBillingModalOpen] = useState(false)
+  const [isCompanyModalOpen, setCompanyModalOpen] = useState(false)
+  const [isCompanyLogoModalOpen, setCompanyLogoModalOpen] = useState(false)
+  const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
 
   const canRequest = Boolean(accessToken)
 
@@ -247,6 +254,14 @@ export default function ProfilePage() {
     void fetchBillingData()
   }
 
+  const handleCompanySaved = () => {
+    void fetchBillingData()
+  }
+
+  const handleCompanyLogoSaved = () => {
+    void fetchBillingData()
+  }
+
   const handleMarkDefault = async (addressId: number) => {
     if (!accessToken) return
     try {
@@ -305,6 +320,35 @@ export default function ProfilePage() {
       toast.success('Facturación predeterminada actualizada.')
     } catch (err: any) {
       toast.error(err?.message || 'No se pudo actualizar la facturación predeterminada.')
+    }
+  }
+
+  const handleMarkLogoDefault = async (logoId: number) => {
+    if (!accessToken) return
+    try {
+      const res = await fetch(`${API_BASE}/company-logos/${logoId}/`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+        body: JSON.stringify({ is_default: true }),
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const updated = (await res.json()) as CompanyLogo
+      setCompanyLogos((prev) =>
+        prev.map((logo) => ({
+          ...logo,
+          is_default: logo.company === updated.company ? logo.id === updated.id : logo.is_default,
+        }))
+      )
+      toast.success('Logo predeterminado actualizado.')
+    } catch (err: any) {
+      toast.error(err?.message || 'No se pudo actualizar el logo predeterminado.')
     }
   }
 
@@ -489,6 +533,33 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      {companies.length === 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Perfil de empresa
+              </h2>
+              <p className="text-sm text-gray-500">
+                Crea tu perfil de empresa para gestionar facturación.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCompany(null)
+                setCompanyModalOpen(true)
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+              disabled={!canRequest}
+            >
+              <Plus className="h-4 w-4" />
+              Crear perfil de empresa
+            </button>
+          </div>
+        </div>
+      )}
+
       {companies.length > 0 && (
         <header>
           <h1 className="text-3xl font-semibold text-gray-900">Perfil de empresa</h1>
@@ -611,6 +682,9 @@ export default function ProfilePage() {
             <h2 className="text-xl font-semibold text-gray-900">
               Datos de empresa
             </h2>
+                <p className="text-sm text-gray-500">
+                Información para generar facturas.
+              </p>
           </div>
 
           <div className="px-6 py-6">
@@ -620,16 +694,29 @@ export default function ProfilePage() {
                   key={company.id}
                   className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
                 >
-                  <div className="space-y-1 text-sm text-gray-700">
-                    <p className="font-semibold text-gray-900">{company.name}</p>
-                    <p>NIF / CIF / VAT: {company.vat_number}</p>
-                    {company.phone && <p>Teléfono: {company.phone}</p>}
-                    {company.mail && <p>Email: {company.mail}</p>}
-                    {company.created_at && (
-                      <p className="text-xs text-gray-400">
-                        Añadida el {new Date(company.created_at).toLocaleDateString()}
-                      </p>
-                    )}
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="space-y-1 text-sm text-gray-700">
+                      <p className="font-semibold text-gray-900">Nombre de la empresa: {company.name}</p>
+                      <p>NIF / CIF / VAT: {company.vat_number}</p>
+                      {company.phone && <p>Teléfono: {company.phone}</p>}
+                      {company.mail && <p>Email: {company.mail}</p>}
+                      {company.created_at && (
+                        <p className="text-xs text-gray-400">
+                          Añadida el {new Date(company.created_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedCompany(company)
+                        setCompanyModalOpen(true)
+                      }}
+                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
+                    >
+                      <SquarePen className="h-4 w-4" />
+                      Modificar datos
+                    </button>
                   </div>
                 </li>
               ))}
@@ -637,13 +724,53 @@ export default function ProfilePage() {
           </div>
         </div>
       )}
+      {companies.length === 0 && (
+        <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Logos
+              </h2>
+              <p className="text-sm text-gray-500">
+                Crea tu perfil de empresa para gestionar logos.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedCompany(null)
+                setCompanyModalOpen(true)
+              }}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+              disabled={!canRequest}
+            >
+              <Plus className="h-4 w-4" />
+              Crear perfil de empresa
+            </button>
+          </div>
+        </div>
+      )}
 
       {companies.length > 0 && (
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 px-6 py-4">
-            <h2 className="text-xl font-semibold text-gray-900">
-              Logos
-            </h2>
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Logos
+              </h2>
+              <p className="text-sm text-gray-500">
+                Almacena tu logo o el de tus clientes.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCompanyLogoModalOpen(true)}
+              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+              disabled={!canRequest}
+            >
+              <Plus className="h-4 w-4" />
+              Añadir logo
+            </button>
           </div>
 
           <div className="px-6 py-6">
@@ -676,6 +803,7 @@ export default function ProfilePage() {
                           {company && (
                             <p className="font-semibold text-gray-900">{company.name}</p>
                           )}
+                          <p>Nombre: {logo.name}</p>
                           <p>Tipo: {logo.type}</p>
                           <p>Predeterminado: {logo.is_default ? 'Sí' : 'No'}</p>
                           {logo.created_at && (
@@ -685,6 +813,17 @@ export default function ProfilePage() {
                           )}
                         </div>
                       </div>
+                      {!logo.is_default && (
+                        <div className="mt-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleMarkLogoDefault(logo.id)}
+                            className="text-xs font-medium text-purple-600 hover:text-purple-700"
+                          >
+                            Marcar logo como predeterminado
+                          </button>
+                        </div>
+                      )}
                     </li>
                   )
                 })}
@@ -709,6 +848,25 @@ export default function ProfilePage() {
         onCreated={handleBillingCreated}
         mode="billing"
         companies={companies.map((company) => ({ id: company.id, name: company.name }))}
+      />
+      <CompanyModal
+        open={isCompanyModalOpen}
+        onClose={() => {
+          setCompanyModalOpen(false)
+          setSelectedCompany(null)
+        }}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        onSaved={handleCompanySaved}
+        company={selectedCompany}
+      />
+      <CompanyLogoModal
+        open={isCompanyLogoModalOpen}
+        onClose={() => setCompanyLogoModalOpen(false)}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        companies={companies.map((company) => ({ id: company.id, name: company.name }))}
+        onSaved={handleCompanyLogoSaved}
       />
                   <LogoutButton />
 
