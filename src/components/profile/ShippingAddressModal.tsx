@@ -166,7 +166,7 @@ export default function ShippingAddressModal({
       <form onSubmit={handleSubmit} className="space-y-4">
         {isBillingMode && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Empresa</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tu empresa</label>
             <select
               value={selectedCompanyId}
               onChange={(e) => setSelectedCompanyId(e.target.value)}

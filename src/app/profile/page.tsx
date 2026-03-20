@@ -16,6 +16,8 @@ import ShippingAddressModal, {
 import CompanyModal from '@/components/profile/CompanyModal'
 import CompanyLogoModal from '@/components/profile/CompanyLogoModal'
 import InvoiceMailingModal from '@/components/profile/InvoiceMailingModal'
+import DeleteUserAddressButton from '@/components/DeleteUserAddressButton'
+import DeleteCompanyAddressButton from '@/components/DeleteCompanyAddressButton'
 import { MyOrders } from '@/components/orders/MyOrders'
 import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
 import LogoutButton from '@/components/LogoutButton'
@@ -253,7 +255,15 @@ export default function ProfilePage() {
     void fetchAddresses()
   }
 
+  const handleAddressDeleted = () => {
+    void fetchAddresses()
+  }
+
   const handleBillingCreated = (_address: AddressModalResponse) => {
+    void fetchBillingData()
+  }
+
+  const handleBillingAddressDeleted = () => {
     void fetchBillingData()
   }
 
@@ -522,17 +532,22 @@ export default function ProfilePage() {
                       )}
                     </div>
                   </div>
-                  {!address.is_default && (
-                    <div className="mt-3 text-right">
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    {!address.is_default && (
                       <button
                         type="button"
                         onClick={() => handleMarkDefault(address.id)}
                         className="text-xs font-medium text-purple-600 hover:text-purple-700"
                       >
-                        Marcar dirección predeterminada
+                        Marcar como dirección principal
                       </button>
-                    </div>
-                  )}
+                    )}
+                    <DeleteUserAddressButton
+                      addressId={address.id}
+                      addressLabel={address.label}
+                      onDeleted={handleAddressDeleted}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
@@ -663,8 +678,8 @@ export default function ProfilePage() {
                           )}
                         </div>
                       </div>
-                      {!address.is_default && (
-                        <div className="mt-3 text-right">
+                      <div className="mt-3 flex items-center justify-end gap-2">
+                        {!address.is_default && (
                           <button
                             type="button"
                             onClick={() => handleMarkBillingDefault(address.id)}
@@ -672,8 +687,13 @@ export default function ProfilePage() {
                           >
                             Marcar facturación predeterminada
                           </button>
-                        </div>
-                      )}
+                        )}
+                        <DeleteCompanyAddressButton
+                          addressId={address.id}
+                          addressLabel={address.label}
+                          onDeleted={handleBillingAddressDeleted}
+                        />
+                      </div>
                     </li>
                   )
                 })}
