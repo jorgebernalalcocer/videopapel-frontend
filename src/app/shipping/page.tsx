@@ -635,7 +635,7 @@ export default function ShippingPage() {
                     </label>
 
                     <label className="text-sm font-medium text-gray-700">
-                      NIF / CIF / VAT
+                      NIF
                       <input
                         type="text"
                         value={companyForm.vat_number}

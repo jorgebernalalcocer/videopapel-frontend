@@ -725,7 +725,7 @@ export default function ProfilePage() {
                     <div className="space-y-4 text-sm text-gray-700">
                       <div className="space-y-1">
                         <p className="font-semibold text-gray-900">Nombre de la empresa: {company.name}</p>
-                        <p>NIF / CIF / VAT: {company.vat_number}</p>
+                        <p>NIF: {company.vat_number}</p>
                         {company.phone && <p>Teléfono: {company.phone}</p>}
                         {company.mail && <p>Email: {company.mail}</p>}
                         {company.created_at && (

@@ -141,7 +141,7 @@ export default function CompanyModal({
         </label>
 
         <label className="block text-sm font-medium text-gray-700">
-          NIF / CIF / VAT
+          NIF
           <input
             type="text"
             value={form.vat_number}
