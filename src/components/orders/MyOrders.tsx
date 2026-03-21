@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/store/auth'
+import { toast } from 'sonner'
+import { Download } from 'lucide-react'
+
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -32,6 +35,7 @@ type Order = {
   currency: string
   order_date: string
   delivery_date?: string | null
+  invoice_pdf?: string | null
   items: OrderItem[]
   shipping_address?: ShippingAddress | null
 }
@@ -68,6 +72,7 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [downloadingOrderId, setDownloadingOrderId] = useState<number | null>(null)
 
   const canRequest = Boolean(accessToken)
 
@@ -98,6 +103,31 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
       void fetchOrders()
     }
   }, [canRequest, fetchOrders])
+
+  const handleDownloadInvoice = useCallback(
+    async (order: Order) => {
+      if (downloadingOrderId === order.id) return
+      setDownloadingOrderId(order.id)
+      try {
+        if (!order.invoice_pdf) {
+          throw new Error('Este pedido todavía no tiene factura disponible.')
+        }
+        const anchor = document.createElement('a')
+        anchor.href = order.invoice_pdf
+        anchor.target = '_blank'
+        anchor.rel = 'noopener noreferrer'
+        anchor.download = `factura-pedido-${order.id}.pdf`
+        document.body.appendChild(anchor)
+        anchor.click()
+        anchor.remove()
+      } catch (err: any) {
+        toast.error(err?.message || 'No se pudo descargar la factura.')
+      } finally {
+        setDownloadingOrderId((current) => (current === order.id ? null : current))
+      }
+    },
+    [downloadingOrderId]
+  )
 
   if (!hasHydrated) {
     return (
@@ -229,6 +259,18 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
                     ) : (
                       <p className="text-sm text-gray-500">No se registró una dirección de envío.</p>
                     )}
+                  </div>
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => handleDownloadInvoice(order)}
+                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                      disabled={downloadingOrderId === order.id}
+                    >
+                      <Download className="w-5 h-5 mr-2" /> 
+
+                      {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura en PDF'}
+                    </button>
                   </div>
                 </div>
               )
