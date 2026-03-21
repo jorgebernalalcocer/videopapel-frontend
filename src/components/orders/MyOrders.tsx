@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import { toast } from 'sonner'
 import { Download } from 'lucide-react'
+import { OrderIssueButton } from '@/components/orders/OrderIssueButton'
+import { OrderIssueModal } from '@/components/orders/OrderIssueModal'
 
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -73,6 +75,7 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [downloadingOrderId, setDownloadingOrderId] = useState<number | null>(null)
+  const [issueOrderId, setIssueOrderId] = useState<number | null>(null)
 
   const canRequest = Boolean(accessToken)
 
@@ -146,139 +149,147 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
   }
 
   return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
-        <div>
-          <p className="text-sm text-gray-500">Historial</p>
-          <h2 className="text-lg font-semibold text-gray-900">
-            {compact ? 'Últimos pedidos' : 'Pedidos realizados'}
-          </h2>
-          {!compact && <p className="text-sm text-gray-500">Ordenados de más reciente a más antiguo.</p>}
-        </div>
-        {!embed && (
-          <Link
-            href="/projects"
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-          >
-            Ir a proyectos
-          </Link>
-        )}
-      </div>
-      <div className="px-6 py-6">
-        {loading ? (
-          <p className="text-sm text-gray-500">Cargando pedidos…</p>
-        ) : error ? (
-          <p className="text-sm text-red-600">{error}</p>
-        ) : orders.length === 0 ? (
-          <p className="text-sm text-gray-500">Aún no has completado ningún pedido.</p>
-        ) : (
-          <div className="space-y-4">
-            {orders.map((order) => {
-              const orderDate = new Date(order.order_date).toLocaleString()
-              return (
-                <div key={order.id} className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-900">Pedido #{order.id}</p>
-                      <p className="text-xs text-gray-500">{orderDate}</p>
-                      <p className="text-xs text-gray-500 capitalize">Estado: {order.status}</p>
-                    </div>
-                    <div className="text-right text-sm text-gray-700">
-                      <div>Subtotal: {formatAmount(order.subtotal_amount)} €</div>
-                      <div>IVA: {formatAmount(order.tax_amount)} €</div>
-                      <p className="text-base font-semibold text-gray-900">Total: {formatAmount(order.total_amount)} €</p>
-                    </div>
-                  </div>
-                  <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Proyectos incluidos</p>
-                    <ul className="divide-y divide-gray-100 text-sm text-gray-700">
-                      {order.items.map((item) => {
-                        const canSeePdf = Boolean(isSuperuser && item.pdf_snapshot)
-                        return (
-                          <li key={item.id} className="flex items-center justify-between py-2">
-                            <div>
-                              <Link
-                                href={`/projects/${item.project_id}`}
-                                className="font-medium text-purple-600 hover:text-purple-400"
-                              >
-                                {item.project_name_snapshot}
-                              </Link>
-                              <p className="text-xs text-gray-500">
-                                {item.quantity} unidad{item.quantity === 1 ? '' : 'es'} · {formatAmount(item.unit_price)} € / unidad
-                              </p>
-                              {item.print_size_label_snapshot && (
-                                <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
-                              )}
-                              {item.frame_name_snapshot && (
-                                <p className="text-xs text-gray-500">Orientación: {item.orientation_snapshot}</p>
-                              )}
-                              {item.orientation_snapshot && (
-                                <p className="text-xs text-gray-500">Marco decorativo: {item.frame_name_snapshot}</p>
-                              )}
-                              {item.aspect_name_snapshot && (
-                                <p className="text-xs text-gray-500">Aspecto: {item.aspect_name_snapshot}</p>
-                              )}
-                              {item.effect_name_snapshot && (
-                                <p className="text-xs text-gray-500">Efecto: {item.effect_name_snapshot}</p>
-                              )}
-                              {item.quality_label_snapshot && (
-                                <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
-                              )}
-                              {item.number_pages_snapshot && (
-                                <p className="text-xs text-gray-500">Número de páginas: {item.number_pages_snapshot}</p>
-                              )}
-                              {canSeePdf && (
-                                <Link
-                                  href={item.pdf_snapshot!}
-                                  className="font-medium text-gray-900 text-green-600 hover:text-green-400"
-                                >
-                                  Link PDF
-                                </Link>
-                              )}
-                            </div>
-                            <span className="text-sm font-semibold text-gray-900">
-                              {formatAmount(parseFloat(item.unit_price) * item.quantity)} €
-                            </span>
-                          </li>
-                        )
-                      })}
-                    </ul>
-                  </div>
-                  <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
-                    <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dirección de envío</p>
-                    {order.shipping_address ? (
-                      <div className="text-sm text-gray-700">
-                        <p>{formatShippingAddress(order.shipping_address)}</p>
-                        {order.shipping_address.phone && (
-                          <p className="text-xs text-gray-500 mt-1">Teléfono: {order.shipping_address.phone}</p>
-                        )}
-                        {order.shipping_address.instructions && (
-                          <p className="text-xs text-gray-500 mt-1">Notas: {order.shipping_address.instructions}</p>
-                        )}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-gray-500">No se registró una dirección de envío.</p>
-                    )}
-                  </div>
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => handleDownloadInvoice(order)}
-                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-                      disabled={downloadingOrderId === order.id}
-                    >
-                      <Download className="w-5 h-5 mr-2" /> 
-
-                      {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura en PDF'}
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
+    <>
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
+          <div>
+            <p className="text-sm text-gray-500">Historial</p>
+            <h2 className="text-lg font-semibold text-gray-900">
+              {compact ? 'Últimos pedidos' : 'Pedidos realizados'}
+            </h2>
+            {!compact && <p className="text-sm text-gray-500">Ordenados de más reciente a más antiguo.</p>}
           </div>
-        )}
+          {!embed && (
+            <Link
+              href="/projects"
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+            >
+              Ir a proyectos
+            </Link>
+          )}
+        </div>
+        <div className="px-6 py-6">
+          {loading ? (
+            <p className="text-sm text-gray-500">Cargando pedidos…</p>
+          ) : error ? (
+            <p className="text-sm text-red-600">{error}</p>
+          ) : orders.length === 0 ? (
+            <p className="text-sm text-gray-500">Aún no has completado ningún pedido.</p>
+          ) : (
+            <div className="space-y-4">
+              {orders.map((order) => {
+                const orderDate = new Date(order.order_date).toLocaleString()
+                return (
+                  <div key={order.id} className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Pedido #{order.id}</p>
+                        <p className="text-xs text-gray-500">{orderDate}</p>
+                        <p className="text-xs text-gray-500 capitalize">Estado: {order.status}</p>
+                      </div>
+                      <div className="text-right text-sm text-gray-700">
+                        <div>Subtotal: {formatAmount(order.subtotal_amount)} €</div>
+                        <div>IVA: {formatAmount(order.tax_amount)} €</div>
+                        <p className="text-base font-semibold text-gray-900">Total: {formatAmount(order.total_amount)} €</p>
+                      </div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Proyectos incluidos</p>
+                      <ul className="divide-y divide-gray-100 text-sm text-gray-700">
+                        {order.items.map((item) => {
+                          const canSeePdf = Boolean(isSuperuser && item.pdf_snapshot)
+                          return (
+                            <li key={item.id} className="flex items-center justify-between py-2">
+                              <div>
+                                <Link
+                                  href={`/projects/${item.project_id}`}
+                                  className="font-medium text-purple-600 hover:text-purple-400"
+                                >
+                                  {item.project_name_snapshot}
+                                </Link>
+                                <p className="text-xs text-gray-500">
+                                  {item.quantity} unidad{item.quantity === 1 ? '' : 'es'} · {formatAmount(item.unit_price)} € / unidad
+                                </p>
+                                {item.print_size_label_snapshot && (
+                                  <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
+                                )}
+                                {item.frame_name_snapshot && (
+                                  <p className="text-xs text-gray-500">Orientación: {item.orientation_snapshot}</p>
+                                )}
+                                {item.orientation_snapshot && (
+                                  <p className="text-xs text-gray-500">Marco decorativo: {item.frame_name_snapshot}</p>
+                                )}
+                                {item.aspect_name_snapshot && (
+                                  <p className="text-xs text-gray-500">Aspecto: {item.aspect_name_snapshot}</p>
+                                )}
+                                {item.effect_name_snapshot && (
+                                  <p className="text-xs text-gray-500">Efecto: {item.effect_name_snapshot}</p>
+                                )}
+                                {item.quality_label_snapshot && (
+                                  <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
+                                )}
+                                {item.number_pages_snapshot && (
+                                  <p className="text-xs text-gray-500">Número de páginas: {item.number_pages_snapshot}</p>
+                                )}
+                                {canSeePdf && (
+                                  <Link
+                                    href={item.pdf_snapshot!}
+                                    className="font-medium text-gray-900 text-green-600 hover:text-green-400"
+                                  >
+                                    Link PDF
+                                  </Link>
+                                )}
+                              </div>
+                              <span className="text-sm font-semibold text-gray-900">
+                                {formatAmount(parseFloat(item.unit_price) * item.quantity)} €
+                              </span>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-white px-3 py-2">
+                      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Dirección de envío</p>
+                      {order.shipping_address ? (
+                        <div className="text-sm text-gray-700">
+                          <p>{formatShippingAddress(order.shipping_address)}</p>
+                          {order.shipping_address.phone && (
+                            <p className="text-xs text-gray-500 mt-1">Teléfono: {order.shipping_address.phone}</p>
+                          )}
+                          {order.shipping_address.instructions && (
+                            <p className="text-xs text-gray-500 mt-1">Notas: {order.shipping_address.instructions}</p>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">No se registró una dirección de envío.</p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap justify-end gap-3">
+                      <OrderIssueButton onClick={() => setIssueOrderId(order.id)} />
+                      <button
+                        type="button"
+                        onClick={() => handleDownloadInvoice(order)}
+                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+                        disabled={downloadingOrderId === order.id}
+                      >
+                        <Download className="w-5 h-5 mr-2" />
+                        {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura en PDF'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+      <OrderIssueModal
+        open={issueOrderId !== null}
+        orderId={issueOrderId}
+        accessToken={accessToken}
+        onClose={() => setIssueOrderId(null)}
+      />
+    </>
   )
 }
 
