@@ -38,6 +38,7 @@ type Order = {
   order_date: string
   delivery_date?: string | null
   invoice_pdf?: string | null
+  rectification_invoice_pdf?: string | null
   items: OrderItem[]
   shipping_address?: ShippingAddress | null
 }
@@ -108,23 +109,36 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
   }, [canRequest, fetchOrders])
 
   const handleDownloadInvoice = useCallback(
-    async (order: Order) => {
+    async (order: Order, kind: 'invoice' | 'rectification' = 'invoice') => {
       if (downloadingOrderId === order.id) return
       setDownloadingOrderId(order.id)
       try {
-        if (!order.invoice_pdf) {
-          throw new Error('Este pedido todavía no tiene factura disponible.')
+        const pdfUrl = kind === 'rectification' ? order.rectification_invoice_pdf : order.invoice_pdf
+        if (!pdfUrl) {
+          throw new Error(
+            kind === 'rectification'
+              ? 'Este pedido todavía no tiene factura rectificativa disponible.'
+              : 'Este pedido todavía no tiene factura disponible.'
+          )
         }
         const anchor = document.createElement('a')
-        anchor.href = order.invoice_pdf
+        anchor.href = pdfUrl
         anchor.target = '_blank'
         anchor.rel = 'noopener noreferrer'
-        anchor.download = `factura-pedido-${order.id}.pdf`
+        anchor.download =
+          kind === 'rectification'
+            ? `factura-rectificativa-pedido-${order.id}.pdf`
+            : `factura-pedido-${order.id}.pdf`
         document.body.appendChild(anchor)
         anchor.click()
         anchor.remove()
       } catch (err: any) {
-        toast.error(err?.message || 'No se pudo descargar la factura.')
+        toast.error(
+          err?.message ||
+            (kind === 'rectification'
+              ? 'No se pudo descargar la factura rectificativa.'
+              : 'No se pudo descargar la factura.')
+        )
       } finally {
         setDownloadingOrderId((current) => (current === order.id ? null : current))
       }
@@ -266,14 +280,25 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
                     </div>
                     <div className="flex flex-wrap justify-end gap-3">
                       <OrderIssueButton onClick={() => setIssueOrderId(order.id)} />
+                      {order.rectification_invoice_pdf && (
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadInvoice(order, 'rectification')}
+                          className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60"
+                          disabled={downloadingOrderId === order.id}
+                        >
+                          <Download className="w-5 h-5 mr-2" />
+                          {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura rectificativa'}
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={() => handleDownloadInvoice(order)}
+                        onClick={() => handleDownloadInvoice(order, 'invoice')}
                         className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
                         disabled={downloadingOrderId === order.id}
                       >
                         <Download className="w-5 h-5 mr-2" />
-                        {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura en PDF'}
+                        {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura'}
                       </button>
                     </div>
                   </div>
