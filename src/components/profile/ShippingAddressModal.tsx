@@ -1,6 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import ProvinceSelectField from '@/components/forms/ProvinceSelectField'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
 
@@ -224,16 +225,11 @@ export default function ShippingAddressModal({
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
             />
           </label>
-          <label className="text-sm font-medium text-gray-700">
-            Provincia
-            <input
-              type="text"
-              value={form.state_province}
-              onChange={(e) => updateField('state_province', e.target.value)}
-              required
-              className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
-          </label>
+          <ProvinceSelectField
+            value={form.state_province}
+            onChange={(value) => updateField('state_province', value)}
+            required
+          />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-sm font-medium text-gray-700">
@@ -253,6 +249,7 @@ export default function ShippingAddressModal({
               value={form.country}
               onChange={(e) => updateField('country', e.target.value.toUpperCase())}
               required
+              disabled
               maxLength={2}
               className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-purple-500"
             />

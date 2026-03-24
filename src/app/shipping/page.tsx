@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/store/auth'
 import { toast } from 'sonner'
 import { MapPin, Building2, ReceiptText } from 'lucide-react'
+import ProvinceSelectField from '@/components/forms/ProvinceSelectField'
 import type { ShippingAddressPayload, ShippingAddressResponse } from '@/components/profile/ShippingAddressModal'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -533,16 +534,11 @@ export default function ShippingPage() {
                 />
               </label>
 
-              <label className="text-sm font-medium text-gray-700">
-                Provincia
-                <input
-                  type="text"
-                  value={form.state_province}
-                  onChange={(e) => updateField('state_province', e.target.value)}
-                  required
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                />
-              </label>
+              <ProvinceSelectField
+                value={form.state_province}
+                onChange={(value) => updateField('state_province', value)}
+                required
+              />
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2">
@@ -724,16 +720,11 @@ export default function ShippingPage() {
                           />
                         </label>
 
-                        <label className="text-sm font-medium text-gray-700">
-                          Provincia
-                          <input
-                            type="text"
-                            value={companyAddressForm.state_province}
-                            onChange={(e) => updateCompanyAddressField('state_province', e.target.value)}
-                            required={wantsCompanyInvoice && !sameAsShipping}
-                            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                          />
-                        </label>
+                        <ProvinceSelectField
+                          value={companyAddressForm.state_province}
+                          onChange={(value) => updateCompanyAddressField('state_province', value)}
+                          required={wantsCompanyInvoice && !sameAsShipping}
+                        />
                       </div>
 
                       <div className="grid gap-3 sm:grid-cols-2">
@@ -755,6 +746,7 @@ export default function ShippingPage() {
                             value={companyAddressForm.country}
                             onChange={(e) => updateCompanyAddressField('country', e.target.value.toUpperCase())}
                             required={wantsCompanyInvoice && !sameAsShipping}
+                            disabled
                             maxLength={2}
                             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-purple-500"
                           />

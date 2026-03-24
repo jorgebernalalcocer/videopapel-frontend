@@ -121,6 +121,18 @@ type ProjectPricePreview = {
   price_breakdown?: PriceBreakdown | null
 }
 
+const parseMoney = (value?: string | number | null): number => {
+  if (value === null || value === undefined || value === '') return 0
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+const formatMoney = (value: number): string => value.toFixed(2)
+
+const isShippingLine = (line: PriceBreakdown['line_items'][number]): boolean => {
+  return line.kind === 'shipping' || /gastos de env[ií]o/i.test(line.label)
+}
+
 const resolveClipPreview = (clip?: ProjectClipPayload | null): EffectPreviewClip | null => {
   if (!clip || !clip.video_url) return null
 
@@ -435,6 +447,28 @@ const statusMessage = project
     }
     return out
   }, [clips])
+
+  const filteredPriceBreakdown = useMemo<PriceBreakdown | null>(() => {
+    const breakdown = pricePreview?.price_breakdown
+    if (!breakdown) return null
+    if (!breakdown.line_items.some((line) => isShippingLine(line))) return breakdown
+
+    const visibleLines = breakdown.line_items.filter((line) => !isShippingLine(line))
+
+    const visibleTotal = visibleLines.reduce((sum, line) => sum + parseMoney(line.amount), 0)
+
+    return {
+      ...breakdown,
+      subtotal: formatMoney(visibleTotal),
+      total: formatMoney(visibleTotal),
+      line_items: visibleLines,
+    }
+  }, [pricePreview])
+
+  const displayLineTotal = useMemo(() => {
+    if (filteredPriceBreakdown) return filteredPriceBreakdown.total
+    return pricePreview?.line_total ?? null
+  }, [filteredPriceBreakdown, pricePreview?.line_total])
 
   /* --------- insertar video (crear clip) --------- */
   const handleSelectVideo = useCallback(async (video: VideoItem) => {
@@ -1124,9 +1158,9 @@ const statusMessage = project
                 quantity={pricePreview.quantity}
                 totalPages={pricePreview.total_pages}
                 unitPrice={pricePreview.unit_price}
-                lineTotal={pricePreview.line_total}
+                lineTotal={displayLineTotal}
                 printSizeLabel={pricePreview.print_size_label ?? project?.print_size_label ?? undefined}
-                breakdown={pricePreview.price_breakdown}
+                breakdown={filteredPriceBreakdown}
                 className="bg-white"
               />
             ) : (
