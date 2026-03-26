@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
+import ShippingSelector from '@/components/orders/ShippingSelector'
 import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/ProjectPriceCard'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -26,8 +27,14 @@ type CartResponse = {
   id: number
   is_active: boolean
   subtotal_amount: string
+  shipping_amount?: string | null
+  shipping_label?: string | null
+  shipping_zone?: string | null
+  subtotal_with_shipping?: string
   tax_amount: string
+  tax_with_shipping?: string
   total_amount: string
+  total_with_shipping?: string
   items_count: number
   updated_at: string
   items: CartItem[]
@@ -71,7 +78,8 @@ export default function SummaryPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API_BASE}/cart/`, {
+      const query = selectedAddressId ? `?shipping_address_id=${selectedAddressId}` : ''
+      const res = await fetch(`${API_BASE}/cart/${query}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'include',
       })
@@ -85,7 +93,7 @@ export default function SummaryPage() {
     } finally {
       setLoading(false)
     }
-  }, [accessToken, canRequest])
+  }, [API_BASE, accessToken, canRequest, selectedAddressId])
 
   useEffect(() => {
     if (canRequest) {
@@ -145,7 +153,7 @@ export default function SummaryPage() {
 
   const totalFormatted = useMemo(() => {
     if (!cart) return '0.00'
-    const parsed = parseFloat(cart.total_amount || '0')
+    const parsed = parseFloat(cart.total_with_shipping ?? cart.total_amount ?? '0')
     return parsed.toFixed(2)
   }, [cart])
 
@@ -157,7 +165,13 @@ export default function SummaryPage() {
 
   const taxFormatted = useMemo(() => {
     if (!cart) return '0.00'
-    const parsed = parseFloat(cart.tax_amount || '0')
+    const parsed = parseFloat(cart.tax_with_shipping ?? cart.tax_amount ?? '0')
+    return parsed.toFixed(2)
+  }, [cart])
+
+  const shippingFormatted = useMemo(() => {
+    if (!cart || cart.shipping_amount === null || cart.shipping_amount === undefined) return null
+    const parsed = parseFloat(cart.shipping_amount || '0')
     return parsed.toFixed(2)
   }, [cart])
 
@@ -276,6 +290,12 @@ export default function SummaryPage() {
               <span>Subtotal</span>
               <span>{subtotalFormatted} €</span>
             </div>
+            {shippingFormatted !== null && (
+              <div className="flex items-center justify-between">
+                <span>{cart?.shipping_label || 'Envío'}</span>
+                <span>{shippingFormatted} €</span>
+              </div>
+            )}
             <div className="flex items-center justify-between">
               <span>IVA (21%)</span>
               <span>{taxFormatted} €</span>
@@ -337,21 +357,11 @@ export default function SummaryPage() {
             </p>
           ) : (
             <>
-              <label className="block text-sm font-medium text-gray-700">
-                Escoge una dirección
-                <select
-                  className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  value={selectedAddressId ?? ''}
-                  onChange={(event) => setSelectedAddressId(Number(event.target.value))}
-                >
-                  {addresses.map((address) => (
-                    <option key={address.id} value={address.id}>
-                      {address.label ? `${address.label} · ` : ''}
-                      {address.line1} · {address.city}
-                    </option>
-                  ))}
-                </select>
-              </label>
+              <ShippingSelector
+                items={addresses}
+                selectedItemId={selectedAddressId}
+                onSelectItem={setSelectedAddressId}
+              />
               {selectedAddress && (
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700 space-y-1">
                   <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-gray-500">
