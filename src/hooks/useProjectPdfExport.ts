@@ -8,11 +8,14 @@ const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 type ExportOptions = {
   openWindow?: boolean
   shippingAddressId?: number | null
+  cleanOutput?: boolean
+  printStylePresetId?: number | null
 }
 
 export function useProjectPdfExport() {
   const accessToken = useAuth((s) => s.accessToken)
   const [exporting, setExporting] = useState(false)
+  const [exportMode, setExportMode] = useState<'standard' | 'clean' | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const exportPdf = useCallback(
@@ -24,13 +27,21 @@ export function useProjectPdfExport() {
       }
 
       setExporting(true)
+      setExportMode(options?.cleanOutput ? 'clean' : 'standard')
       setError(null)
 
       try {
-        const body =
-          options?.shippingAddressId != null
-            ? JSON.stringify({ shipping_address_id: options.shippingAddressId })
-            : undefined
+        const payload: Record<string, unknown> = {}
+        if (options?.shippingAddressId != null) {
+          payload.shipping_address_id = options.shippingAddressId
+        }
+        if (options?.cleanOutput) {
+          payload.clean_output = true
+        }
+        if (options?.printStylePresetId != null) {
+          payload.print_style_preset_id = options.printStylePresetId
+        }
+        const body = Object.keys(payload).length > 0 ? JSON.stringify(payload) : undefined
 
         const headers: Record<string, string> = { Authorization: `Bearer ${accessToken}` }
         if (body) {
@@ -68,6 +79,7 @@ export function useProjectPdfExport() {
         throw new Error(message)
       } finally {
         setExporting(false)
+        setExportMode(null)
       }
     },
     [accessToken, API_BASE]
@@ -75,5 +87,5 @@ export function useProjectPdfExport() {
 
   const clearError = useCallback(() => setError(null), [])
 
-  return { exportPdf, exporting, error, clearError }
+  return { exportPdf, exporting, exportMode, error, clearError }
 }

@@ -33,6 +33,7 @@ import DuplicateProjectButton from '@/components/DuplicateProjectButton'
 import ShareProjectButton from '@/components/ShareProjectButton'
 import { ShareModal } from '@/components/ShareModal'
 import EditTitleModal from '@/components/project/EditTitleModal'
+import PrintStylePresetPdfModal from '@/components/project/PrintStylePresetPdfModal'
 import { SquarePen } from 'lucide-react'
 import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/ProjectPriceCard'
 import { Modal } from '@/components/ui/Modal'
@@ -189,6 +190,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   const [coverBusy, setCoverBusy] = useState(false)
   const [editTitleOpen, setEditTitleOpen] = useState(false)
   const [shareOpen, setShareOpen] = useState(false)
+  const [advancedPdfModalOpen, setAdvancedPdfModalOpen] = useState(false)
   const statusLabel = project ? STATUS_LABELS[project.status] ?? project.status : null
   const isProjectExported = project?.status === 'exported'
   const currentUser = useAuth((s) => s.user)
@@ -218,7 +220,7 @@ const statusMessage = project
   const accessToken = useAuth((s) => s.accessToken)
 
   const [addingToCart, setAddingToCart] = useState(false)
-  const { exportPdf, exporting, error: exportError } = useProjectPdfExport()
+  const { exportPdf, exporting, exportMode, error: exportError } = useProjectPdfExport()
   const [pricePreview, setPricePreview] = useState<ProjectPricePreview | null>(null)
   const [priceLoading, setPriceLoading] = useState(false)
   const [priceError, setPriceError] = useState<string | null>(null)
@@ -724,7 +726,7 @@ const statusMessage = project
                       closeModal()
                     },
                   })}
-                  modalTitle="Seleccionar tamaño de impresión"
+                  modalTitle="Selecciona tamaño de proyecto"
                   modalDescription="Escoge el tamaño que se aplicará al proyecto."
                   disabled={isInteractionDisabled}
                 />
@@ -970,7 +972,7 @@ const statusMessage = project
                       closeModal()
                     },
                   })}
-                  modalTitle="Seleccionar tamaño de impresión"
+                  modalTitle="Selecciona tamaño de proyecto"
                   modalDescription="Escoge el tamaño que se aplicará al proyecto."
                   disabled={isInteractionDisabled}
                 />
@@ -1172,18 +1174,40 @@ const statusMessage = project
 
           {/* Contenedor de Exportar y Comprar */}
           <div className="bg-green-50 border border-green-200 rounded-xl shadow-md p-4">
-            <h2 className="text-xl font-semibold mb-3 text-green-800">Añadir a la cesta</h2>
-            <button
-              className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
-              onClick={() => {
-                if (project) {
-                  void exportPdf(project.id)
-                }
-              }}
-              disabled={exporting}
-            >
-              {exporting ? 'Generando PDF…' : 'Generar PDF / Iniciar Compra'}
-            </button>
+            <h2 className="text-xl font-semibold mb-3 text-green-800">Exportación</h2>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <button
+                className="w-full py-3 bg-green-600 text-white rounded-lg font-bold hover:bg-green-700 transition disabled:opacity-60"
+                onClick={() => {
+                  if (project) {
+                    void exportPdf(project.id)
+                  }
+                }}
+                disabled={exporting}
+              >
+                {exporting && exportMode === 'standard' ? 'Generando PDF…' : 'Generar PDF'}
+              </button>
+              <button
+                className="w-full py-3 bg-white text-green-700 border border-green-300 rounded-lg font-bold hover:bg-green-100 transition disabled:opacity-60"
+                onClick={() => {
+                  if (project) {
+                    void exportPdf(project.id, { cleanOutput: true })
+                  }
+                }}
+                disabled={exporting}
+              >
+                {exporting && exportMode === 'clean'
+                  ? 'Generando PDF limpio…'
+                  : `Generar PDF limpio${project?.print_size_label ? ` ${project.print_size_label}` : ''}`}
+              </button>
+              <button
+                className="w-full py-3 bg-emerald-900 text-white rounded-lg font-bold hover:bg-emerald-950 transition disabled:opacity-60"
+                onClick={() => setAdvancedPdfModalOpen(true)}
+                disabled={exporting}
+              >
+                Exportación avanzada
+              </button>
+            </div>
             {exportError && <p className="text-xs text-red-600 mt-2">{exportError}</p>}
             <p className="text-xs text-green-700 mt-2">Se utilizarán los clips y configuraciones actuales.</p>
           </div>
@@ -1262,6 +1286,19 @@ const statusMessage = project
         currentTitle={project.name}
         onClose={() => setEditTitleOpen(false)}
         onSave={handleSaveTitle}
+      />
+      <PrintStylePresetPdfModal
+        open={advancedPdfModalOpen}
+        onClose={() => setAdvancedPdfModalOpen(false)}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        projectPrintSizeLabel={project?.print_size_label ?? null}
+        generating={exporting && exportMode === 'standard'}
+        onConfirm={async (presetId) => {
+          if (!project) return
+          await exportPdf(project.id, { printStylePresetId: presetId })
+          setAdvancedPdfModalOpen(false)
+        }}
       />
       <ShareModal
         project={shareOpen ? project : null}

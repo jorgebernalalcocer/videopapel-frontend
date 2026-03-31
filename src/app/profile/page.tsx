@@ -4,8 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   MapPin,
   Plus,
-  Crown,
-  SquarePen
+  Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
@@ -16,6 +15,10 @@ import ShippingAddressModal, {
 import CompanyModal from '@/components/profile/CompanyModal'
 import CompanyLogoModal from '@/components/profile/CompanyLogoModal'
 import InvoiceMailingModal from '@/components/profile/InvoiceMailingModal'
+import EditActionButton from '@/components/profile/EditActionButton'
+import PrintStylePresetModal, {
+  type PrintStylePresetResponse,
+} from '@/components/profile/PrintStylePresetModal'
 import DeleteUserAddressButton from '@/components/DeleteUserAddressButton'
 import DeleteCompanyAddressButton from '@/components/DeleteCompanyAddressButton'
 import { MyOrders } from '@/components/orders/MyOrders'
@@ -69,6 +72,8 @@ type CompanyAddress = {
   updated_at?: string
 }
 
+type PrintStylePreset = PrintStylePresetResponse
+
 // --- NEW COMPONENT: Profile Stat ---
 const ProfileStat = ({ label, count }: { label: string; count: number }) => (
   <div className="flex flex-col items-center">
@@ -103,16 +108,21 @@ export default function ProfilePage() {
   const [companies, setCompanies] = useState<Company[]>([])
   const [companyAddresses, setCompanyAddresses] = useState<CompanyAddress[]>([])
   const [companyLogos, setCompanyLogos] = useState<CompanyLogo[]>([])
+  const [printStylePresets, setPrintStylePresets] = useState<PrintStylePreset[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [billingLoading, setBillingLoading] = useState(false)
   const [billingError, setBillingError] = useState<string | null>(null)
+  const [printPresetsLoading, setPrintPresetsLoading] = useState(false)
+  const [printPresetsError, setPrintPresetsError] = useState<string | null>(null)
   const [isModalOpen, setModalOpen] = useState(false)
   const [isBillingModalOpen, setBillingModalOpen] = useState(false)
   const [isCompanyModalOpen, setCompanyModalOpen] = useState(false)
   const [isCompanyLogoModalOpen, setCompanyLogoModalOpen] = useState(false)
   const [isInvoiceMailingModalOpen, setInvoiceMailingModalOpen] = useState(false)
+  const [isPrintStylePresetModalOpen, setPrintStylePresetModalOpen] = useState(false)
   const [selectedCompany, setSelectedCompany] = useState<Company | null>(null)
+  const [selectedPrintStylePreset, setSelectedPrintStylePreset] = useState<PrintStylePreset | null>(null)
 
   const canRequest = Boolean(accessToken)
 
@@ -243,13 +253,41 @@ export default function ProfilePage() {
     }
   }, [accessToken, canRequest])
 
+  const fetchPrintStylePresets = useCallback(async () => {
+    if (!canRequest || !accessToken) return
+    setPrintPresetsLoading(true)
+    setPrintPresetsError(null)
+    try {
+      const res = await fetch(`${API_BASE}/print-style-presets/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const payload = await res.json()
+      const list: PrintStylePreset[] = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.results)
+        ? payload.results
+        : []
+      setPrintStylePresets(list)
+    } catch (err: any) {
+      setPrintPresetsError(err?.message || 'No se pudieron cargar los ajustes de impresión.')
+    } finally {
+      setPrintPresetsLoading(false)
+    }
+  }, [API_BASE, accessToken, canRequest])
+
   useEffect(() => {
     if (canRequest) {
       void fetchStats()
       void fetchAddresses()
       void fetchBillingData()
+      void fetchPrintStylePresets()
     }
-  }, [canRequest, fetchStats, fetchAddresses, fetchBillingData])
+  }, [canRequest, fetchStats, fetchAddresses, fetchBillingData, fetchPrintStylePresets])
 
   const handleCreated = (_address: ShippingAddressResponse) => {
     void fetchAddresses()
@@ -265,6 +303,10 @@ export default function ProfilePage() {
 
   const handleBillingAddressDeleted = () => {
     void fetchBillingData()
+  }
+
+  const handlePrintStylePresetCreated = (_preset: PrintStylePresetResponse) => {
+    void fetchPrintStylePresets()
   }
 
   const handleCompanySaved = () => {
@@ -751,30 +793,22 @@ export default function ProfilePage() {
                               </p>
                             )}
                           </div>
-                          <button
-                            type="button"
+                          <EditActionButton
+                            compact
                             onClick={() => {
                               setSelectedCompany(company)
                               setInvoiceMailingModalOpen(true)
                             }}
-                            className="shrink-0 rounded-md border px-3 py-2 text-sm font-medium hover:bg-gray-50"
-                          >
-                            Modificar
-                          </button>
+                          />
                         </div>
                       </div>
                     </div>
-                    <button
-                      type="button"
+                    <EditActionButton
                       onClick={() => {
                         setSelectedCompany(company)
                         setCompanyModalOpen(true)
                       }}
-                      className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700"
-                    >
-                      <SquarePen className="h-4 w-4" />
-                      Modificar
-                    </button>
+                    />
                   </div>
                 </li>
               ))}
@@ -902,6 +936,105 @@ export default function ProfilePage() {
         </div>
       )}
 
+      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900">
+              Configuración de impresión
+            </h2>
+            <p className="text-sm text-gray-500">
+              Guarda presets avanzados para decidir cómo imponer e imprimir cada formato.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedPrintStylePreset(null)
+              setPrintStylePresetModalOpen(true)
+            }}
+            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
+            disabled={!canRequest}
+          >
+            <Plus className="h-4 w-4" />
+            Añadir ajustes de impresión
+          </button>
+        </div>
+
+        <div className="px-6 py-6">
+          {printPresetsLoading ? (
+            <p className="text-sm text-gray-500">Cargando ajustes de impresión…</p>
+          ) : printPresetsError ? (
+            <p className="text-sm text-red-600">{printPresetsError}</p>
+          ) : printStylePresets.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              Todavía no has guardado ninguna configuración de impresión.
+            </p>
+          ) : (
+            <ul className="space-y-4">
+              {printStylePresets.map((preset) => (
+                <li
+                  key={preset.id}
+                  className={`rounded-xl bg-gray-50 px-4 py-3 ${
+                    preset.is_default ? 'border-5 border-gray-200' : 'border-2 border-gray-100'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1 rounded-full bg-white p-2 shadow-sm">
+                      <Printer className="h-4 w-4 text-emerald-600" />
+                    </div>
+                    <div className="flex-1 space-y-1 text-sm text-gray-700">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                          {preset.name}
+                        </p>
+                        {preset.is_default && (
+                          <span className="text-md font-semibold text-emerald-600">
+                            Predeterminado
+                          </span>
+                        )}
+                        {!preset.is_active && (
+                          <span className="text-xs font-semibold uppercase tracking-wide text-gray-400">
+                            Inactivo
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-semibold text-gray-900">
+                        {preset.selected_format_label} en {preset.imposed_on_format_label}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Mosaico: {preset.mosaic_mode} · Rotación: {preset.rotation_mode} · Alineación: {preset.sheet_alignment}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        Separación: {preset.horizontal_gap_mm} × {preset.vertical_gap_mm} mm · Sangrado: {preset.bleed_mm} mm
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        Escala máx.: {preset.max_scale_percent}% · Dúplex: {preset.duplex_enabled ? 'Sí' : 'No'} · Marcas: {preset.cut_marks_mode}
+                      </p>
+                      {preset.notes && (
+                        <p className="text-sm text-gray-500">
+                          Notas: {preset.notes}
+                        </p>
+                      )}
+                      {preset.created_at && (
+                        <p className="text-xs text-gray-400">
+                          Añadido el {new Date(preset.created_at).toLocaleDateString()}
+                        </p>
+                      )}
+                    </div>
+                    <EditActionButton
+                      onClick={() => {
+                        setSelectedPrintStylePreset(preset)
+                        setPrintStylePresetModalOpen(true)
+                      }}
+                    />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+
       <ShippingAddressModal
         open={isModalOpen}
         onClose={() => setModalOpen(false)}
@@ -947,6 +1080,17 @@ export default function ProfilePage() {
         companyEmail={selectedCompany?.mail}
         selectedEmails={selectedCompany?.invoice_emails ?? []}
         onSaved={handleInvoiceMailingSaved}
+      />
+      <PrintStylePresetModal
+        open={isPrintStylePresetModalOpen}
+        onClose={() => {
+          setPrintStylePresetModalOpen(false)
+          setSelectedPrintStylePreset(null)
+        }}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        onSaved={handlePrintStylePresetCreated}
+        preset={selectedPrintStylePreset}
       />
                   <LogoutButton />
 
