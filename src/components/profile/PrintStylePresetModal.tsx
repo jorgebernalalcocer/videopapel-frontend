@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, useEffect, useMemo, useState } from 'react'
+import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
 
@@ -102,6 +102,7 @@ type PrintStylePresetModalProps = {
 }
 
 type UiLevel = 'basic' | 'advanced' | 'expert'
+type FitMode = 'exact' | 'production'
 
 type UnifiedFields = {
   gap_mm: string
@@ -147,6 +148,10 @@ const EMPTY_FORM: PrintStylePresetPayload = {
   notes: '',
 }
 
+function cx(...classes: Array<string | false | null | undefined>) {
+  return classes.filter(Boolean).join(' ')
+}
+
 function areAllEqual(values: Array<string | null | undefined>) {
   const normalized = values.map((v) => String(v ?? '').trim())
   return normalized.every((v) => v === normalized[0])
@@ -187,8 +192,24 @@ function getUnifiedFieldsFromPreset(source: {
   }
 }
 
-function cx(...classes: Array<string | false | null | undefined>) {
-  return classes.filter(Boolean).join(' ')
+function Section({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children: ReactNode
+}) {
+  return (
+    <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {description ? <p className="mt-1 text-sm text-gray-500">{description}</p> : null}
+      </div>
+      {children}
+    </section>
+  )
 }
 
 export default function PrintStylePresetModal({
@@ -206,6 +227,7 @@ export default function PrintStylePresetModal({
   const [error, setError] = useState<string | null>(null)
 
   const [uiLevel, setUiLevel] = useState<UiLevel>('basic')
+  const [fitMode, setFitMode] = useState<FitMode>('production')
   const [showExpertTechnical, setShowExpertTechnical] = useState(false)
   const [showCutMarkDetails, setShowCutMarkDetails] = useState(false)
 
@@ -213,8 +235,8 @@ export default function PrintStylePresetModal({
   const [outerMarginMm, setOuterMarginMm] = useState('5.00')
   const [safeMarginMm, setSafeMarginMm] = useState('4.00')
 
-  const isGridMode = form.mosaic_mode === 'grid'
   const isEditing = Boolean(preset?.id)
+  const isGridMode = form.mosaic_mode === 'grid'
   const isBasic = uiLevel === 'basic'
   const isAdvanced = uiLevel === 'advanced'
   const isExpert = uiLevel === 'expert'
@@ -261,12 +283,7 @@ export default function PrintStylePresetModal({
         notes: preset.notes || '',
       }
 
-      setForm(nextForm)
-
       const unified = getUnifiedFieldsFromPreset(nextForm)
-      setGapMm(unified.gap_mm)
-      setOuterMarginMm(unified.outer_margin_mm)
-      setSafeMarginMm(unified.safe_margin_mm)
 
       const hasExpertValues =
         !areAllEqual([
@@ -288,7 +305,12 @@ export default function PrintStylePresetModal({
         nextForm.allow_scale_up ||
         nextForm.mosaic_mode === 'manual'
 
+      setForm(nextForm)
+      setGapMm(unified.gap_mm)
+      setOuterMarginMm(unified.outer_margin_mm)
+      setSafeMarginMm(unified.safe_margin_mm)
       setUiLevel(hasExpertValues ? 'expert' : 'advanced')
+      setFitMode('production')
       setShowExpertTechnical(hasExpertValues)
       setShowCutMarkDetails(nextForm.cut_marks_mode !== 'none')
       setError(null)
@@ -300,8 +322,9 @@ export default function PrintStylePresetModal({
     setOuterMarginMm('5.00')
     setSafeMarginMm('4.00')
     setUiLevel('basic')
+    setFitMode('production')
     setShowExpertTechnical(false)
-    setShowCutMarkDetails(true)
+    setShowCutMarkDetails(false)
     setError(null)
   }, [open, preset])
 
@@ -329,8 +352,8 @@ export default function PrintStylePresetModal({
         const list: PrintSizeOption[] = Array.isArray(payload)
           ? payload
           : Array.isArray(payload?.results)
-          ? payload.results
-          : []
+            ? payload.results
+            : []
 
         if (ignore) return
 
@@ -380,19 +403,27 @@ export default function PrintStylePresetModal({
   const previewStats = useMemo(() => {
     if (!selectedFormatMeta || !imposedFormatMeta) return null
 
-    const pieceW =
+    const rawPieceW =
       form.rotation_mode === 'force_90' ? selectedFormatMeta.height_mm : selectedFormatMeta.width_mm
-    const pieceH =
+    const rawPieceH =
       form.rotation_mode === 'force_90' ? selectedFormatMeta.width_mm : selectedFormatMeta.height_mm
 
     const sheetW = imposedFormatMeta.width_mm
     const sheetH = imposedFormatMeta.height_mm
 
-    const gap = Number(gapMm || 0)
-    const outer = Number(outerMarginMm || 0)
+    const productionGap = Number(gapMm || 0)
+    const productionOuter = Number(outerMarginMm || 0)
+    const productionBleed = Number(form.bleed_mm || 0)
 
-    const usableW = Math.max(sheetW - outer * 2, 0)
-    const usableH = Math.max(sheetH - outer * 2, 0)
+    const effectiveGap = fitMode === 'exact' ? 0 : productionGap
+    const effectiveOuter = fitMode === 'exact' ? 0 : productionOuter
+    const effectiveBleed = fitMode === 'exact' ? 0 : productionBleed
+
+    const imposedPieceW = rawPieceW + effectiveBleed * 2
+    const imposedPieceH = rawPieceH + effectiveBleed * 2
+
+    const usableW = Math.max(sheetW - effectiveOuter * 2, 0)
+    const usableH = Math.max(sheetH - effectiveOuter * 2, 0)
 
     let cols = 0
     let rows = 0
@@ -400,19 +431,52 @@ export default function PrintStylePresetModal({
     if (form.mosaic_mode === 'grid') {
       cols = Math.max(Number(form.columns || 0), 0)
       rows = Math.max(Number(form.rows || 0), 0)
-    } else if (pieceW > 0 && pieceH > 0) {
-      cols = Math.floor((usableW + gap) / (pieceW + gap))
-      rows = Math.floor((usableH + gap) / (pieceH + gap))
+    } else if (imposedPieceW > 0 && imposedPieceH > 0) {
+      cols = Math.floor((usableW + effectiveGap) / (imposedPieceW + effectiveGap))
+      rows = Math.floor((usableH + effectiveGap) / (imposedPieceH + effectiveGap))
     }
+
+    const previewWidthPx = 260
+    const previewHeightPx = Math.max(
+      150,
+      Math.round(previewWidthPx * (sheetH / Math.max(sheetW, 1))),
+    )
+    const pxPerMm = previewWidthPx / Math.max(sheetW, 1)
+    const outerPx = effectiveOuter * pxPerMm
+    const gapPx = effectiveGap * pxPerMm
+    const pieceWidthPx = Math.max(imposedPieceW * pxPerMm, 12)
+    const pieceHeightPx = Math.max(imposedPieceH * pxPerMm, 12)
+    const bleedPx = effectiveBleed * pxPerMm
+    const bodyWidthPx = Math.max(rawPieceW * pxPerMm, 8)
+    const bodyHeightPx = Math.max(rawPieceH * pxPerMm, 8)
+    const markLengthPx = Math.max(8, Number(form.cut_mark_length_mm || 0) * pxPerMm)
+    const markOffsetPx = Math.max(2, Number(form.cut_mark_offset_mm || 0) * pxPerMm)
 
     return {
       cols,
       rows,
       total: cols * rows,
-      pieceW,
-      pieceH,
+      pieceW: rawPieceW,
+      pieceH: rawPieceH,
+      imposedPieceW,
+      imposedPieceH,
       sheetW,
       sheetH,
+      effectiveGap,
+      effectiveOuter,
+      effectiveBleed,
+      fitMode,
+      previewWidthPx,
+      previewHeightPx,
+      outerPx,
+      gapPx,
+      pieceWidthPx,
+      pieceHeightPx,
+      bleedPx,
+      bodyWidthPx,
+      bodyHeightPx,
+      markLengthPx,
+      markOffsetPx,
     }
   }, [
     selectedFormatMeta,
@@ -423,6 +487,10 @@ export default function PrintStylePresetModal({
     form.rows,
     gapMm,
     outerMarginMm,
+    form.bleed_mm,
+    fitMode,
+    form.cut_mark_length_mm,
+    form.cut_mark_offset_mm,
   ])
 
   const updateField = <K extends keyof PrintStylePresetPayload>(
@@ -439,6 +507,7 @@ export default function PrintStylePresetModal({
     setOuterMarginMm('5.00')
     setSafeMarginMm('4.00')
     setUiLevel('basic')
+    setFitMode('production')
     setShowExpertTechnical(false)
     setShowCutMarkDetails(false)
     setError(null)
@@ -476,34 +545,22 @@ export default function PrintStylePresetModal({
         rows: isGridMode ? Number(form.rows) : null,
 
         horizontal_gap_mm: gapMm,
-        vertical_gap_mm: gapMm,
+        vertical_gap_mm: isExpert && showExpertTechnical ? form.vertical_gap_mm : gapMm,
 
-        outer_margin_top_mm: outerMarginMm,
+        outer_margin_top_mm: isExpert && showExpertTechnical ? form.outer_margin_top_mm : outerMarginMm,
         outer_margin_right_mm: isExpert && showExpertTechnical ? form.outer_margin_right_mm : outerMarginMm,
         outer_margin_bottom_mm: isExpert && showExpertTechnical ? form.outer_margin_bottom_mm : outerMarginMm,
         outer_margin_left_mm: isExpert && showExpertTechnical ? form.outer_margin_left_mm : outerMarginMm,
 
-        safe_margin_top_mm: safeMarginMm,
+        safe_margin_top_mm: isExpert && showExpertTechnical ? form.safe_margin_top_mm : safeMarginMm,
         safe_margin_right_mm: isExpert && showExpertTechnical ? form.safe_margin_right_mm : safeMarginMm,
         safe_margin_bottom_mm: isExpert && showExpertTechnical ? form.safe_margin_bottom_mm : safeMarginMm,
         safe_margin_left_mm: isExpert && showExpertTechnical ? form.safe_margin_left_mm : safeMarginMm,
 
-        cut_mark_length_mm:
-          form.cut_marks_mode === 'none' ? '4.00' : form.cut_mark_length_mm,
-        cut_mark_offset_mm:
-          form.cut_marks_mode === 'none' ? '2.00' : form.cut_mark_offset_mm,
+        cut_mark_length_mm: form.cut_marks_mode === 'none' ? '4.00' : form.cut_mark_length_mm,
+        cut_mark_offset_mm: form.cut_marks_mode === 'none' ? '2.00' : form.cut_mark_offset_mm,
 
         notes: form.notes.trim() || null,
-      }
-
-      if (!(isExpert && showExpertTechnical)) {
-        payload.outer_margin_right_mm = outerMarginMm
-        payload.outer_margin_bottom_mm = outerMarginMm
-        payload.outer_margin_left_mm = outerMarginMm
-
-        payload.safe_margin_right_mm = safeMarginMm
-        payload.safe_margin_bottom_mm = safeMarginMm
-        payload.safe_margin_left_mm = safeMarginMm
       }
 
       const url = isEditing
@@ -578,24 +635,6 @@ export default function PrintStylePresetModal({
     </label>
   )
 
-  const Section = ({
-    title,
-    description,
-    children,
-  }: {
-    title: string
-    description?: string
-    children: React.ReactNode
-  }) => (
-    <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4">
-      <div>
-        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
-        {description ? <p className="mt-1 text-sm text-gray-500">{description}</p> : null}
-      </div>
-      {children}
-    </section>
-  )
-
   return (
     <Modal
       open={open}
@@ -629,6 +668,7 @@ export default function PrintStylePresetModal({
                 />
                 Predeterminado
               </label>
+
               <label className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-3 text-sm text-gray-700">
                 <input
                   type="checkbox"
@@ -710,6 +750,43 @@ export default function PrintStylePresetModal({
             </label>
           </div>
 
+          <div className="rounded-2xl border border-gray-200 bg-gray-50 p-3">
+            <div className="mb-2 text-sm font-semibold text-gray-900">Modo de encaje en la vista previa</div>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button
+                type="button"
+                onClick={() => setFitMode('exact')}
+                className={cx(
+                  'rounded-xl border px-3 py-3 text-left transition',
+                  fitMode === 'exact'
+                    ? 'border-purple-500 bg-white shadow-sm'
+                    : 'border-gray-200 bg-white/70 hover:bg-white',
+                )}
+              >
+                <div className="text-sm font-semibold text-gray-900">Ajuste exacto</div>
+                <div className="mt-1 text-xs text-gray-500">
+                  Calcula cuántas piezas caben sin margen exterior, sin separación y sin sangrado.
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFitMode('production')}
+                className={cx(
+                  'rounded-xl border px-3 py-3 text-left transition',
+                  fitMode === 'production'
+                    ? 'border-purple-500 bg-white shadow-sm'
+                    : 'border-gray-200 bg-white/70 hover:bg-white',
+                )}
+              >
+                <div className="text-sm font-semibold text-gray-900">Producción</div>
+                <div className="mt-1 text-xs text-gray-500">
+                  Calcula el encaje usando margen exterior, separación y sangrado reales.
+                </div>
+              </button>
+            </div>
+          </div>
+
           {previewStats ? (
             <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
@@ -718,36 +795,159 @@ export default function PrintStylePresetModal({
                   <div
                     className="relative rounded-lg border border-gray-300 bg-white"
                     style={{
-                      width: 260,
-                      height: Math.max(
-                        150,
-                        Math.round(
-                          260 * (previewStats.sheetH / Math.max(previewStats.sheetW, 1)),
-                        ),
-                      ),
+                      width: previewStats.previewWidthPx,
+                      height: previewStats.previewHeightPx,
                     }}
                   >
                     <div className="absolute inset-3 rounded border border-dashed border-gray-300" />
                     <div
                       className="absolute inset-6 grid gap-1"
                       style={{
-                        gridTemplateColumns: `repeat(${Math.max(previewStats.cols, 1)}, minmax(0, 1fr))`,
+                        left: previewStats.outerPx + 12,
+                        top: previewStats.outerPx + 12,
+                        right: previewStats.outerPx + 12,
+                        bottom: previewStats.outerPx + 12,
+                        gridTemplateColumns: `repeat(${Math.max(previewStats.cols, 1)}, ${previewStats.pieceWidthPx}px)`,
+                        columnGap: `${previewStats.gapPx}px`,
+                        rowGap: `${previewStats.gapPx}px`,
                       }}
                     >
                       {Array.from({ length: Math.min(previewStats.total, 24) }).map((_, index) => (
                         <div
                           key={index}
-                          className="rounded border border-purple-300 bg-purple-100"
-                          style={{ aspectRatio: `${previewStats.pieceW} / ${previewStats.pieceH}` }}
-                        />
+                          className="relative rounded border border-purple-300 bg-purple-100"
+                          style={{
+                            width: previewStats.pieceWidthPx,
+                            height: previewStats.pieceHeightPx,
+                          }}
+                        >
+                          {previewStats.effectiveBleed > 0 ? (
+                            <div
+                              className="absolute inset-0 rounded border border-rose-300 bg-rose-100/60"
+                            />
+                          ) : null}
+                          <div
+                            className="absolute border border-purple-300 bg-purple-100"
+                            style={{
+                              left: previewStats.bleedPx,
+                              top: previewStats.bleedPx,
+                              width: previewStats.bodyWidthPx,
+                              height: previewStats.bodyHeightPx,
+                            }}
+                          />
+                          {form.cut_marks_mode !== 'none' ? (
+                            <>
+                              <span
+                                className="absolute bg-red-600"
+                                style={{
+                                  left: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                  top: previewStats.bleedPx,
+                                  width: previewStats.markLengthPx,
+                                  height: 1.5,
+                                }}
+                              />
+                              <span
+                                className="absolute bg-red-600"
+                                style={{
+                                  left: previewStats.bleedPx,
+                                  top: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                  width: 1.5,
+                                  height: previewStats.markLengthPx,
+                                }}
+                              />
+                              <span
+                                className="absolute bg-red-600"
+                                style={{
+                                  right: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                  top: previewStats.bleedPx,
+                                  width: previewStats.markLengthPx,
+                                  height: 1.5,
+                                }}
+                              />
+                              <span
+                                className="absolute bg-red-600"
+                                style={{
+                                  left: previewStats.bleedPx,
+                                  bottom: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                  width: 1.5,
+                                  height: previewStats.markLengthPx,
+                                }}
+                              />
+                              {form.cut_marks_mode === 'each_item' ? (
+                                <>
+                                  <span
+                                    className="absolute bg-red-600"
+                                    style={{
+                                      right: previewStats.bleedPx,
+                                      top: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                      width: 1.5,
+                                      height: previewStats.markLengthPx,
+                                    }}
+                                  />
+                                  <span
+                                    className="absolute bg-red-600"
+                                    style={{
+                                      left: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                      bottom: previewStats.bleedPx,
+                                      width: previewStats.markLengthPx,
+                                      height: 1.5,
+                                    }}
+                                  />
+                                  <span
+                                    className="absolute bg-red-600"
+                                    style={{
+                                      right: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                      bottom: previewStats.bleedPx,
+                                      width: previewStats.markLengthPx,
+                                      height: 1.5,
+                                    }}
+                                  />
+                                  <span
+                                    className="absolute bg-red-600"
+                                    style={{
+                                      right: previewStats.bleedPx,
+                                      bottom: -(previewStats.markLengthPx + previewStats.markOffsetPx),
+                                      width: 1.5,
+                                      height: previewStats.markLengthPx,
+                                    }}
+                                  />
+                                </>
+                              ) : null}
+                            </>
+                          ) : null}
+                        </div>
                       ))}
                     </div>
                   </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-3 text-xs text-gray-500">
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-sm border border-gray-300 bg-white" />
+                    Pliego
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-sm border border-dashed border-gray-300 bg-transparent" />
+                    Área útil
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-3 w-3 rounded-sm border border-purple-300 bg-purple-100" />
+                    Pieza impuesta
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    <span className="inline-block h-[1.5px] w-4 bg-red-600" />
+                    Marcas de corte
+                  </span>
+                  <span className="inline-flex items-center gap-2">
+                    {fitMode === 'exact'
+                      ? 'En ajuste exacto no se aplican sangrado, separación ni margen exterior.'
+                      : 'En producción la vista previa usa sangrado, separación y margen exterior reales.'}
+                  </span>
                 </div>
               </div>
 
               <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
                 <div className="mb-3 text-sm font-semibold text-gray-800">Resumen estimado</div>
+
                 <dl className="space-y-2 text-sm">
                   <div className="flex justify-between gap-3">
                     <dt className="text-gray-500">Pieza</dt>
@@ -755,23 +955,47 @@ export default function PrintStylePresetModal({
                       {selectedFormatMeta?.label} ({selectedFormatMeta?.width_mm}×{selectedFormatMeta?.height_mm} mm)
                     </dd>
                   </div>
+
                   <div className="flex justify-between gap-3">
                     <dt className="text-gray-500">Pliego</dt>
                     <dd className="font-medium text-gray-900">
                       {imposedFormatMeta?.label} ({imposedFormatMeta?.width_mm}×{imposedFormatMeta?.height_mm} mm)
                     </dd>
                   </div>
+
                   <div className="flex justify-between gap-3">
                     <dt className="text-gray-500">Distribución</dt>
                     <dd className="font-medium text-gray-900">
                       {previewStats.cols} × {previewStats.rows}
                     </dd>
                   </div>
+
                   <div className="flex justify-between gap-3">
                     <dt className="text-gray-500">Piezas estimadas</dt>
                     <dd className="font-medium text-gray-900">{previewStats.total}</dd>
                   </div>
+
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-gray-500">Sangrado aplicado</dt>
+                    <dd className="font-medium text-gray-900">{previewStats.effectiveBleed} mm</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-gray-500">Separación aplicada</dt>
+                    <dd className="font-medium text-gray-900">{previewStats.effectiveGap} mm</dd>
+                  </div>
+
+                  <div className="flex justify-between gap-3">
+                    <dt className="text-gray-500">Margen exterior aplicado</dt>
+                    <dd className="font-medium text-gray-900">{previewStats.effectiveOuter} mm</dd>
+                  </div>
                 </dl>
+
+                <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                  {fitMode === 'exact'
+                    ? 'La vista previa muestra el máximo teórico de piezas que caben en el pliego.'
+                    : 'La vista previa muestra el espacio real disponible con la configuración actual.'}
+                </div>
               </div>
             </div>
           ) : null}
@@ -883,10 +1107,8 @@ export default function PrintStylePresetModal({
           {!isBasic ? (
             <div className="grid gap-4 md:grid-cols-2">
               {renderNumberInput('Zona segura (mm)', safeMarginMm, setSafeMarginMm)}
-              {renderNumberInput(
-                'Escala máxima (%)',
-                form.max_scale_percent,
-                (value) => updateField('max_scale_percent', value),
+              {renderNumberInput('Escala máxima (%)', form.max_scale_percent, (value) =>
+                updateField('max_scale_percent', value),
               )}
             </div>
           ) : null}
@@ -908,25 +1130,17 @@ export default function PrintStylePresetModal({
                   <div>
                     <div className="mb-2 text-sm font-semibold text-gray-800">Márgenes por lado</div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {renderNumberInput(
-                        'Margen superior (mm)',
-                        form.outer_margin_top_mm,
-                        (value) => updateField('outer_margin_top_mm', value),
+                      {renderNumberInput('Margen superior (mm)', form.outer_margin_top_mm, (value) =>
+                        updateField('outer_margin_top_mm', value),
                       )}
-                      {renderNumberInput(
-                        'Margen derecho (mm)',
-                        form.outer_margin_right_mm,
-                        (value) => updateField('outer_margin_right_mm', value),
+                      {renderNumberInput('Margen derecho (mm)', form.outer_margin_right_mm, (value) =>
+                        updateField('outer_margin_right_mm', value),
                       )}
-                      {renderNumberInput(
-                        'Margen inferior (mm)',
-                        form.outer_margin_bottom_mm,
-                        (value) => updateField('outer_margin_bottom_mm', value),
+                      {renderNumberInput('Margen inferior (mm)', form.outer_margin_bottom_mm, (value) =>
+                        updateField('outer_margin_bottom_mm', value),
                       )}
-                      {renderNumberInput(
-                        'Margen izquierdo (mm)',
-                        form.outer_margin_left_mm,
-                        (value) => updateField('outer_margin_left_mm', value),
+                      {renderNumberInput('Margen izquierdo (mm)', form.outer_margin_left_mm, (value) =>
+                        updateField('outer_margin_left_mm', value),
                       )}
                     </div>
                   </div>
@@ -934,25 +1148,29 @@ export default function PrintStylePresetModal({
                   <div>
                     <div className="mb-2 text-sm font-semibold text-gray-800">Zona segura por lado</div>
                     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                      {renderNumberInput(
-                        'Safe top (mm)',
-                        form.safe_margin_top_mm,
-                        (value) => updateField('safe_margin_top_mm', value),
+                      {renderNumberInput('Safe top (mm)', form.safe_margin_top_mm, (value) =>
+                        updateField('safe_margin_top_mm', value),
                       )}
-                      {renderNumberInput(
-                        'Safe right (mm)',
-                        form.safe_margin_right_mm,
-                        (value) => updateField('safe_margin_right_mm', value),
+                      {renderNumberInput('Safe right (mm)', form.safe_margin_right_mm, (value) =>
+                        updateField('safe_margin_right_mm', value),
                       )}
-                      {renderNumberInput(
-                        'Safe bottom (mm)',
-                        form.safe_margin_bottom_mm,
-                        (value) => updateField('safe_margin_bottom_mm', value),
+                      {renderNumberInput('Safe bottom (mm)', form.safe_margin_bottom_mm, (value) =>
+                        updateField('safe_margin_bottom_mm', value),
                       )}
-                      {renderNumberInput(
-                        'Safe left (mm)',
-                        form.safe_margin_left_mm,
-                        (value) => updateField('safe_margin_left_mm', value),
+                      {renderNumberInput('Safe left (mm)', form.safe_margin_left_mm, (value) =>
+                        updateField('safe_margin_left_mm', value),
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="mb-2 text-sm font-semibold text-gray-800">Separación por eje</div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {renderNumberInput('Separación horizontal (mm)', form.horizontal_gap_mm, (value) =>
+                        updateField('horizontal_gap_mm', value),
+                      )}
+                      {renderNumberInput('Separación vertical (mm)', form.vertical_gap_mm, (value) =>
+                        updateField('vertical_gap_mm', value),
                       )}
                     </div>
                   </div>
@@ -1021,15 +1239,11 @@ export default function PrintStylePresetModal({
 
           {showCutMarkDetails && form.cut_marks_mode !== 'none' ? (
             <div className="grid gap-4 md:grid-cols-2">
-              {renderNumberInput(
-                'Longitud de marca (mm)',
-                form.cut_mark_length_mm,
-                (value) => updateField('cut_mark_length_mm', value),
+              {renderNumberInput('Longitud de marca (mm)', form.cut_mark_length_mm, (value) =>
+                updateField('cut_mark_length_mm', value),
               )}
-              {renderNumberInput(
-                'Separación de la marca (mm)',
-                form.cut_mark_offset_mm,
-                (value) => updateField('cut_mark_offset_mm', value),
+              {renderNumberInput('Separación de la marca (mm)', form.cut_mark_offset_mm, (value) =>
+                updateField('cut_mark_offset_mm', value),
               )}
             </div>
           ) : null}
@@ -1137,9 +1351,7 @@ export default function PrintStylePresetModal({
                   <input
                     type="checkbox"
                     checked={form.keep_front_back_same_imposition}
-                    onChange={(e) =>
-                      updateField('keep_front_back_same_imposition', e.target.checked)
-                    }
+                    onChange={(e) => updateField('keep_front_back_same_imposition', e.target.checked)}
                     className="h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500"
                   />
                   Mantener misma imposición en anverso y reverso
