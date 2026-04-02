@@ -3,6 +3,7 @@
 import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
+import OpenPresetPdfButton from '@/components/profile/OpenPresetPdfButton'
 
 type PrintSizeOption = {
   id: number
@@ -48,6 +49,8 @@ type PrintStylePresetPayload = {
   keep_front_back_same_imposition: boolean
   notes: string
 }
+
+export type PrintStylePresetDraftPayload = PrintStylePresetPayload
 
 export type PrintStylePresetResponse = {
   id: number
@@ -996,6 +999,14 @@ export default function PrintStylePresetModal({
                     ? 'La vista previa muestra el máximo teórico de piezas que caben en el pliego.'
                     : 'La vista previa muestra el espacio real disponible con la configuración actual.'}
                 </div>
+
+                <OpenPresetPdfButton
+                  apiBase={apiBase}
+                  accessToken={accessToken}
+                  fitMode={fitMode}
+                  payload={form}
+                  disabled={!form.selected_format || !form.imposed_on_format || loadingSizes || isSubmitting}
+                />
               </div>
             </div>
           ) : null}
