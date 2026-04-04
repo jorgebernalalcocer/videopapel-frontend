@@ -7,6 +7,7 @@ import GlobalSpinner from "@/components/GlobalSpinner";
 import TopProgress from "@/components/TopProgress";
 import { ToasterProvider } from '@/components/ToasterProvider'
 import ClientProviders from '@/components/ClientProviders'
+import AuthSessionGuard from '@/components/AuthSessionGuard'
 import Script from 'next/script';
 import { GoogleAnalytics } from "@next/third-parties/google";
 
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="min-h-screen bg-gray-50">
         <Providers>
           <ClientProviders>
+            <AuthSessionGuard />
             <Menu />
             <TopProgress />
             <GlobalSpinner />

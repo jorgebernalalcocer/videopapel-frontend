@@ -3,7 +3,7 @@ import { useAuth } from '@/store/auth'
 
 export async function apiFetch(input: string, init: RequestInit = {}) {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
-  const { accessToken, refreshToken, setTokens } = useAuth.getState()
+  const { accessToken, refreshToken, setTokens, clearSession } = useAuth.getState()
 
   const makeInit = (token?: string): RequestInit => {
     const headers: HeadersInit = {
@@ -29,7 +29,11 @@ export async function apiFetch(input: string, init: RequestInit = {}) {
     body: JSON.stringify({ refresh: refreshToken }),
   })
 
-  if (!r.ok) return res
+  if (!r.ok) {
+    clearSession()
+    useAuth.persist?.clearStorage?.()
+    return res
+  }
 
   const data = await r.json()
   setTokens({ access: data.access })

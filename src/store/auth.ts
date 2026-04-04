@@ -22,6 +22,7 @@ interface AuthState {
   hasHydrated: boolean
   login: (tokens: { access: string; refresh: string; user?: AuthUser | null }) => void
   logout: () => Promise<void>
+  clearSession: () => void
   setHasHydrated: (v: boolean) => void
   setTokens: (tokens: { access?: string | null; refresh?: string | null }) => void // 👈 NEW
 }
@@ -48,6 +49,10 @@ export const useAuth = create<AuthState>()(
         })),
 
       // Logout profesional
+      clearSession: () => {
+        set({ accessToken: null, refreshToken: null, user: null })
+      },
+
       logout: async () => {
         try {
           const refreshToken = get().refreshToken
@@ -61,7 +66,7 @@ export const useAuth = create<AuthState>()(
         } catch (err) {
           console.warn('Error al hacer logout en backend:', err)
         } finally {
-          set({ accessToken: null, refreshToken: null, user: null })
+          get().clearSession()
         }
       },
     }),
