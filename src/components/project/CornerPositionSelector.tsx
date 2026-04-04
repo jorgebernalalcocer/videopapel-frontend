@@ -1,6 +1,6 @@
 'use client'
 
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { PageEnumerationPosition } from '@/types/pageEnumeration'
 
 const POSITION_LABELS: Record<PageEnumerationPosition, string> = {
@@ -23,17 +23,20 @@ type Props = {
   value: PageEnumerationPosition
   onChange: (value: PageEnumerationPosition) => void
   title?: string
+  preview?: ReactNode
 }
 
 export default function CornerPositionSelector({
   value,
   onChange,
   title = 'Posición',
+  preview,
 }: Props) {
   return (
     <div>
       <p className="block text-sm font-medium text-gray-700 mb-2">{title}</p>
       <div className="relative h-40 rounded-xl border bg-slate-50">
+        {preview}
         {POSITIONS.map((position) => {
           const active = value === position
           return (

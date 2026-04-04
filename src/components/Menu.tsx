@@ -84,18 +84,9 @@ export default function Menu() {
   return (
     // Añadimos 'relative' para que el menú móvil absoluto se posicione correctamente
 <header className="sticky top-0 inset-x-0 h-16 w-full border-b bg-white/90 backdrop-blur flex items-center justify-between px-4 z-50">
-{/* <Link
-  href="/"
-  className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
-  style={{ fontFamily: pacificoFontStack, fontSize: '2rem', lineHeight: 2}}
-  onClick={() => setIsMobileMenuOpen(false)}
->  
-  <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
-    papel video
 
-  </span>
-</Link> */}
-<Link
+
+{/* <Link
   href="/"
   className={`flex items-center gap-4 ml-1 ${fascinate.className} text-lg font-semibold leading-none`}
   style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
@@ -105,51 +96,26 @@ export default function Menu() {
     papel video
 
   </span>
-</Link>
-{/* <Link
-  href="/"
-  className={`flex items-center gap-4 ml-1 ${pacifico.className} text-lg font-semibold leading-none`}
-  style={{ fontFamily: pacificoFontStack, fontSize: '2rem', lineHeight: 2}}
-  onClick={() => setIsMobileMenuOpen(false)}
->
-  <span className="block px-1 text-[#c6613f]">
-    papel video
-  </span>
 </Link> */}
-{/* <Link
-  href="/"
-  className={`flex items-center gap-4 ml-1 ${fascinate.className} text-lg font-semibold leading-none`}
-  style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
-  onClick={() => setIsMobileMenuOpen(false)}
->
-  <span className="block px-1 text-[#c6613f]">
-    papel video
-  </span>
-</Link>
+
 <Link
   href="/"
-  className={`flex items-center gap-4 ml-1 ${fascinate.className} text-lg font-semibold leading-none`}
-  style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
+  className={`flex items-center gap-4 ml-1 ${fascinate.className} font-semibold leading-none`}
+  style={{ 
+    fontFamily: fascinateFontStack, 
+    fontSize: '2rem', 
+    lineHeight: 2,
+    /* Aplicamos el color directamente aquí o mediante Tailwind */
+    color: '#78ad70' 
+  }}
   onClick={() => setIsMobileMenuOpen(false)}
->
-  <span 
-    className="block px-1 text-[#F0E7D1]"
-    style={{
-      textShadow: `
-        -1px -1px 0 #c6613f,
-        1px -1px 0 #c6613f,
-        -1px 1px 0 #c6613f,
-        1px 1px 0 #c6613f,
-        -2px 0 0 #c6613f,
-        2px 0 0 #c6613f,
-        0 -2px 0 #c6613f,
-        0 2px 0 #c6613f
-      `
-    }}
-  >
+>  
+  <span className="block px-1">
     papel video
   </span>
-</Link> */}
+</Link>
+
+
   {/* <AnimatedLogo /> */}
 
 
