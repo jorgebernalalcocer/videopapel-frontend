@@ -1,6 +1,6 @@
 'use client'
 
-import { FormEvent, ReactNode, useEffect, useMemo, useState } from 'react'
+import { FormEvent, ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import { Modal } from '@/components/ui/Modal'
 import OpenPresetPdfButton from '@/components/profile/OpenPresetPdfButton'
@@ -113,6 +113,18 @@ type UnifiedFields = {
   safe_margin_mm: string
 }
 
+type ProductionFieldSnapshot = {
+  gap_mm: string
+  outer_margin_mm: string
+  bleed_mm: string
+  horizontal_gap_mm: string
+  vertical_gap_mm: string
+  outer_margin_top_mm: string
+  outer_margin_right_mm: string
+  outer_margin_bottom_mm: string
+  outer_margin_left_mm: string
+}
+
 const EMPTY_FORM: PrintStylePresetPayload = {
   name: '',
   is_default: false,
@@ -195,6 +207,62 @@ function getUnifiedFieldsFromPreset(source: {
   }
 }
 
+function getProductionFieldSnapshot(
+  source: Pick<
+    PrintStylePresetPayload,
+    | 'bleed_mm'
+    | 'horizontal_gap_mm'
+    | 'vertical_gap_mm'
+    | 'outer_margin_top_mm'
+    | 'outer_margin_right_mm'
+    | 'outer_margin_bottom_mm'
+    | 'outer_margin_left_mm'
+  >,
+  unified: Pick<UnifiedFields, 'gap_mm' | 'outer_margin_mm'>,
+): ProductionFieldSnapshot {
+  return {
+    gap_mm: unified.gap_mm,
+    outer_margin_mm: unified.outer_margin_mm,
+    bleed_mm: source.bleed_mm,
+    horizontal_gap_mm: source.horizontal_gap_mm,
+    vertical_gap_mm: source.vertical_gap_mm,
+    outer_margin_top_mm: source.outer_margin_top_mm,
+    outer_margin_right_mm: source.outer_margin_right_mm,
+    outer_margin_bottom_mm: source.outer_margin_bottom_mm,
+    outer_margin_left_mm: source.outer_margin_left_mm,
+  }
+}
+
+function isZeroLike(value: string | null | undefined) {
+  return Number(String(value ?? '0').trim() || '0') === 0
+}
+
+function isExactFitConfiguration(
+  source: Pick<
+    PrintStylePresetPayload,
+    | 'bleed_mm'
+    | 'horizontal_gap_mm'
+    | 'vertical_gap_mm'
+    | 'outer_margin_top_mm'
+    | 'outer_margin_right_mm'
+    | 'outer_margin_bottom_mm'
+    | 'outer_margin_left_mm'
+  >,
+  unified: Pick<UnifiedFields, 'gap_mm' | 'outer_margin_mm'>,
+) {
+  return (
+    isZeroLike(source.bleed_mm) &&
+    isZeroLike(source.horizontal_gap_mm) &&
+    isZeroLike(source.vertical_gap_mm) &&
+    isZeroLike(source.outer_margin_top_mm) &&
+    isZeroLike(source.outer_margin_right_mm) &&
+    isZeroLike(source.outer_margin_bottom_mm) &&
+    isZeroLike(source.outer_margin_left_mm) &&
+    isZeroLike(unified.gap_mm) &&
+    isZeroLike(unified.outer_margin_mm)
+  )
+}
+
 function Section({
   title,
   description,
@@ -237,6 +305,12 @@ export default function PrintStylePresetModal({
   const [gapMm, setGapMm] = useState('3.00')
   const [outerMarginMm, setOuterMarginMm] = useState('5.00')
   const [safeMarginMm, setSafeMarginMm] = useState('4.00')
+  const productionValuesRef = useRef<ProductionFieldSnapshot>(
+    getProductionFieldSnapshot(EMPTY_FORM, {
+      gap_mm: '3.00',
+      outer_margin_mm: '5.00',
+    }),
+  )
 
   const isEditing = Boolean(preset?.id)
   const isGridMode = form.mosaic_mode === 'grid'
@@ -287,6 +361,7 @@ export default function PrintStylePresetModal({
       }
 
       const unified = getUnifiedFieldsFromPreset(nextForm)
+      const nextFitMode: FitMode = isExactFitConfiguration(nextForm, unified) ? 'exact' : 'production'
 
       const hasExpertValues =
         !areAllEqual([
@@ -312,8 +387,15 @@ export default function PrintStylePresetModal({
       setGapMm(unified.gap_mm)
       setOuterMarginMm(unified.outer_margin_mm)
       setSafeMarginMm(unified.safe_margin_mm)
+      productionValuesRef.current =
+        nextFitMode === 'exact'
+          ? getProductionFieldSnapshot(EMPTY_FORM, {
+              gap_mm: EMPTY_FORM.horizontal_gap_mm,
+              outer_margin_mm: EMPTY_FORM.outer_margin_top_mm,
+            })
+          : getProductionFieldSnapshot(nextForm, unified)
       setUiLevel(hasExpertValues ? 'expert' : 'advanced')
-      setFitMode('production')
+      setFitMode(nextFitMode)
       setShowExpertTechnical(hasExpertValues)
       setShowCutMarkDetails(nextForm.cut_marks_mode !== 'none')
       setError(null)
@@ -324,6 +406,10 @@ export default function PrintStylePresetModal({
     setGapMm('3.00')
     setOuterMarginMm('5.00')
     setSafeMarginMm('4.00')
+    productionValuesRef.current = getProductionFieldSnapshot(EMPTY_FORM, {
+      gap_mm: '3.00',
+      outer_margin_mm: '5.00',
+    })
     setUiLevel('basic')
     setFitMode('production')
     setShowExpertTechnical(false)
@@ -503,12 +589,58 @@ export default function PrintStylePresetModal({
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
+  const applyFitMode = (nextMode: FitMode) => {
+    if (nextMode === fitMode) return
+
+    if (nextMode === 'exact') {
+      productionValuesRef.current = getProductionFieldSnapshot(form, {
+        gap_mm: gapMm,
+        outer_margin_mm: outerMarginMm,
+      })
+
+      setGapMm('0.00')
+      setOuterMarginMm('0.00')
+      setForm((prev) => ({
+        ...prev,
+        bleed_mm: '0.00',
+        horizontal_gap_mm: '0.00',
+        vertical_gap_mm: '0.00',
+        outer_margin_top_mm: '0.00',
+        outer_margin_right_mm: '0.00',
+        outer_margin_bottom_mm: '0.00',
+        outer_margin_left_mm: '0.00',
+      }))
+      setFitMode('exact')
+      return
+    }
+
+    const snapshot = productionValuesRef.current
+
+    setGapMm(snapshot.gap_mm)
+    setOuterMarginMm(snapshot.outer_margin_mm)
+    setForm((prev) => ({
+      ...prev,
+      bleed_mm: snapshot.bleed_mm,
+      horizontal_gap_mm: snapshot.horizontal_gap_mm,
+      vertical_gap_mm: snapshot.vertical_gap_mm,
+      outer_margin_top_mm: snapshot.outer_margin_top_mm,
+      outer_margin_right_mm: snapshot.outer_margin_right_mm,
+      outer_margin_bottom_mm: snapshot.outer_margin_bottom_mm,
+      outer_margin_left_mm: snapshot.outer_margin_left_mm,
+    }))
+    setFitMode('production')
+  }
+
   const handleClose = () => {
     if (isSubmitting) return
     setForm(EMPTY_FORM)
     setGapMm('3.00')
     setOuterMarginMm('5.00')
     setSafeMarginMm('4.00')
+    productionValuesRef.current = getProductionFieldSnapshot(EMPTY_FORM, {
+      gap_mm: '3.00',
+      outer_margin_mm: '5.00',
+    })
     setUiLevel('basic')
     setFitMode('production')
     setShowExpertTechnical(false)
@@ -758,7 +890,7 @@ export default function PrintStylePresetModal({
             <div className="grid gap-2 sm:grid-cols-2">
               <button
                 type="button"
-                onClick={() => setFitMode('exact')}
+                onClick={() => applyFitMode('exact')}
                 className={cx(
                   'rounded-xl border px-3 py-3 text-left transition',
                   fitMode === 'exact'
@@ -774,7 +906,7 @@ export default function PrintStylePresetModal({
 
               <button
                 type="button"
-                onClick={() => setFitMode('production')}
+                onClick={() => applyFitMode('production')}
                 className={cx(
                   'rounded-xl border px-3 py-3 text-left transition',
                   fitMode === 'production'
