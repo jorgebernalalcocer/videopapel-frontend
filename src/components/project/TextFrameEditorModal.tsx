@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { CaseSensitive, Circle, PaintRoller } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import ColorPickerField from '@/components/project/ColorPickerField'
+import PercentageSizeSliderField from '@/components/project/PercentageSizeSliderField'
 import { toast } from 'sonner'
 import TypographyTiles, { type TypographyOption } from '@/components/project/TypographyTiles'
 import SelectPersonalize, { type SelectPersonalizeOption } from '@/components/SelectPersonalize'
@@ -363,24 +364,16 @@ export default function TextFrameEditorModal({
 
        
 
-        <div>
-          <label className="flex items-center justify-between text-sm font-medium text-gray-700 mb-1">
-            <span>Tamaño de la tipografía</span>
-            <span className="text-xs text-gray-500">{fontSize}px</span>
-          </label>
-          <input
-            type="range"
-            min={FONT_SIZE_MIN}
-            max={FONT_SIZE_MAX}
-            step={1}
-            value={fontSize}
-            onChange={(e) => setFontSize(clampFontSize(Number(e.target.value)))}
-            className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
-          />
-        <p className="mt-1 text-xs text-gray-500">
-          Ajusta el tamaño visible del texto (entre {FONT_SIZE_MIN}px y {FONT_SIZE_MAX}px).
-        </p>
-        </div>
+        <PercentageSizeSliderField
+          label="Tamaño de la tipografía"
+          value={fontSize}
+          onChange={(value) => setFontSize(clampFontSize(value))}
+          min={FONT_SIZE_MIN}
+          max={FONT_SIZE_MAX}
+          step={1}
+          helpText={`Ajusta el tamaño visible del texto (entre ${FONT_SIZE_MIN}px y ${FONT_SIZE_MAX}px).`}
+          displayFormatter={(value) => `${Math.round(value)}px`}
+        />
 
         <ColorPickerField
           label="Color del texto"

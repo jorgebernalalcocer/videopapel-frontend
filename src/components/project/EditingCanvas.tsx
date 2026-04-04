@@ -13,6 +13,7 @@ import BigFrameViewer from '@/components/project/viewer/BigFrameViewer'
 import GlobalTimeline from '@/components/project/timeline/GlobalTimeline'
 import TextFrameEditorModal, { TextFrameModel } from '@/components/project/TextFrameEditorModal'
 import FrameModal, { type FrameFormPayload } from '@/components/project/FrameModal'
+import PageEnumerationModal from '@/components/project/PageEnumerationModal'
 import CutClipModal from '@/components/project/CutClipModal'
 import { Modal } from '@/components/ui/Modal'
 import ProgressIndicator from '@/components/ui/ProgressIndicator'
@@ -25,6 +26,7 @@ import { useProjectTexts } from '@/hooks/useProjectTexts'
 import { makeTimelineKeydownHandler } from '@/hooks/useKeyboardTimelineNav'
 import { formatTime, nearestIndex } from '@/utils/time'
 import type { FrameSettingClient } from '@/types/frame'
+import type { PageEnumerationSettingClient } from '@/types/pageEnumeration'
 
 const MAX_DENSITY = 8
 const CUSTOM_DENSITIES = [1 , 2 , 3 , 4 , 5 , 6 , 7 , MAX_DENSITY]
@@ -50,7 +52,9 @@ type EditingCanvasProps = {
   onThumbsDensityChange?: (value: number) => void;
   printSizeLabel?: string | null;
   frameSetting?: FrameSettingClient | null;
+  pageEnumerationSetting?: PageEnumerationSettingClient;
   onFrameChange?: () => void;
+  onPageEnumerationChange?: (setting: Exclude<PageEnumerationSettingClient, null>) => void;
   printWidthMm?: number | null;
   printHeightMm?: number | null;
   printQualityDpi?: number | null;
@@ -71,6 +75,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     onThumbsDensityChange,
     printSizeLabel,
     frameSetting = null,
+    pageEnumerationSetting = null,
     printWidthMm = null,
     printHeightMm = null,
     printQualityDpi = null,
@@ -78,7 +83,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     printEffectName = null,
     coverFrame = null,
   } = props
-  const { onFrameChange } = props
+  const { onFrameChange, onPageEnumerationChange } = props
   const qualityDpi = printQualityDpi ?? printQualityPpi ?? null
 
   const isMulti = Array.isArray(clips) && clips.length > 0
@@ -371,6 +376,12 @@ const stepBackward = useCallback(() => {
   const [subtitleProgressModal, setSubtitleProgressModal] = useState(false)
   const [frameModalOpen, setFrameModalOpen] = useState(false)
   const [frameModalMode, setFrameModalMode] = useState<'create' | 'edit'>('create')
+  const [pageEnumerationModalOpen, setPageEnumerationModalOpen] = useState(false)
+  const [pageEnumerationDraft, setPageEnumerationDraft] = useState<PageEnumerationSettingClient>(pageEnumerationSetting ?? null)
+
+  useEffect(() => {
+    setPageEnumerationDraft(pageEnumerationSetting ?? null)
+  }, [pageEnumerationSetting])
   const selectedFrameIndex = useMemo(() => {
     if (!visibleThumbs.length) return -1
     if (selectedId) {
@@ -817,8 +828,9 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   isSaving={isSaving}
   onInsertVideo={onInsertVideo}
   onInsertText={openCreateTextEditor}
-          onInsertFrame={() => handleFrameButtonClick('create')}
-          onEditFrame={() => handleFrameButtonClick('edit')}
+  onInsertFrame={() => handleFrameButtonClick('create')}
+  onEditFrame={() => handleFrameButtonClick('edit')}
+  onOpenEnumeration={() => setPageEnumerationModalOpen(true)}
   onGenerateSubtitles={handleGenerateSubtitles}
   isGeneratingSubtitles={isGeneratingSubtitles}
   hasFrame={Boolean(frameSetting && frameSetting.frame)}
@@ -852,6 +864,20 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   onClose={() => setFrameModalOpen(false)}
   onConfirm={handleFrameModalConfirm}
   onDelete={frameSetting ? handleFrameDelete : undefined}
+/>
+
+<PageEnumerationModal
+  open={pageEnumerationModalOpen}
+  apiBase={apiBase}
+  accessToken={accessToken}
+  projectId={projectId}
+  initial={pageEnumerationDraft ?? null}
+  onClose={() => setPageEnumerationModalOpen(false)}
+  onSaved={(setting) => {
+    setPageEnumerationDraft(setting)
+    onPageEnumerationChange?.(setting)
+    onFrameChange?.()
+  }}
 />
 
       <Modal

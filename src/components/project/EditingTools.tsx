@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Pause, Film, Camera, Type, Captions, Frame as FrameIcon, MonitorPlay, Image as ImageIcon } from 'lucide-react'
+import { Play, Pause, Film, Camera, Type, Captions, Frame as FrameIcon, MonitorPlay, Image as ImageIcon, Hash } from 'lucide-react'
 import { toast } from 'sonner'
 import RecoverDeletedButton from '@/components/project/RecoverDeletedButton'
 import SaveChangesButton from '@/components/project/SaveChangesButton'
@@ -17,6 +17,7 @@ type EditingToolsProps = {
   onInsertText?: () => void
   onInsertFrame?: () => void
   onEditFrame?: () => void
+  onOpenEnumeration?: () => void
   onGenerateSubtitles?: () => void
   isGeneratingSubtitles?: boolean
   hasFrame?: boolean
@@ -36,6 +37,7 @@ export default function EditingTools({
   onInsertText,
   onInsertFrame,
   onEditFrame,
+  onOpenEnumeration,
   onGenerateSubtitles,
   isGeneratingSubtitles = false,
   hasFrame = false,
@@ -86,6 +88,17 @@ export default function EditingTools({
       return
     }
     onInsertFrame?.()
+  }
+
+  const handleOpenEnumeration = () => {
+    if (actionsLocked) {
+      toast.warning(isGeneratingSubtitles
+        ? 'Estamos generando subtítulos. Espera a que finalice para editar la enumeración.'
+        : 'Acción no disponible en este momento.'
+      )
+      return
+    }
+    onOpenEnumeration?.()
   }
 
   const handleDiscardChanges = () => {
@@ -218,6 +231,21 @@ export default function EditingTools({
           >
             <FrameIcon className="h-4 w-4 text-emerald-600" />
             <span className="hidden sm:inline">{hasFrame ? 'Editar marco' : 'Insertar marco'}</span>
+          </Button>
+
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleOpenEnumeration}
+            aria-disabled={actionsLocked}
+            aria-label="Enumeración"
+            className={`
+              inline-flex items-center gap-2
+              ${actionsLocked ? 'opacity-60 cursor-not-allowed' : ''}
+            `}
+          >
+            <Hash className="h-4 w-4 text-slate-700" />
+            <span className="hidden sm:inline">Enumeración</span>
           </Button>
         </>
       )}

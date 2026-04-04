@@ -27,6 +27,7 @@ import StatusBadge from '@/components/project/StatusBadge'
 import PrintSheetPaperBadge from './PrintSheetPaperBadge'
 import PrintSheetPaperSelector from '@/components/project/PrintSheetPaperSelector'
 import type { FrameSettingClient } from '@/types/frame'
+import type { PageEnumerationSettingClient } from '@/types/pageEnumeration'
 import { toast } from 'sonner'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
 import DuplicateProjectButton from '@/components/DuplicateProjectButton'
@@ -94,6 +95,7 @@ type Project = {
   frame_name?: string | null
   frame_description?: string | null
   frame_setting?: FrameSettingClient
+  page_enumeration_setting?: PageEnumerationSettingClient
   print_binding_id?: number | null
   print_binding_name?: string | null
   print_binding_description?: string | null
@@ -255,9 +257,10 @@ const statusMessage = project
     try {
       const headers: HeadersInit = {}
       if (accessToken) headers.Authorization = `Bearer ${accessToken}`
-      const res = await fetch(`${API_BASE}/projects/${projectId}/`, {
+      const res = await fetch(`${API_BASE}/projects/${projectId}/?_=${Date.now()}`, {
         headers,
         credentials: 'include',
+        cache: 'no-store',
       })
       if (res.status === 404) throw new Error('Proyecto no encontrado (404)')
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text() || 'Fallo al cargar el proyecto'}`)
@@ -861,6 +864,7 @@ const statusMessage = project
                 onThumbsDensityChange={handleThumbsDensityChange}
                 printSizeLabel={project.print_size_label ?? null}
                 frameSetting={project.frame_setting ?? null}
+                pageEnumerationSetting={project.page_enumeration_setting ?? null}
                 printWidthMm={project.print_size_width_mm ?? null}
                 printHeightMm={project.print_size_height_mm ?? null}
                 printQualityDpi={project.print_quality_dpi ?? project.print_quality_ppi ?? null}
@@ -869,6 +873,15 @@ const statusMessage = project
                   projectClipId: project.cover_image.project_clip_id,
                   frameTimeMs: project.cover_image.frame_time_ms,
                 } : null}
+                onPageEnumerationChange={(setting) => {
+                  setProject((current) => {
+                    if (!current) return current
+                    return {
+                      ...current,
+                      page_enumeration_setting: setting,
+                    }
+                  })
+                }}
                 onFrameChange={() => void fetchProject()}
                 playbackFps={2}
                 onChange={() => {}}

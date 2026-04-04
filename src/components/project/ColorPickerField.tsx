@@ -21,7 +21,8 @@ export default function ColorPickerField({
 }: Props) {
   const textValue = value ?? ''
   const isValidHex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/.test(textValue)
-  const colorInputValue = isValidHex ? textValue : '#000000'
+  const normalizedHex = isValidHex ? textValue.toUpperCase() : '#000000'
+  const colorInputValue = normalizedHex.length === 9 ? normalizedHex.slice(0, 7) : normalizedHex
 
   return (
     <div>
