@@ -153,7 +153,7 @@ export default function MyClips() {
                 Subido: {new Date(v.uploaded_at).toLocaleString()}
               </p>
               <DeleteClipButton videoId={v.id} />
-              <GoProjectButton videoId={v.id} />
+              {/* <GoProjectButton videoId={v.id} /> */}
             </div>
           </li>
         ))}

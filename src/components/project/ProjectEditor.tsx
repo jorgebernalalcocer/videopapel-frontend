@@ -1211,7 +1211,7 @@ const statusMessage = project
               >
                 {exporting && exportMode === 'clean'
                   ? 'Generando PDF limpio…'
-                  : `Generar PDF limpio${project?.print_size_label ? ` ${project.print_size_label}` : ''}`}
+                  : `Generar PDF${project?.print_size_label ? ` ${project.print_size_label}` : ''} individual`}
               </button>
               <button
                 className="w-full py-3 bg-emerald-900 text-white rounded-lg font-bold hover:bg-emerald-950 transition disabled:opacity-60"
