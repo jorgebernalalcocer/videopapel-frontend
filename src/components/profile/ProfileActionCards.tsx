@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, Film, Home, List, ShoppingBasket, User } from 'lucide-react'
+import { BookOpen, Film, Home, List, PartyPopper, ShoppingBasket, User } from 'lucide-react'
 import type { ElementType } from 'react'
 
 type ActionCardItem = {
@@ -21,6 +21,14 @@ const actionCards: ActionCardItem[] = [
     iconClassName: 'text-pink-700',
     cardClassName: 'bg-pink-50 border-pink-100',
     textClassName: 'text-pink-900',
+  },
+  {
+    href: '/events',
+    icon: PartyPopper,
+    label: 'Archivo de Eventos',
+    iconClassName: 'text-emerald-700',
+    cardClassName: 'bg-emerald-50 border-emerald-100',
+    textClassName: 'text-emerald-900',
   },
   {
     href: '/clips',

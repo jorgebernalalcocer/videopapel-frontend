@@ -25,7 +25,7 @@ export default function ProjectsButton() {
     hover:text-white
   "  onClick={handleProjects}>
       <BookOpen className="w-4 h-4 mr-1.5" /> 
-      Biblioteca de proyectos
+      Biblioteca de proyectos de papel
     </Button>
   )
 }

@@ -8,6 +8,7 @@ import TopProgress from "@/components/TopProgress";
 import { ToasterProvider } from '@/components/ToasterProvider'
 import ClientProviders from '@/components/ClientProviders'
 import AuthSessionGuard from '@/components/AuthSessionGuard'
+import ScrollToTopOnRouteChange from '@/components/ScrollToTopOnRouteChange'
 import Script from 'next/script';
 import { GoogleAnalytics } from "@next/third-parties/google";
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Providers>
           <ClientProviders>
             <AuthSessionGuard />
+            <ScrollToTopOnRouteChange />
             <Menu />
             <TopProgress />
             <GlobalSpinner />

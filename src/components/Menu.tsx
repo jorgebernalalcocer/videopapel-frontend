@@ -15,6 +15,7 @@ import LoginButton from '@/components/LoginButton'
 import RegisterButton from '@/components/RegisterButton'
 // import LogoutButton from '@/components/LogoutButton'
 import ClipsButton from '@/components/ClipsButton'
+import EventsButton from '@/components/EventsButton'
 import ProjectsButton from '@/components/ProjectsButton'
 import OrdersButton from './OrdersButton'
 import ProfileButton from '@/components/ProfileButton'
@@ -127,6 +128,7 @@ export default function Menu() {
               Hola {user.email}
             </span>
             <ProjectsButton />
+            <EventsButton />
             <ClipsButton />
             <OrdersButton />
             {/* <CartButtonIcon /> */}

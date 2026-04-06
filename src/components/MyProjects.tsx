@@ -6,13 +6,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/auth";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
-import { CircleX, ExternalLink, Search } from "lucide-react";
+import { CircleX, ExternalLink, PartyPopper, Search } from "lucide-react";
 import { ShareModal } from "@/components/ShareModal";
 import { DateFormat } from "@/components/DateFormat";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
 import ShareProjectButton from "@/components/ShareProjectButton";
 import ProjectPrivacyBadge from "@/components/project/ProjectPrivacyBadge";
 import StatusBadge from "@/components/project/StatusBadge";
+import { Modal } from "@/components/ui/Modal";
 import { acceptProjectInvitation } from "@/lib/projectInvitations";
 import { toast } from "sonner";
 
@@ -42,6 +43,8 @@ type Project = {
   print_size_label?: string | null;
   orientation_name?: string | null;
   effect_name?: string | null;
+  event_id?: string | null;
+  event_name?: string | null;
 
   primary_clip?: {
     clip_id: number;
@@ -59,17 +62,44 @@ type Project = {
 
 export type { Project };
 
+type EventOption = {
+  id: string;
+  name: string;
+  description?: string | null;
+  project_count: number;
+};
+
 const monthYearFormatter = new Intl.DateTimeFormat("es-ES", {
   month: "long",
   year: "numeric",
 });
 
-export default function MyProjects() {
-  const [projects, setProjects] = useState<Project[]>([]);
+type MyProjectsProps = {
+  projects?: Project[] | null;
+  emptyMessage?: string;
+  searchPlaceholder?: string;
+  fetchOnMount?: boolean;
+  currentEventId?: string | null;
+};
+
+export default function MyProjects({
+  projects: providedProjects,
+  emptyMessage = "Aún no tienes proyectos.",
+  searchPlaceholder = "Buscar por título, filtro, tamaño, usuario...",
+  fetchOnMount = true,
+  currentEventId = null,
+}: MyProjectsProps) {
+  const [projects, setProjects] = useState<Project[]>(providedProjects ?? []);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acceptingInvitationToken, setAcceptingInvitationToken] = useState<string | null>(null);
+  const [unlinkingProjectId, setUnlinkingProjectId] = useState<string | null>(null);
+  const [eventPickerProject, setEventPickerProject] = useState<Project | null>(null);
+  const [events, setEvents] = useState<EventOption[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(false);
+  const [linkingProjectId, setLinkingProjectId] = useState<string | null>(null);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
 
   const [shareProject, setShareProject] = useState<Project | null>(null);
 
@@ -79,6 +109,10 @@ export default function MyProjects() {
   const router = useRouter();
 
   const fetchProjects = useCallback(async () => {
+    if (!fetchOnMount) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -97,17 +131,27 @@ export default function MyProjects() {
   }, [API_BASE, accessToken]);
 
   useEffect(() => {
-    if (!hasHydrated || !accessToken) return;
-    fetchProjects();
-  }, [hasHydrated, accessToken, fetchProjects]);
+    if (providedProjects) {
+      setProjects(providedProjects);
+      setLoading(false);
+      setError(null);
+    }
+  }, [providedProjects]);
 
   useEffect(() => {
+    if (!fetchOnMount) return;
+    if (!hasHydrated || !accessToken) return;
+    fetchProjects();
+  }, [hasHydrated, accessToken, fetchOnMount, fetchProjects]);
+
+  useEffect(() => {
+    if (!fetchOnMount) return;
     const handler = () => fetchProjects();
     window.addEventListener("videopapel:project:changed", handler);
     return () => {
       window.removeEventListener("videopapel:project:changed", handler);
     };
-  }, [fetchProjects]);
+  }, [fetchOnMount, fetchProjects]);
 
   const handleShareClick = useCallback((project: Project) => {
     setShareProject(project);
@@ -130,6 +174,120 @@ export default function MyProjects() {
     }
   }, [fetchProjects, router]);
 
+  const handleUnlinkFromEvent = useCallback(async (project: Project) => {
+    if (!accessToken || unlinkingProjectId === project.id) return;
+
+    setUnlinkingProjectId(project.id);
+    setError(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/projects/${project.id}/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ event_assignment_id: null }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: ${await res.text()}`);
+      }
+
+      setProjects((prev) => prev.filter((item) => item.id !== project.id));
+      toast.success("Proyecto desvinculado del evento.");
+      window.dispatchEvent(new CustomEvent("videopapel:project:changed"));
+    } catch (e: any) {
+      setError(e.message || "No se pudo desvincular el proyecto del evento.");
+      toast.error(e.message || "No se pudo desvincular el proyecto del evento.");
+    } finally {
+      setUnlinkingProjectId(null);
+    }
+  }, [API_BASE, accessToken, unlinkingProjectId]);
+
+  const fetchEvents = useCallback(async () => {
+    if (!accessToken) return;
+
+    setLoadingEvents(true);
+    try {
+      const res = await fetch(`${API_BASE}/events/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include",
+      });
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: ${await res.text()}`);
+      }
+
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : data?.results ?? [];
+      setEvents(list);
+      setSelectedEventId((current) =>
+        current && list.some((event: EventOption) => event.id === current)
+          ? current
+          : list[0]?.id ?? null
+      );
+    } catch (e: any) {
+      setError(e.message || "No se pudieron cargar tus eventos.");
+      toast.error(e.message || "No se pudieron cargar tus eventos.");
+    } finally {
+      setLoadingEvents(false);
+    }
+  }, [API_BASE, accessToken]);
+
+  const openEventPicker = useCallback(async (project: Project) => {
+    setEventPickerProject(project);
+    setSelectedEventId(null);
+    await fetchEvents();
+  }, [fetchEvents]);
+
+  const closeEventPicker = useCallback(() => {
+    if (linkingProjectId) return;
+    setEventPickerProject(null);
+    setSelectedEventId(null);
+  }, [linkingProjectId]);
+
+  const handleLinkToEvent = useCallback(async () => {
+    if (!accessToken || !eventPickerProject || !selectedEventId) return;
+
+    setLinkingProjectId(eventPickerProject.id);
+    setError(null);
+
+    try {
+      const res = await fetch(`${API_BASE}/projects/${eventPickerProject.id}/`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ event_assignment_id: selectedEventId }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: ${await res.text()}`);
+      }
+
+      const updatedProject = await res.json();
+      setProjects((prev) =>
+        prev.map((project) =>
+          project.id === updatedProject.id
+            ? { ...project, ...updatedProject }
+            : project
+        )
+      );
+      setEventPickerProject(null);
+      setSelectedEventId(null);
+      toast.success("Proyecto vinculado al evento.");
+      window.dispatchEvent(new CustomEvent("videopapel:project:changed"));
+    } catch (e: any) {
+      setError(e.message || "No se pudo vincular el proyecto al evento.");
+      toast.error(e.message || "No se pudo vincular el proyecto al evento.");
+    } finally {
+      setLinkingProjectId(null);
+    }
+  }, [API_BASE, accessToken, eventPickerProject, selectedEventId]);
+
   if (!hasHydrated) return <p className="text-gray-500">Preparando…</p>;
   if (!accessToken)
     return (
@@ -138,7 +296,7 @@ export default function MyProjects() {
   if (loading) return <p className="text-gray-500">Cargando…</p>;
   if (error) return <p className="text-red-600 text-sm">{error}</p>;
   if (!projects.length)
-    return <p className="text-gray-500">Aún no tienes proyectos.</p>;
+    return <p className="text-gray-500">{emptyMessage}</p>;
 
   const normalizedSearchTerm = searchTerm.trim().toLowerCase();
   const filteredProjects = projects.filter((project) => {
@@ -194,7 +352,7 @@ export default function MyProjects() {
               type="text"
               value={searchTerm}
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Buscar por título, filtro, tamaño, usuario..."
+              placeholder={searchPlaceholder}
               className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400"
             />
             {searchTerm && (
@@ -230,6 +388,10 @@ export default function MyProjects() {
                   >
                     {(() => {
                       const hasPendingInvitation = Boolean(p.pending_invitation);
+                      const isInsideCurrentEvent = Boolean(
+                        currentEventId && p.event_id && p.event_id === currentEventId
+                      );
+                      const canLinkToEvent = !currentEventId && !p.event_id;
                       return (
                         <>
                           {p.primary_clip && p.primary_clip.video_url && (
@@ -307,6 +469,48 @@ export default function MyProjects() {
                               </div>
                             )}
 
+                            {p.event_id && p.event_name && !isInsideCurrentEvent && (
+                              <div className="mt-2">
+                                <Link
+                                  href={`/events/${p.event_id}`}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-700 hover:text-white"
+                                >
+                                  <PartyPopper className="h-3.5 w-3.5" />
+                                  Vinculado al evento {p.event_name}
+                                </Link>
+                              </div>
+                            )}
+
+                            {isInsideCurrentEvent && (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void handleUnlinkFromEvent(p)}
+                                  disabled={unlinkingProjectId === p.id}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-red-100 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  <PartyPopper className="h-3.5 w-3.5" />
+                                  {unlinkingProjectId === p.id
+                                    ? "Desvinculando..."
+                                    : "Desvincular de este evento"}
+                                </button>
+                              </div>
+                            )}
+
+                            {canLinkToEvent && (
+                              <div className="mt-2">
+                                <button
+                                  type="button"
+                                  onClick={() => void openEventPicker(p)}
+                                  disabled={linkingProjectId === p.id}
+                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
+                                >
+                                  <PartyPopper className="h-3.5 w-3.5" />
+                                  {linkingProjectId === p.id ? "Vinculando..." : "Vincular a evento"}
+                                </button>
+                              </div>
+                            )}
+
                             {Array.isArray(p.shared_with_emails) &&
                               p.shared_with_emails.length > 0 && (
                                 <div className="mt-1 space-y-1">
@@ -337,7 +541,7 @@ export default function MyProjects() {
                                 <>
                                   <Link
                                     href={`/projects/${p.id}`}
-                                    className="flex items-center justify-center gap-1 rounded-lg bg-blue-200 px-3 py-1.5 text-xs text-black hover:bg-blue-700"
+                                    className="flex items-center justify-center gap-1 rounded-lg bg-pink-100 px-3 py-1.5 text-xs text-pink-700 hover:text-white hover:bg-pink-700"
                                   >
                                     <ExternalLink className="h-3 w-3" />
                                     Abrir proyecto
@@ -401,6 +605,78 @@ export default function MyProjects() {
           );
         }}
       />
+
+      <Modal
+        open={Boolean(eventPickerProject)}
+        onClose={closeEventPicker}
+        title="Vincular a evento"
+        description={
+          eventPickerProject
+            ? `Selecciona uno de tus eventos para vincular “${eventPickerProject.name || "este proyecto"}”.`
+            : undefined
+        }
+        labelledById="link-project-event-title"
+        describedById="link-project-event-description"
+        size="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={closeEventPicker}
+              disabled={Boolean(linkingProjectId)}
+              className="rounded-xl border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={() => void handleLinkToEvent()}
+              disabled={!selectedEventId || Boolean(linkingProjectId) || loadingEvents}
+              className="rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-50"
+            >
+              {linkingProjectId ? "Vinculando..." : "Vincular"}
+            </button>
+          </>
+        }
+      >
+        <div id="link-project-event-description" className="space-y-3">
+          {loadingEvents ? (
+            <p className="text-sm text-gray-500">Cargando eventos…</p>
+          ) : events.length ? (
+            <div className="space-y-2">
+              {events.map((event) => (
+                <button
+                  key={event.id}
+                  type="button"
+                  onClick={() => setSelectedEventId(event.id)}
+                  className={[
+                    "w-full rounded-xl border px-4 py-3 text-left transition",
+                    selectedEventId === event.id
+                      ? "border-emerald-500 bg-emerald-50"
+                      : "border-gray-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/40",
+                  ].join(" ")}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{event.name}</p>
+                      {event.description ? (
+                        <p className="mt-1 text-xs text-gray-500">{event.description}</p>
+                      ) : null}
+                    </div>
+                    <span className="rounded-full bg-emerald-100 px-2 py-1 text-[11px] font-medium text-emerald-700">
+                      {event.project_count} {event.project_count === 1 ? "proyecto" : "proyectos"}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-500">
+              Todavía no tienes eventos creados para vincular este proyecto.
+            </p>
+          )}
+        </div>
+      </Modal>
     </>
   );
 }

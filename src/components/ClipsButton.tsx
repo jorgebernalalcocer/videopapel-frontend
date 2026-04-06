@@ -26,7 +26,7 @@ export default function VideosButton() {
     hover:text-white
   "  onClick={handleClips}>
        <Film className="w-4 h-4 mr-1.5" /> 
-      Mis Videos
+      Videos digitales
     </Button>
   )
 }

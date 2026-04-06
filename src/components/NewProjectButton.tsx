@@ -24,7 +24,11 @@ function formatMs(ms: number) {
   return [h, m, sec].map((n, i) => (i === 0 && n === 0 ? null : String(n).padStart(2, '0'))).filter(Boolean).join(':') || '00:00'
 }
 
-export default function NewProjectButton() {
+type NewProjectButtonProps = {
+  eventId?: string | null
+}
+
+export default function NewProjectButton({ eventId = null }: NewProjectButtonProps) {
   const [open, setOpen] = useState(false)
   const [step, setStep] = useState<1 | 2>(1) // Ahora Step 2 solo abrirá el otro modal
   const [name, setName] = useState('')
@@ -90,6 +94,7 @@ export default function NewProjectButton() {
         body: JSON.stringify({
           name: name.trim(),
           video_id: video.id, // Usamos el ID del video seleccionado
+          event_id: eventId,
           // opcionalmente puedes enviar time_start_ms y time_end_ms
         }),
       })

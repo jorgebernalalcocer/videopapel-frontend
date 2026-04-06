@@ -17,6 +17,7 @@ const PUBLIC_PATH_PREFIXES = [
 
 const PROTECTED_PATH_PREFIXES = [
   '/projects',
+  '/events',
   '/clips',
   '/cart',
   '/summary',
