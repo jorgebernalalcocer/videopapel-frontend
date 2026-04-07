@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useAuth } from '@/store/auth'
 import { toast } from 'sonner'
-import { Download } from 'lucide-react'
+import { CircleX, Download, Search } from 'lucide-react'
 import { OrderIssueButton } from '@/components/orders/OrderIssueButton'
 import { OrderIssueModal } from '@/components/orders/OrderIssueModal'
 
@@ -75,6 +75,7 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
   const [orders, setOrders] = useState<Order[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState('')
   const [downloadingOrderId, setDownloadingOrderId] = useState<number | null>(null)
   const [issueOrderId, setIssueOrderId] = useState<number | null>(null)
 
@@ -162,12 +163,55 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
     )
   }
 
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase()
+  const filteredOrders = orders.filter((order) => {
+    if (!normalizedSearchTerm) return true
+
+    const shippingAddress = order.shipping_address
+    const searchableValues = [
+      order.id,
+      order.status,
+      order.subtotal_amount,
+      order.tax_amount,
+      order.total_amount,
+      order.currency,
+      order.order_date,
+      order.delivery_date,
+      shippingAddress?.line1,
+      shippingAddress?.line2,
+      shippingAddress?.city,
+      shippingAddress?.state_province,
+      shippingAddress?.postal_code,
+      shippingAddress?.country,
+      shippingAddress?.phone,
+      shippingAddress?.instructions,
+      ...order.items.flatMap((item) => [
+        item.id,
+        item.project_id,
+        item.project_name_snapshot,
+        item.print_size_label_snapshot,
+        item.orientation_snapshot,
+        item.frame_name_snapshot,
+        item.effect_name_snapshot,
+        item.aspect_name_snapshot,
+        item.quality_label_snapshot,
+        item.number_pages_snapshot,
+        item.quantity,
+        item.unit_price,
+      ]),
+    ]
+
+    return searchableValues.some((value) =>
+      value?.toString().toLowerCase().includes(normalizedSearchTerm)
+    )
+  })
+
   return (
     <>
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
           <div>
-            <p className="text-sm text-gray-500">Historial</p>
+            {/* <p className="text-sm text-gray-500">Historial</p> */}
             <h2 className="text-lg font-semibold text-gray-900">
               {compact ? 'Últimos pedidos' : 'Pedidos realizados'}
             </h2>
@@ -183,15 +227,40 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
           )}
         </div>
         <div className="px-6 py-6">
+          <div className="mb-6 max-w-xl">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Buscar por pedido, proyecto, estado, importe, dirección..."
+                className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400"
+              />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm('')}
+                  aria-label="Limpiar búsqueda"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-black-900 transition hover:text-gray-600"
+                >
+                  <CircleX className="h-4 w-4" />
+                </button>
+              )}
+            </label>
+          </div>
+
           {loading ? (
             <p className="text-sm text-gray-500">Cargando pedidos…</p>
           ) : error ? (
             <p className="text-sm text-red-600">{error}</p>
           ) : orders.length === 0 ? (
             <p className="text-sm text-gray-500">Aún no has completado ningún pedido.</p>
+          ) : filteredOrders.length === 0 ? (
+            <p className="text-sm text-gray-500">No hay pedidos que coincidan con la búsqueda.</p>
           ) : (
             <div className="space-y-4">
-              {orders.map((order) => {
+              {filteredOrders.map((order) => {
                 const orderDate = new Date(order.order_date).toLocaleString()
                 return (
                   <div key={order.id} className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
