@@ -672,6 +672,7 @@ const statusMessage = project
                   badgeProps={{
                     isPublic: Boolean(project.is_public),
                     compact: true,
+                    clickable: true,
                   }}
                   selectorProps={({ closeModal }) => ({
                     apiBase: API_BASE,
@@ -1314,9 +1315,10 @@ const statusMessage = project
         }}
       />
       <ShareModal
-        project={shareOpen ? project : null}
+        item={shareOpen ? project : null}
+        resourceType="project"
         onClose={() => setShareOpen(false)}
-        onProjectUpdated={(updatedProject) => {
+        onItemUpdated={(updatedProject) => {
           setProject((current) => (current ? { ...current, ...updatedProject } : current))
         }}
       />

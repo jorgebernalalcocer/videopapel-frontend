@@ -94,7 +94,7 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
   if (!invitation) return null
 
   const requiresLogin = !accessToken
-  const emailMismatch = Boolean(user?.email) && user.email.toLowerCase() !== invitation.email.toLowerCase()
+  const emailMismatch = Boolean(user?.email) && user?.email?.toLowerCase() !== invitation.email.toLowerCase()
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-6 py-16">

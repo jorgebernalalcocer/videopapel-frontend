@@ -65,9 +65,10 @@ const formatAmount = (value: string | number) => {
 type MyOrdersProps = {
   compact?: boolean
   embed?: boolean
+  orderId?: number
 }
 
-export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
+export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersProps) {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
   const isSuperuser = useAuth((s) => Boolean(s.user?.is_superuser))
@@ -103,11 +104,37 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
     }
   }, [accessToken, canRequest])
 
+  const fetchOrderDetail = useCallback(async () => {
+    if (!canRequest || !orderId) return
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch(`${API_BASE}/orders/${orderId}/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const detail = await res.text()
+        throw new Error(detail || `Error ${res.status}`)
+      }
+      const data = await res.json()
+      setOrders(data ? [data] : [])
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo cargar el pedido.')
+    } finally {
+      setLoading(false)
+    }
+  }, [accessToken, canRequest, orderId])
+
   useEffect(() => {
     if (canRequest) {
-      void fetchOrders()
+      if (orderId) {
+        void fetchOrderDetail()
+      } else {
+        void fetchOrders()
+      }
     }
-  }, [canRequest, fetchOrders])
+  }, [canRequest, fetchOrderDetail, fetchOrders, orderId])
 
   const handleDownloadInvoice = useCallback(
     async (order: Order, kind: 'invoice' | 'rectification' = 'invoice') => {
@@ -213,9 +240,9 @@ export function MyOrders({ compact = false, embed = false }: MyOrdersProps) {
           <div>
             {/* <p className="text-sm text-gray-500">Historial</p> */}
             <h2 className="text-lg font-semibold text-gray-900">
-              {compact ? 'Últimos pedidos' : 'Pedidos realizados'}
+              {orderId ? `Pedido #${orderId}` : compact ? 'Últimos pedidos' : 'Pedidos realizados'}
             </h2>
-            {!compact && <p className="text-sm text-gray-500">Ordenados de más reciente a más antiguo.</p>}
+            {!compact && !orderId && <p className="text-sm text-gray-500">Ordenados de más reciente a más antiguo.</p>}
           </div>
           {!embed && (
             <Link

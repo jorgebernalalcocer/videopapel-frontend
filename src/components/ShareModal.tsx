@@ -8,18 +8,21 @@ import { apiFetch } from '@/lib/api'
 import { Modal } from '@/components/ui/Modal'
 import SelectPersonalize, { type SelectPersonalizeOption } from '@/components/SelectPersonalize'
 import { useAuth } from '@/store/auth'
-import { type Project } from './MyProjects'
-
-type ShareModalProps = {
-  project: Project | null
-  onClose: () => void
-  onProjectUpdated?: (project: Project) => void
-}
 
 type MembershipRole = 'edit' | 'view'
 type ShareStep = 'shareInfo' | 'sharing'
+type ResourceType = 'project' | 'event'
 
-type ProjectMembership = {
+type ShareableItem = {
+  id: string
+  name: string | null
+  is_public?: boolean
+  owner_email?: string | null
+  owner_name?: string | null
+  current_user_can_manage_sharing?: boolean
+}
+
+type Membership = {
   id: number
   email: string
   role: MembershipRole
@@ -28,7 +31,7 @@ type ProjectMembership = {
   updated_at: string
 }
 
-type ProjectInvitation = {
+type Invitation = {
   token: string
   email: string
   role: MembershipRole
@@ -39,42 +42,29 @@ type ProjectInvitation = {
 }
 
 type MembershipResponse = {
-  project_id: string
+  project_id?: string
+  event_id?: string
   is_public: boolean
   owner_email?: string | null
   owner_name?: string | null
   current_user_can_manage_sharing?: boolean
-  memberships: ProjectMembership[]
-  invitations?: ProjectInvitation[]
+  memberships: Membership[]
+  invitations?: Invitation[]
+}
+
+type ShareModalProps<T extends ShareableItem> = {
+  item: T | null
+  resourceType: ResourceType
+  onClose: () => void
+  onItemUpdated?: (item: T) => void
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-const AVATAR_COLORS = [
-  'bg-rose-500',
-  'bg-orange-500',
-  'bg-amber-500',
-  'bg-lime-500',
-  'bg-emerald-500',
-  'bg-teal-500',
-  'bg-sky-500',
-  'bg-blue-500',
-  'bg-indigo-500',
-  'bg-fuchsia-500',
-]
+const AVATAR_COLORS = ['bg-rose-500', 'bg-orange-500', 'bg-amber-500', 'bg-lime-500', 'bg-emerald-500', 'bg-teal-500', 'bg-sky-500', 'bg-blue-500', 'bg-indigo-500', 'bg-fuchsia-500']
 
 const ROLE_OPTIONS: SelectPersonalizeOption<MembershipRole>[] = [
-  {
-    value: 'edit',
-    label: 'Editor',
-    description: 'Hacer cambios',
-    icon: PencilLine,
-  },
-  {
-    value: 'view',
-    label: 'Ver',
-    description: 'Solo lectura',
-    icon: Eye,
-  },
+  { value: 'edit', label: 'Editor', description: 'Hacer cambios', icon: PencilLine },
+  { value: 'view', label: 'Ver', description: 'Solo lectura', icon: Eye },
 ]
 
 function avatarColorFor(value: string) {
@@ -90,30 +80,15 @@ function emailInitial(value: string) {
 function extractErrorMessage(payload: unknown, fallback: string) {
   if (!payload || typeof payload !== 'object') return fallback
   if ('detail' in payload && typeof payload.detail === 'string') return payload.detail
-  if ('email' in payload && Array.isArray(payload.email) && typeof payload.email[0] === 'string') {
-    return payload.email[0]
-  }
+  if ('email' in payload && Array.isArray(payload.email) && typeof payload.email[0] === 'string') return payload.email[0]
   return fallback
 }
 
-type RoleSelectorProps = {
-  value: MembershipRole
-  onChange: (role: MembershipRole) => void
-  disabled?: boolean
+function RoleSelector({ value, onChange, disabled = false }: { value: MembershipRole; onChange: (role: MembershipRole) => void; disabled?: boolean }) {
+  return <SelectPersonalize value={value} options={ROLE_OPTIONS} onChange={onChange} disabled={disabled} />
 }
 
-function RoleSelector({ value, onChange, disabled = false }: RoleSelectorProps) {
-  return (
-    <SelectPersonalize
-      value={value}
-      options={ROLE_OPTIONS}
-      onChange={onChange}
-      disabled={disabled}
-    />
-  )
-}
-
-export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalProps) {
+export function ShareModal<T extends ShareableItem>({ item, resourceType, onClose, onItemUpdated }: ShareModalProps<T>) {
   const currentUserEmail = useAuth((state) => state.user?.email?.trim().toLowerCase() ?? '')
   const [step, setStep] = useState<ShareStep>('shareInfo')
   const [email, setEmail] = useState('')
@@ -123,8 +98,8 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   const [ownerEmail, setOwnerEmail] = useState('')
   const [ownerName, setOwnerName] = useState('')
   const [canManageSharing, setCanManageSharing] = useState(false)
-  const [memberships, setMemberships] = useState<ProjectMembership[]>([])
-  const [invitations, setInvitations] = useState<ProjectInvitation[]>([])
+  const [memberships, setMemberships] = useState<Membership[]>([])
+  const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loadingMembers, setLoadingMembers] = useState(false)
   const [sharing, setSharing] = useState(false)
   const [updatingAccess, setUpdatingAccess] = useState(false)
@@ -135,70 +110,62 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   const stepTwoInputRef = useRef<HTMLInputElement>(null)
 
   const isValidEmail = useMemo(() => EMAIL_RE.test(email.trim()), [email])
-  const projectUrl = useMemo(() => {
-    if (!project) return ''
-    if (typeof window === 'undefined') return ''
-    return `${window.location.origin}/projects/${project.id}`
-  }, [project])
-  const projectText = useMemo(
-    () => `Mira este proyecto en Papel Video: ${project?.name || 'Proyecto'}`,
-    [project]
+  const resourceLabel = resourceType === 'project' ? 'proyecto' : 'evento'
+  const resourceLabelCaps = resourceType === 'project' ? 'Proyecto' : 'Evento'
+  const membershipsPath = item ? `/${resourceType}s/${item.id}/memberships/` : ''
+  const itemPath = item ? `/${resourceType}s/${item.id}/` : ''
+  const itemUrl = useMemo(() => {
+    if (!item || typeof window === 'undefined') return ''
+    return `${window.location.origin}/${resourceType}s/${item.id}`
+  }, [item, resourceType])
+  const itemText = useMemo(
+    () => resourceType === 'project'
+      ? `Mira este proyecto en Papel Video: ${item?.name || 'Proyecto'}`
+      : `Mira este evento en Papel Video: ${item?.name || 'Evento'}`,
+    [item, resourceType],
   )
 
   useEffect(() => {
-    if (!project) return
+    if (!item) return
 
     setStep('shareInfo')
     setEmail('')
     setRole('edit')
     setMessage('')
-    setIsPublic(Boolean(project.is_public))
-    setOwnerEmail(project.owner_email ?? '')
-    setOwnerName(project.owner_name ?? project.owner_email ?? '')
-    setCanManageSharing(Boolean(project.current_user_can_manage_sharing))
+    setIsPublic(Boolean(item.is_public))
+    setOwnerEmail(item.owner_email ?? '')
+    setOwnerName(item.owner_name ?? item.owner_email ?? '')
+    setCanManageSharing(Boolean(item.current_user_can_manage_sharing))
     setMemberships([])
     setInvitations([])
     setMembersError(null)
 
     let cancelled = false
-
     const loadMemberships = async () => {
       setLoadingMembers(true)
       try {
-        const response = await apiFetch(`/projects/${project.id}/memberships/`, {
-          headers: { Accept: 'application/json' },
-        })
-        if (!response.ok) {
-          throw new Error(`Error ${response.status} cargando accesos.`)
-        }
+        const response = await apiFetch(membershipsPath, { headers: { Accept: 'application/json' } })
+        if (!response.ok) throw new Error(`Error ${response.status} cargando accesos.`)
         const payload = (await response.json()) as MembershipResponse
         if (cancelled) return
         setMemberships(payload.memberships ?? [])
         setInvitations(payload.invitations ?? [])
         setIsPublic(Boolean(payload.is_public))
-        setOwnerEmail(payload.owner_email ?? project.owner_email ?? '')
-        setOwnerName(payload.owner_name ?? payload.owner_email ?? project.owner_name ?? project.owner_email ?? '')
-        setCanManageSharing(
-          typeof payload.current_user_can_manage_sharing === 'boolean'
-            ? payload.current_user_can_manage_sharing
-            : Boolean(project.current_user_can_manage_sharing)
-        )
+        setOwnerEmail(payload.owner_email ?? item.owner_email ?? '')
+        setOwnerName(payload.owner_name ?? payload.owner_email ?? item.owner_name ?? item.owner_email ?? '')
+        setCanManageSharing(typeof payload.current_user_can_manage_sharing === 'boolean' ? payload.current_user_can_manage_sharing : Boolean(item.current_user_can_manage_sharing))
       } catch (error: any) {
-        if (cancelled) return
-        setMembersError(error?.message || 'No se pudo cargar la lista de accesos.')
+        if (!cancelled) setMembersError(error?.message || 'No se pudo cargar la lista de accesos.')
       } finally {
-        if (!cancelled) {
-          setLoadingMembers(false)
-        }
+        if (!cancelled) setLoadingMembers(false)
       }
     }
 
     void loadMemberships()
-
     return () => {
       cancelled = true
     }
-  }, [project])
+  }, [item, membershipsPath])
 
   useEffect(() => {
     if (step !== 'sharing') return
@@ -212,56 +179,47 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     return () => window.clearTimeout(id)
   }, [step])
 
-  if (!project) return null
-  const ownerIdentity = ownerName || ownerEmail || 'Titular del proyecto'
+  if (!item) return null
+
+  const ownerIdentity = ownerName || ownerEmail || `Titular del ${resourceLabel}`
   const ownerEmailNormalized = ownerEmail.trim().toLowerCase()
 
   const handleComposerValue = (value: string) => {
     if (!canManageSharing) return
     setEmail(value)
-    if (value.trim().length > 0) {
-      setStep('sharing')
-      return
-    }
-    setStep('shareInfo')
+    setStep(value.trim().length > 0 ? 'sharing' : 'shareInfo')
   }
 
   const resetComposer = () => {
     setEmail('')
     setMessage('')
     setStep('shareInfo')
-    window.setTimeout(() => {
-      stepOneInputRef.current?.focus()
-    }, 0)
+    window.setTimeout(() => stepOneInputRef.current?.focus(), 0)
+  }
+
+  const notifyUpdated = (updatedItem: T) => {
+    onItemUpdated?.(updatedItem)
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
+    }
   }
 
   const handleAccessChange = async (nextValue: boolean) => {
-    if (!project || !canManageSharing || nextValue === isPublic) return
-
+    if (!canManageSharing || nextValue === isPublic) return
     const previousValue = isPublic
     setIsPublic(nextValue)
     setUpdatingAccess(true)
-
     try {
-      const response = await apiFetch(`/projects/${project.id}/`, {
+      const response = await apiFetch(itemPath, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_public: nextValue }),
       })
-
-      if (!response.ok) {
-        const payload = await response.json().catch(() => null)
-        throw new Error(extractErrorMessage(payload, 'No se pudo actualizar el nivel de acceso.'))
-      }
-
-      const updatedProject = (await response.json()) as Project
-      setIsPublic(Boolean(updatedProject.is_public))
-      onProjectUpdated?.(updatedProject)
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
-      }
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(extractErrorMessage(payload, 'No se pudo actualizar el nivel de acceso.'))
+      const updatedItem = payload as T
+      setIsPublic(Boolean(updatedItem.is_public))
+      notifyUpdated(updatedItem)
     } catch (error: any) {
       setIsPublic(previousValue)
       toast.error(error?.message || 'No se pudo actualizar el nivel de acceso.')
@@ -271,27 +229,16 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   }
 
   const handleShare = async () => {
-    if (!project || !canManageSharing || !isValidEmail) return
-
+    if (!canManageSharing || !isValidEmail) return
     setSharing(true)
     try {
-      const response = await apiFetch(`/projects/${project.id}/memberships/`, {
+      const response = await apiFetch(membershipsPath, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email: email.trim().toLowerCase(),
-          role,
-          message,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), role, message }),
       })
-
       const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(extractErrorMessage(payload, 'No se pudo enviar la invitación.'))
-      }
-
+      if (!response.ok) throw new Error(extractErrorMessage(payload, 'No se pudo enviar la invitación.'))
       setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : memberships)
       setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : invitations)
       toast.success('Invitación enviada correctamente.')
@@ -303,23 +250,13 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     }
   }
 
-  const handleDeleteAccess = async (membership: ProjectMembership) => {
-    if (!project || !canManageSharing) return
-
+  const handleDeleteAccess = async (membership: Membership) => {
+    if (!canManageSharing) return
     setDeletingMembershipId(membership.id)
     try {
-      const response = await apiFetch(`/projects/${project.id}/memberships/${membership.id}/`, {
-        method: 'DELETE',
-        headers: {
-          Accept: 'application/json',
-        },
-      })
-
+      const response = await apiFetch(`${membershipsPath}${membership.id}/`, { method: 'DELETE', headers: { Accept: 'application/json' } })
       const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(extractErrorMessage(payload, 'No se pudo eliminar el acceso.'))
-      }
-
+      if (!response.ok) throw new Error(extractErrorMessage(payload, 'No se pudo eliminar el acceso.'))
       setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : [])
       setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : [])
       toast.success('Acceso eliminado correctamente.')
@@ -330,25 +267,17 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
     }
   }
 
-  const handleMembershipRoleChange = async (membership: ProjectMembership, nextRole: MembershipRole) => {
-    if (!project || !canManageSharing || membership.role === nextRole) return
-
+  const handleMembershipRoleChange = async (membership: Membership, nextRole: MembershipRole) => {
+    if (!canManageSharing || membership.role === nextRole) return
     setUpdatingMembershipId(membership.id)
     try {
-      const response = await apiFetch(`/projects/${project.id}/memberships/${membership.id}/`, {
+      const response = await apiFetch(`${membershipsPath}${membership.id}/`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
         body: JSON.stringify({ role: nextRole }),
       })
-
       const payload = await response.json().catch(() => null)
-      if (!response.ok) {
-        throw new Error(extractErrorMessage(payload, 'No se pudo actualizar el rol.'))
-      }
-
+      if (!response.ok) throw new Error(extractErrorMessage(payload, 'No se pudo actualizar el rol.'))
       setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : [])
       setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : [])
       toast.success('Rol actualizado correctamente.')
@@ -365,9 +294,9 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   }
 
   const copyLink = async () => {
-    if (!projectUrl) return
+    if (!itemUrl) return
     try {
-      await navigator.clipboard.writeText(projectUrl)
+      await navigator.clipboard.writeText(itemUrl)
       toast.success('Enlace copiado al portapapeles.')
     } catch {
       toast.error('No se pudo copiar el enlace.')
@@ -375,301 +304,184 @@ export function ShareModal({ project, onClose, onProjectUpdated }: ShareModalPro
   }
 
   const shareOptions = [
-    {
-      name: 'Copiar enlace',
-      icon: <LinkIcon className="h-5 w-5" />,
-      action: copyLink,
-      color: 'bg-purple-500 hover:bg-purple-600',
-    },
-    {
-      name: 'Facebook',
-      icon: <Facebook className="h-5 w-5" />,
-      action: () => openShareWindow(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(projectUrl)}&quote=${encodeURIComponent(projectText)}`),
-      color: 'bg-blue-600 hover:bg-blue-700',
-    },
-    {
-      name: '',
-      icon: <XIcon className="h-5 w-5" />,
-      action: () => openShareWindow(`https://twitter.com/intent/tweet?url=${encodeURIComponent(projectUrl)}&text=${encodeURIComponent(projectText)}`),
-      color: 'bg-black hover:bg-gray-800',
-    },
-    {
-      name: 'WhatsApp',
-      icon: <MessageCircle className="h-5 w-5" />,
-      action: () => openShareWindow(`https://wa.me/?text=${encodeURIComponent(`${projectText} ${projectUrl}`)}`),
-      color: 'bg-green-500 hover:bg-green-600',
-    },
-    {
-      name: 'Telegram',
-      icon: <Send className="h-5 w-5" />,
-      action: () => openShareWindow(`https://t.me/share/url?url=${encodeURIComponent(projectUrl)}&text=${encodeURIComponent(projectText)}`),
-      color: 'bg-sky-500 hover:bg-sky-600',
-    },
-    {
-      name: 'Instagram',
-      icon: <Instagram className="h-5 w-5" />,
-      action: async () => {
-        await copyLink()
-        openShareWindow('https://www.instagram.com/')
-      },
-      color: 'bg-pink-500 hover:bg-pink-600',
-    },
+    { name: 'Copiar enlace', icon: <LinkIcon className="h-5 w-5" />, action: copyLink, color: 'bg-purple-500 hover:bg-purple-600' },
+    { name: 'Facebook', icon: <Facebook className="h-5 w-5" />, action: () => openShareWindow(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(itemUrl)}&quote=${encodeURIComponent(itemText)}`), color: 'bg-blue-600 hover:bg-blue-700' },
+    { name: '', icon: <XIcon className="h-5 w-5" />, action: () => openShareWindow(`https://twitter.com/intent/tweet?url=${encodeURIComponent(itemUrl)}&text=${encodeURIComponent(itemText)}`), color: 'bg-black hover:bg-gray-800' },
+    { name: 'WhatsApp', icon: <MessageCircle className="h-5 w-5" />, action: () => openShareWindow(`https://wa.me/?text=${encodeURIComponent(`${itemText} ${itemUrl}`)}`), color: 'bg-green-500 hover:bg-green-600' },
+    { name: 'Telegram', icon: <Send className="h-5 w-5" />, action: () => openShareWindow(`https://t.me/share/url?url=${encodeURIComponent(itemUrl)}&text=${encodeURIComponent(itemText)}`), color: 'bg-sky-500 hover:bg-sky-600' },
+    { name: 'Instagram', icon: <Instagram className="h-5 w-5" />, action: async () => { await copyLink(); openShareWindow('https://www.instagram.com/') }, color: 'bg-pink-500 hover:bg-pink-600' },
   ]
 
   const accessOptions = [
-    {
-      value: false,
-      icon: Users,
-      title: 'Solo tienen acceso las personas añadidas (Privado)',
-      description: 'Solo las personas que tienen acceso al diseño pueden utilizar este enlace.',
-    },
-    {
-      value: true,
-      icon: Globe,
-      title: 'Cualquier persona que le pases el enlace por WhatsApp  o Redes Sociales (Público)',
-      description: 'Cualquiera puede acceder al diseño a través de este enlace. No hace falta iniciar sesión.',
-    },
+    { value: false, icon: Users, title: `Solo tienen acceso las personas añadidas (${resourceLabelCaps} privado)`, description: `Solo las personas con acceso explícito al ${resourceLabel} pueden abrirlo.` },
+    { value: true, icon: Globe, title: `Cualquier persona con el enlace (${resourceLabelCaps} público)`, description: `Cualquiera puede acceder al ${resourceLabel} desde el enlace sin iniciar sesión.` },
   ] as const
 
   return (
-    <Modal
-      open={Boolean(project)}
-      onClose={onClose}
-      title="Compartir proyecto"
-      size="lg"
-    >
+    <Modal open={Boolean(item)} onClose={onClose} title={`Compartir ${resourceLabel}`} size="lg">
       <div className="relative min-h-[720px]">
-        <div
-          aria-hidden={step !== 'shareInfo'}
-          className={[
-            'transition-opacity duration-200',
-            step === 'shareInfo' ? 'opacity-100' : 'pointer-events-none absolute inset-0 opacity-0',
-          ].join(' ')}
-        >
+        <div aria-hidden={step !== 'shareInfo'} className={['transition-opacity duration-200', step === 'shareInfo' ? 'opacity-100' : 'pointer-events-none absolute inset-0 opacity-0'].join(' ')}>
           <div className="space-y-8">
-          <section className="space-y-4">
-            <div>
+            <section className="space-y-4">
               <p className="text-sm font-semibold text-gray-900">Personas con acceso</p>
-            </div>
 
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                ref={stepOneInputRef}
-                type="text"
-                value={email}
-                onChange={(event) => handleComposerValue(event.target.value)}
-                placeholder="Añade el mail de las personas"
-                readOnly={!canManageSharing}
-                className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-gray-400"
-              />
-            </div>
-
-            {!canManageSharing && (
-              <p className="text-sm text-red-700">Solo el titular puede invitar personas o cambiar el nivel de acceso.</p>
-            )}
-
-            <div className="space-y-3">
-              <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(ownerEmail || ownerIdentity || project.id)}`}>
-                  {emailInitial(ownerEmail || ownerIdentity || project.id)}
-                </div>
-                <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <p className="truncate text-sm text-gray-900">{ownerIdentity}</p>
-                  {ownerEmailNormalized === currentUserEmail && (
-                    <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
-                      <User className="h-3.5 w-3.5" />
-                      (Yo)
-                    </span>
-                  )}
-                  <Crown className="h-5 w-5 shrink-0 text-yellow-500" />
-                </div>
-                <span className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-white">Titular</span>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  ref={stepOneInputRef}
+                  type="text"
+                  value={email}
+                  onChange={(event) => handleComposerValue(event.target.value)}
+                  placeholder="Añade el mail de las personas"
+                  readOnly={!canManageSharing}
+                  className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-4 text-sm text-gray-900 outline-none transition focus:border-gray-400"
+                />
               </div>
 
-              {loadingMembers && <p className="text-sm text-gray-500">Cargando accesos...</p>}
-              {membersError && <p className="text-sm text-red-600">{membersError}</p>}
+              {!canManageSharing && <p className="text-sm text-red-700">Solo el titular puede invitar personas o cambiar el nivel de acceso.</p>}
 
-              {memberships.map((membership) => {
-                const membershipEmail = membership.email.trim().toLowerCase()
-                const isCurrentUser = membershipEmail === currentUserEmail
-                return (
-                <div
-                  key={membership.id}
-                  className="flex items-center gap-3 rounded-2xl border border-gray-100 px-4 py-3"
-                >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(membership.email)}`}>
-                    {emailInitial(membership.email)}
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(ownerEmail || ownerIdentity || item.id)}`}>
+                    {emailInitial(ownerEmail || ownerIdentity || item.id)}
                   </div>
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <p className="truncate text-sm text-gray-900">{membership.email}</p>
-                    {isCurrentUser && (
-                      <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600">
-                        <User className="h-5 w-5" />
-                        (Yo)
-                      </span>
-                    )}
+                    <p className="truncate text-sm text-gray-900">{ownerIdentity}</p>
+                    {ownerEmailNormalized === currentUserEmail && <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600"><User className="h-3.5 w-3.5" />(Yo)</span>}
+                    <Crown className="h-5 w-5 shrink-0 text-yellow-500" />
                   </div>
-           
-                  {canManageSharing && (
-                    <button
-                      type="button"
-                      onClick={() => void handleDeleteAccess(membership)}
-                      disabled={deletingMembershipId === membership.id || updatingMembershipId === membership.id}
-                      className="px-3 py-1 text-xs font-medium bg-red-200 text-black rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-200 disabled:text-white disabled:cursor-not-allowed"
-                    >
-                      {deletingMembershipId === membership.id ? 'Eliminando...' : 'Eliminar acceso'}
-                    </button>
-                  )}
-                         <RoleSelector
-                    value={membership.role}
-                    onChange={(nextRole) => void handleMembershipRoleChange(membership, nextRole)}
-                    disabled={!canManageSharing || updatingMembershipId === membership.id}
-                  />
+                  <span className="rounded-full bg-black px-3 py-1 text-xs font-semibold text-white">Titular</span>
                 </div>
-                )
-              })}
 
-              {invitations.map((invitation) => (
-                <div
-                  key={invitation.token}
-                  className="flex items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-4 py-3"
-                >
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(invitation.email)}`}>
-                    {emailInitial(invitation.email)}
+                {loadingMembers && <p className="text-sm text-gray-500">Cargando accesos...</p>}
+                {membersError && <p className="text-sm text-red-600">{membersError}</p>}
+
+                {memberships.map((membership) => {
+                  const membershipEmail = membership.email.trim().toLowerCase()
+                  const isCurrentUser = membershipEmail === currentUserEmail
+                  return (
+                    <div key={membership.id} className="flex items-center gap-3 rounded-2xl border border-gray-100 px-4 py-3">
+                      <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(membership.email)}`}>{emailInitial(membership.email)}</div>
+                      <div className="flex min-w-0 flex-1 items-center gap-2">
+                        <p className="truncate text-sm text-gray-900">{membership.email}</p>
+                        {isCurrentUser && <span className="inline-flex items-center gap-1 text-xs font-medium text-purple-600"><User className="h-5 w-5" />(Yo)</span>}
+                      </div>
+                      {canManageSharing && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteAccess(membership)}
+                          disabled={deletingMembershipId === membership.id || updatingMembershipId === membership.id}
+                          className="rounded-lg bg-red-200 px-3 py-1 text-xs font-medium text-black shadow-sm transition duration-150 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-200 disabled:text-white"
+                        >
+                          {deletingMembershipId === membership.id ? 'Eliminando...' : 'Eliminar acceso'}
+                        </button>
+                      )}
+                      <RoleSelector value={membership.role} onChange={(nextRole) => void handleMembershipRoleChange(membership, nextRole)} disabled={!canManageSharing || updatingMembershipId === membership.id} />
+                    </div>
+                  )
+                })}
+
+                {invitations.map((invitation) => (
+                  <div key={invitation.token} className="flex items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-4 py-3">
+                    <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(invitation.email)}`}>{emailInitial(invitation.email)}</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm text-gray-900">{invitation.email}</p>
+                      <p className="text-xs text-amber-600">Invitación pendiente</p>
+                    </div>
+                    <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">{invitation.role === 'edit' ? 'Rol editor' : 'Rol lectura'}</span>
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm text-gray-900">{invitation.email}</p>
-                    <p className="text-xs text-amber-600">Invitación pendiente</p>
-                  </div>
-                  <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">
-                    {invitation.role === 'edit' ? 'Rol editor' : 'Rol lectura'}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          <section className="space-y-4">
-            <p className="text-sm font-semibold text-gray-900">Nivel de acceso</p>
-            <div className="grid gap-3">
-              {accessOptions.map((option) => {
-                const Icon = option.icon
-                const active = isPublic === option.value
-                return (
-                  <button
-                    key={option.title}
-                    type="button"
-                    onClick={() => void handleAccessChange(option.value)}
-                    disabled={updatingAccess || !canManageSharing}
-                    className={[
-                      'flex items-start gap-3 rounded-2xl border px-4 py-4 text-left transition',
-                      active ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-400',
-                      updatingAccess || !canManageSharing ? 'opacity-70' : '',
-                    ].join(' ')}
-                  >
-                    <span className="mt-0.5 rounded-full bg-white p-2 shadow-sm">
-                      <Icon className="h-4 w-4 text-gray-700" />
-                    </span>
-                    <span className="space-y-1">
-                      <span className="block text-sm font-semibold text-gray-900">{option.title}</span>
-                      <span className="block text-sm text-gray-500">{option.description}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
-          </section>
-
-          {isPublic && (
-            <section className="space-y-4 border-t border-gray-100 pt-6">
-              <p className="text-sm font-semibold text-gray-900">Compartir enlace público</p>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                {shareOptions.map((option) => (
-                  <button
-                    key={option.name}
-                    type="button"
-                    onClick={() => void option.action()}
-                    className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white transition ${option.color}`}
-                  >
-                    {option.icon}
-                    <span>{option.name}</span>
-                  </button>
                 ))}
               </div>
             </section>
-          )}
+
+            <section className="space-y-4">
+              <p className="text-sm font-semibold text-gray-900">Nivel de acceso</p>
+              <div className="grid gap-3">
+                {accessOptions.map((option) => {
+                  const Icon = option.icon
+                  const active = isPublic === option.value
+                  return (
+                    <button
+                      key={option.title}
+                      type="button"
+                      onClick={() => void handleAccessChange(option.value)}
+                      disabled={updatingAccess || !canManageSharing}
+                      className={['flex items-start gap-3 rounded-2xl border px-4 py-4 text-left transition', active ? 'border-black bg-gray-50' : 'border-gray-200 hover:border-gray-400', updatingAccess || !canManageSharing ? 'opacity-70' : ''].join(' ')}
+                    >
+                      <span className="mt-0.5 rounded-full bg-white p-2 shadow-sm"><Icon className="h-4 w-4 text-gray-700" /></span>
+                      <span className="space-y-1">
+                        <span className="block text-sm font-semibold text-gray-900">{option.title}</span>
+                        <span className="block text-sm text-gray-500">{option.description}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </section>
+
+            {isPublic && (
+              <section className="space-y-4 border-t border-gray-100 pt-6">
+                <p className="text-sm font-semibold text-gray-900">Compartir enlace público</p>
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {shareOptions.map((option) => (
+                    <button key={option.name || option.color} type="button" onClick={() => void option.action()} className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-medium text-white transition ${option.color}`}>
+                      {option.icon}
+                      <span>{option.name}</span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         </div>
 
-        <div
-          aria-hidden={step !== 'sharing'}
-          className={[
-            'transition-opacity duration-200',
-            step === 'sharing' ? 'opacity-100' : 'pointer-events-none absolute inset-0 opacity-0',
-          ].join(' ')}
-        >
+        <div aria-hidden={step !== 'sharing'} className={['transition-opacity duration-200', step === 'sharing' ? 'opacity-100' : 'pointer-events-none absolute inset-0 opacity-0'].join(' ')}>
           <div className="space-y-4">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={resetComposer}
-              aria-label="Volver"
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 transition hover:bg-gray-50"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-            <p className="text-sm font-semibold text-gray-900">Compartir diseño</p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <input
-                ref={stepTwoInputRef}
-                type="email"
-                value={email}
-                onChange={(event) => handleComposerValue(event.target.value)}
-                placeholder="Añade el mail de las personas"
-                readOnly={!canManageSharing}
-                className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-11 text-sm text-gray-900 outline-none transition focus:border-gray-400"
-              />
-              {email.trim().length > 0 && (
-                <button
-                  type="button"
-                  onClick={resetComposer}
-                  aria-label="Borrar email"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-700"
-                >
-                  <CircleX className="h-4 w-4" />
-                </button>
-              )}
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={resetComposer} aria-label="Volver" className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-700 transition hover:bg-gray-50">
+                <ArrowLeft className="h-4 w-4" />
+              </button>
+              <p className="text-sm font-semibold text-gray-900">Compartir {resourceLabel}</p>
             </div>
 
-            <RoleSelector
-              value={role}
-              onChange={setRole}
-              disabled={!canManageSharing}
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  ref={stepTwoInputRef}
+                  type="email"
+                  value={email}
+                  onChange={(event) => handleComposerValue(event.target.value)}
+                  placeholder="Añade el mail de las personas"
+                  readOnly={!canManageSharing}
+                  className="w-full rounded-2xl border border-gray-200 bg-white py-3 pl-10 pr-11 text-sm text-gray-900 outline-none transition focus:border-gray-400"
+                />
+                {email.trim().length > 0 && (
+                  <button type="button" onClick={resetComposer} aria-label="Borrar email" className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition hover:text-gray-700">
+                    <CircleX className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <RoleSelector value={role} onChange={setRole} disabled={!canManageSharing} />
+            </div>
+
+            <textarea
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Añadir mensaje (opcional)"
+              rows={4}
+              readOnly={!canManageSharing}
+              className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-400"
             />
-          </div>
 
-          <textarea
-            value={message}
-            onChange={(event) => setMessage(event.target.value)}
-            placeholder="Añadir mensaje (opcional)"
-            rows={4}
-            readOnly={!canManageSharing}
-            className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-900 outline-none transition focus:border-gray-400"
-          />
-
-          <button
-            type="button"
-            onClick={() => void handleShare()}
-            disabled={!canManageSharing || !isValidEmail || sharing}
-            className="w-full rounded-2xl bg-purple-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-purple-50 disabled:text-gray-500"
-          >
-            {sharing ? 'Compartiendo...' : 'Compartir'}
-          </button>
+            <button
+              type="button"
+              onClick={() => void handleShare()}
+              disabled={!canManageSharing || !isValidEmail || sharing}
+              className="w-full rounded-2xl bg-purple-500 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-800 disabled:cursor-not-allowed disabled:bg-purple-50 disabled:text-gray-500"
+            >
+              {sharing ? 'Compartiendo...' : 'Compartir'}
+            </button>
           </div>
         </div>
       </div>

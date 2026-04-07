@@ -2,9 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { PartyPopper } from 'lucide-react'
 import EventsButton from '@/components/EventsButton'
+import { acceptEventInvitation } from '@/lib/eventInvitations'
 import { useAuth } from '@/store/auth'
+import { toast } from 'sonner'
 
 type EventPreviewProject = {
   id: string
@@ -26,16 +29,26 @@ type EventItem = {
   updated_at: string
   project_count: number
   projects_preview?: EventPreviewProject[]
+  pending_invitation?: {
+    token: string
+    email: string
+    role: 'edit' | 'view'
+    role_label: string
+    expires_at?: string | null
+    is_expired: boolean
+  } | null
 }
 
 export default function EventsPage() {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
+  const router = useRouter()
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
 
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [acceptingInvitationToken, setAcceptingInvitationToken] = useState<string | null>(null)
   const loadEventsRef = useRef<null | (() => Promise<void>)>(null)
 
   useEffect(() => {
@@ -77,6 +90,23 @@ export default function EventsPage() {
     }
   }, [API_BASE, accessToken, hasHydrated])
 
+  const handleAcceptInvitation = async (event: EventItem) => {
+    const token = event.pending_invitation?.token
+    if (!token) return
+
+    setAcceptingInvitationToken(token)
+    try {
+      const payload = await acceptEventInvitation(token)
+      toast.success(payload.detail)
+      await loadEventsRef.current?.()
+      router.push(`/events/${payload.event_id}`)
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo aceptar la invitación.')
+    } finally {
+      setAcceptingInvitationToken(null)
+    }
+  }
+
   return (
     <main className="min-h-screen px-6 py-10">
       <div className="mx-auto w-full max-w-6xl">
@@ -103,10 +133,8 @@ export default function EventsPage() {
             <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {events.map((event) => (
                 <li key={event.id}>
-                  <Link
-                    href={`/events/${event.id}`}
-                    className="block overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"
-                  >
+                  <div className="overflow-hidden rounded-2xl border border-emerald-100 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+                    <Link href={`/events/${event.id}`} className="block">
                     {event.projects_preview?.length ? (
                       <div className="bg-gray-100">
                         <div className="grid aspect-video grid-cols-2 gap-0.5 overflow-hidden">
@@ -143,18 +171,31 @@ export default function EventsPage() {
                       </div>
                     ) : null}
                     <div className="p-6">
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                      {event.project_count} {event.project_count === 1 ? 'Proyecto' : 'Proyectos'}
-                    </p>
-                    <h2 className="text-xl font-semibold text-gray-900">{event.name}</h2>
-                    {event.description ? (
-                      <p className="mt-2 line-clamp-3 text-sm text-gray-600">{event.description}</p>
-                    ) : null}
-                    <p className="mt-2 text-sm text-gray-500">
-                      Actualizado {new Date(event.updated_at).toLocaleDateString('es-ES')}
-                    </p>
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
+                        {event.project_count} {event.project_count === 1 ? 'Proyecto' : 'Proyectos'}
+                      </p>
+                      <h2 className="text-xl font-semibold text-gray-900">{event.name}</h2>
+                      {event.description ? (
+                        <p className="mt-2 line-clamp-3 text-sm text-gray-600">{event.description}</p>
+                      ) : null}
+                      <p className="mt-2 text-sm text-gray-500">
+                        Actualizado {new Date(event.updated_at).toLocaleDateString('es-ES')}
+                      </p>
                     </div>
-                  </Link>
+                    </Link>
+                    {event.pending_invitation ? (
+                      <div className="px-6 pb-6">
+                        <button
+                          type="button"
+                          onClick={() => void handleAcceptInvitation(event)}
+                          disabled={Boolean(event.pending_invitation.is_expired) || acceptingInvitationToken === event.pending_invitation.token}
+                          className="px-3 py-1.5 text-xs rounded-lg bg-purple-600 text-white hover:bg-purple-700 disabled:opacity-60"
+                        >
+                          {acceptingInvitationToken === event.pending_invitation.token ? 'Aceptando...' : 'Aceptar invitación'}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
                 </li>
               ))}
             </ul>

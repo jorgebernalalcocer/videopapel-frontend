@@ -45,6 +45,7 @@ type Project = {
   effect_name?: string | null;
   event_id?: string | null;
   event_name?: string | null;
+  order_id?: number | null;
 
   primary_clip?: {
     clip_id: number;
@@ -428,14 +429,24 @@ export default function MyProjects({
                               </h3>
                             </div>
 
-                            <div className="mt-2 flex items-center gap-3">
-                              <ProjectPrivacyBadge isPublic={p.is_public} compact />
-                              <StatusBadge status={p.status} compact />
-                              {hasPendingInvitation && (
-                                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
-                                  Invitación pendiente
-                                </span>
-                              )}
+                            <div className="mt-2 flex items-center justify-between gap-3">
+                              <div className="flex items-center gap-3">
+                                <ProjectPrivacyBadge isPublic={p.is_public} compact />
+                                <StatusBadge status={p.status} compact />
+                                {hasPendingInvitation && (
+                                  <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
+                                    Invitación pendiente
+                                  </span>
+                                )}
+                              </div>
+                              {p.status === "exported" && p.order_id ? (
+                                <Link
+                                  href={`/orders/${p.order_id}`}
+                                  className="inline-flex items-center rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-700 hover:text-white"
+                                >
+                                  Ver pedido
+                                </Link>
+                              ) : null}
                             </div>
 
                             <p className="mt-1 text-xs text-gray-500">
@@ -588,9 +599,10 @@ export default function MyProjects({
       </section>
 
       <ShareModal
-        project={shareProject}
+        item={shareProject}
+        resourceType="project"
         onClose={() => setShareProject(null)}
-        onProjectUpdated={(updatedProject) => {
+        onItemUpdated={(updatedProject) => {
           setProjects((prev) =>
             prev.map((projectItem) =>
               projectItem.id === updatedProject.id

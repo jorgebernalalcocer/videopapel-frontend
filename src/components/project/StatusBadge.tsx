@@ -16,20 +16,23 @@ type StatusBadgeProps = {
   addingToCart?: boolean
 }
 
-const STATUS_CONFIG: Record<ProjectStatus, { label: string; tone: string; Icon: typeof Book }> = {
+const STATUS_CONFIG: Record<ProjectStatus, { label: string; tone: string; staticTone: string; Icon: typeof Book }> = {
   draft: {
     label: 'Elaborando',
     tone: 'bg-amber-100 text-amber-700 ring-amber-200',
+    staticTone: 'bg-white text-amber-700 ring-amber-200',
     Icon: BookDashed,
   },
   ready: {
     label: 'Listo para comprar',
     tone: 'bg-green-100 text-green-700 ring-green-200',
+    staticTone: 'bg-white text-green-700 ring-green-200',
     Icon: Book,
   },
   exported: {
     label: 'Comprado',
     tone: 'bg-blue-100 text-blue-700 ring-blue-200',
+    staticTone: 'bg-white text-blue-700 ring-blue-200',
     Icon: PackageCheck,
   },
 }
@@ -44,13 +47,13 @@ export default function StatusBadge({
 }: StatusBadgeProps) {
   const [open, setOpen] = useState(false)
   const config = STATUS_CONFIG[status]
-  const { label, tone, Icon } = config
+  const { label, tone, staticTone, Icon } = config
 
   if (!onAddToCart) {
     return (
       <MainBadge
         label={label}
-        toneClassName={tone}
+        toneClassName={staticTone}
         size={compact ? 'compact' : 'large'}
         icon={<Icon className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
         className={className}

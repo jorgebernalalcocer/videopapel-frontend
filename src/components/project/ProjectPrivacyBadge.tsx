@@ -7,16 +7,21 @@ type Props = {
   isPublic?: boolean | null
   compact?: boolean
   className?: string
+  clickable?: boolean
 }
 
 export default function ProjectPrivacyBadge({
   isPublic = false,
   compact = false,
   className = '',
+  clickable = false,
 }: Props) {
   const tone = isPublic
     ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
     : 'bg-rose-50 text-rose-700 ring-rose-200'
+  const staticTone = isPublic
+    ? 'bg-white text-emerald-700 ring-emerald-200'
+    : 'bg-white text-rose-700 ring-rose-200'
   const label = isPublic ? 'Público' : 'Privado'
   const title = isPublic
     ? 'Este proyecto es público'
@@ -33,7 +38,7 @@ export default function ProjectPrivacyBadge({
       label={label}
       title={title}
       ariaLabel={title}
-      toneClassName={tone}
+      toneClassName={clickable ? tone : staticTone}
       size={compact ? 'compact' : 'large'}
       icon={icon}
       className={className}

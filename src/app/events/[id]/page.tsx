@@ -3,9 +3,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ChevronLeft, FolderPlus, PartyPopper } from 'lucide-react'
+import { ChevronLeft, FolderPlus, PartyPopper, Share } from 'lucide-react'
 import MyProjects, { type Project } from '@/components/MyProjects'
 import NewProjectButton from '@/components/NewProjectButton'
+import { ShareModal } from '@/components/ShareModal'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/store/auth'
 
@@ -13,10 +14,16 @@ type EventDetail = {
   id: string
   name: string
   description?: string | null
+  is_public: boolean
   created_at: string
   updated_at: string
+  owner_email?: string | null
+  owner_name?: string | null
+  current_user_can_edit?: boolean
+  current_user_can_manage_sharing?: boolean
   project_count: number
   qr_image_url?: string | null
+  shared_with_emails?: string[]
   projects: Project[]
 }
 
@@ -44,15 +51,16 @@ export default function EventDetailPage() {
   const [submittingProjects, setSubmittingProjects] = useState(false)
   const [projectPickerError, setProjectPickerError] = useState<string | null>(null)
   const [projectSearch, setProjectSearch] = useState('')
+  const [shareOpen, setShareOpen] = useState(false)
 
   const loadEvent = useCallback(async () => {
-    if (!accessToken || !params?.id) return
+    if (!params?.id) return
 
     setLoading(true)
     setError(null)
     try {
       const res = await fetch(`${API_BASE}/events/${params.id}/`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         credentials: 'include',
       })
       if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
@@ -66,7 +74,7 @@ export default function EventDetailPage() {
   }, [API_BASE, accessToken, params?.id])
 
   useEffect(() => {
-    if (!hasHydrated || !accessToken || !params?.id) return
+    if (!hasHydrated || !params?.id) return
 
     let cancelled = false
     void (async () => {
@@ -74,7 +82,7 @@ export default function EventDetailPage() {
       setError(null)
       try {
         const res = await fetch(`${API_BASE}/events/${params.id}/`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
+          headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
           credentials: 'include',
         })
         if (!res.ok) throw new Error(`Error ${res.status}: ${await res.text()}`)
@@ -190,8 +198,7 @@ export default function EventDetailPage() {
         </Link>
 
         {!hasHydrated ? <p className="text-gray-500">Preparando…</p> : null}
-        {hasHydrated && !accessToken ? <p className="text-gray-500">Inicia sesión para ver este evento.</p> : null}
-        {hasHydrated && accessToken && loading ? <p className="text-gray-500">Cargando…</p> : null}
+        {hasHydrated && loading ? <p className="text-gray-500">Cargando…</p> : null}
         {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
         {event && !loading && !error ? (
@@ -213,16 +220,37 @@ export default function EventDetailPage() {
                     <p className="mt-2 text-sm text-gray-500">
                       Creado el {new Date(event.created_at).toLocaleDateString('es-ES')}
                     </p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Actualizado el {new Date(event.updated_at).toLocaleDateString('es-ES')}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-500">
+                      Creado por {event.owner_email || 'Sin email'}
+                    </p>
+                    <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                      Compartido por: {event.shared_with_emails?.length ? event.shared_with_emails.join(', ') : 'Nadie'}
+                    </p>
                     <div className="mt-4 flex flex-wrap gap-3">
-                      <NewProjectButton eventId={event.id} />
-                      <button
-                        type="button"
-                        onClick={() => void openProjectPicker()}
-                        className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 font-semibold text-pink-700 shadow-md ring-1 ring-pink-200 transition hover:bg-emerald-700 hover:text-white"
-                      >
-                        <FolderPlus className="mr-2 h-5 w-5" />
-                        <span>Añadir proyecto existente</span>
-                      </button>
+                      {event.current_user_can_edit && <NewProjectButton eventId={event.id} />}
+                      {event.current_user_can_edit && (
+                        <button
+                          type="button"
+                          onClick={() => void openProjectPicker()}
+                          className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 font-semibold text-pink-700 shadow-md ring-1 ring-pink-200 transition hover:bg-emerald-700 hover:text-white"
+                        >
+                          <FolderPlus className="mr-2 h-5 w-5" />
+                          <span>Añadir proyecto existente</span>
+                        </button>
+                      )}
+                      {event.current_user_can_manage_sharing && (
+                        <button
+                          type="button"
+                          onClick={() => setShareOpen(true)}
+                          className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 font-semibold text-violet-700 shadow-md ring-1 ring-violet-200 transition hover:bg-violet-700 hover:text-white"
+                        >
+                          <Share className="mr-2 h-5 w-5" />
+                          <span>Compartir evento</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -277,7 +305,7 @@ export default function EventDetailPage() {
             )}
             <button
               type="button"
-              onClick={closeProjectPicker}
+              onClick={() => closeProjectPicker()}
               disabled={submittingProjects}
               className="rounded-xl border px-4 py-2 text-gray-700 hover:bg-gray-50 disabled:opacity-60"
             >
@@ -355,6 +383,14 @@ export default function EventDetailPage() {
           )}
         </div>
       </Modal>
+      <ShareModal
+        item={shareOpen ? event : null}
+        resourceType="event"
+        onClose={() => setShareOpen(false)}
+        onItemUpdated={(updatedEvent) => {
+          setEvent((current) => (current ? { ...current, ...updatedEvent } : current))
+        }}
+      />
     </main>
   )
 }
