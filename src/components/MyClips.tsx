@@ -35,7 +35,6 @@ function TitleBar({
 
         {subtitle ? <p className={`mt-1 text-sm ${subtitleClassName}`}>{subtitle}</p> : null}
       </div>
-      {showUploadButton ? <UploadVideoTriggerButton /> : null}
     </div>
   )
 }
@@ -84,7 +83,7 @@ export default function MyClips() {
 
   if (!hasHydrated) {
     return (
-      <section className="mt-12 w-full max-w-5xl">
+      <section className="mt-12 w-full max-w-6xl">
         <TitleBar subtitle="Cargando…" />
       </section>
     )
@@ -92,7 +91,7 @@ export default function MyClips() {
 
   if (!accessToken) {
     return (
-      <section className="mt-12 w-full max-w-5xl">
+      <section className="mt-12 w-full max-w-6xl">
         <TitleBar subtitle="Inicia sesión para ver tus videos." />
       </section>
     )
@@ -100,7 +99,7 @@ export default function MyClips() {
 
   if (loading) {
     return (
-      <section className="mt-12 w-full max-w-5xl">
+      <section className="mt-12 w-full max-w-6xl">
         <TitleBar subtitle="Cargando…" showUploadButton />
       </section>
     )
@@ -108,7 +107,7 @@ export default function MyClips() {
 
   if (error) {
     return (
-      <section className="mt-12 w-full max-w-5xl">
+      <section className="mt-12 w-full max-w-6xl">
         <TitleBar subtitle={error} subtitleClassName="text-sm text-red-600" showUploadButton />
       </section>
     )
@@ -116,17 +115,17 @@ export default function MyClips() {
 
   if (!clips.length) {
     return (
-      <section className="mt-12 w-full max-w-5xl">
+      <section className="mt-12 w-full max-w-6xl">
         <TitleBar subtitle="Aún no has subido ningún video." showUploadButton />
       </section>
     )
   }
 
   return (
-    <section className="mt-6 w-full max-w-5xl sm:mt-12">
+    <section className="mt-6 w-full max-w-6xl sm:mt-12">
       <TitleBar showUploadButton />
 
-      <ul className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
         {clips.map((v) => (
           <li key={v.id} className="overflow-hidden rounded-xl border bg-white shadow-sm">
             <div className="aspect-video bg-black">

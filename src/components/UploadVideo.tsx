@@ -220,7 +220,7 @@ export default function UploadVideo({ registerOpenPicker }: UploadVideoProps) {
   return (
     <div
       className={[
-        "flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-10 w-full max-w-xl transition-colors",
+        "flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed p-10 transition-colors",
         isDragging ? "border-blue-500 bg-blue-50" : "border-gray-300 bg-white",
       ].join(" ")}
       onDragOver={onDragOver}
