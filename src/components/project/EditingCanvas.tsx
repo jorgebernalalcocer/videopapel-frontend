@@ -707,7 +707,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
 
 
   return (
-    <div className="w-full flex bg-black flex-col gap-4 h-[100vh] min-h-0">
+    <div className="w-full flex bg-black flex-col gap-4 h-full min-h-0">
       {/* Viewer */}
 <BigFrameViewer
   current={currentThumb ? {
