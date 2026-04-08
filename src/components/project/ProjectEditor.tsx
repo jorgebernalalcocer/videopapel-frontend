@@ -915,7 +915,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
               </div>
             )}
           </div>
-          <div className="aspect-video bg-black rounded-lg mb-4 p-2">
+          <div className="aspect-video bg-red-500 rounded-lg mb-4 p-2">
             {clips.length ? (
               <EditingCanvas
                 // miniaturas por segundo. calcula fotogramas según duración
