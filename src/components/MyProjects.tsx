@@ -45,7 +45,7 @@ type Project = {
   effect_name?: string | null;
   event_id?: string | null;
   event_name?: string | null;
-  order_id?: number | null;
+  order_id?: string | null;
 
   primary_clip?: {
     clip_id: number;
@@ -396,7 +396,11 @@ export default function MyProjects({
                       return (
                         <>
                           {p.primary_clip && p.primary_clip.video_url && (
-                            <div className="bg-gray-100">
+                            <Link
+                              href={`/projects/${p.id}`}
+                              aria-label={`Abrir proyecto ${p.name || p.id}`}
+                              className="block bg-gray-100 transition-opacity hover:opacity-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-pink-500 focus-visible:ring-offset-2"
+                            >
                               <div className="grid aspect-video grid-cols-2 gap-0.5 overflow-hidden">
                                 {(p.primary_clip.thumbnails?.length
                                   ? p.primary_clip.thumbnails
@@ -419,7 +423,7 @@ export default function MyProjects({
                                     />
                                   ))}
                               </div>
-                            </div>
+                            </Link>
                           )}
 
                           <div className="p-4">

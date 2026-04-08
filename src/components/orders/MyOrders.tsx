@@ -30,6 +30,7 @@ type OrderItem = {
 
 type Order = {
   id: number
+  public_id: string
   status: string
   subtotal_amount: string
   tax_amount: string
@@ -65,7 +66,7 @@ const formatAmount = (value: string | number) => {
 type MyOrdersProps = {
   compact?: boolean
   embed?: boolean
-  orderId?: number
+  orderId?: string
 }
 
 export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersProps) {
@@ -77,7 +78,7 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState('')
-  const [downloadingOrderId, setDownloadingOrderId] = useState<number | null>(null)
+  const [downloadingOrderId, setDownloadingOrderId] = useState<string | null>(null)
   const [issueOrderId, setIssueOrderId] = useState<number | null>(null)
 
   const canRequest = Boolean(accessToken)
@@ -138,8 +139,8 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
 
   const handleDownloadInvoice = useCallback(
     async (order: Order, kind: 'invoice' | 'rectification' = 'invoice') => {
-      if (downloadingOrderId === order.id) return
-      setDownloadingOrderId(order.id)
+      if (downloadingOrderId === order.public_id) return
+      setDownloadingOrderId(order.public_id)
       try {
         const pdfUrl = kind === 'rectification' ? order.rectification_invoice_pdf : order.invoice_pdf
         if (!pdfUrl) {
@@ -155,8 +156,8 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
         anchor.rel = 'noopener noreferrer'
         anchor.download =
           kind === 'rectification'
-            ? `factura-rectificativa-pedido-${order.id}.pdf`
-            : `factura-pedido-${order.id}.pdf`
+            ? `factura-rectificativa-pedido-${order.public_id}.pdf`
+            : `factura-pedido-${order.public_id}.pdf`
         document.body.appendChild(anchor)
         anchor.click()
         anchor.remove()
@@ -168,7 +169,7 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
               : 'No se pudo descargar la factura.')
         )
       } finally {
-        setDownloadingOrderId((current) => (current === order.id ? null : current))
+        setDownloadingOrderId((current) => (current === order.public_id ? null : current))
       }
     },
     [downloadingOrderId]
@@ -197,6 +198,7 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
     const shippingAddress = order.shipping_address
     const searchableValues = [
       order.id,
+      order.public_id,
       order.status,
       order.subtotal_amount,
       order.tax_amount,
@@ -240,7 +242,7 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
           <div>
             {/* <p className="text-sm text-gray-500">Historial</p> */}
             <h2 className="text-lg font-semibold text-gray-900">
-              {orderId ? `Pedido #${orderId}` : compact ? 'Últimos pedidos' : 'Pedidos realizados'}
+              {orderId ? `Pedido ${orderId}` : compact ? 'Últimos pedidos' : 'Pedidos realizados'}
             </h2>
             {!compact && !orderId && <p className="text-sm text-gray-500">Ordenados de más reciente a más antiguo.</p>}
           </div>
@@ -293,7 +295,7 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
                   <div key={order.id} className="space-y-3 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">Pedido #{order.id}</p>
+                        <p className="text-sm font-semibold text-gray-900">Pedido {order.public_id}</p>
                         <p className="text-xs text-gray-500">{orderDate}</p>
                         <p className="text-xs text-gray-500 capitalize">Estado: {order.status}</p>
                       </div>
@@ -381,20 +383,20 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
                           type="button"
                           onClick={() => handleDownloadInvoice(order, 'rectification')}
                           className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-700 disabled:opacity-60"
-                          disabled={downloadingOrderId === order.id}
+                          disabled={downloadingOrderId === order.public_id}
                         >
                           <Download className="w-5 h-5 mr-2" />
-                          {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura rectificativa'}
+                          {downloadingOrderId === order.public_id ? 'Descargando…' : 'Descargar factura rectificativa'}
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={() => handleDownloadInvoice(order, 'invoice')}
                         className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-                        disabled={downloadingOrderId === order.id}
+                        disabled={downloadingOrderId === order.public_id}
                       >
                         <Download className="w-5 h-5 mr-2" />
-                        {downloadingOrderId === order.id ? 'Descargando…' : 'Descargar factura'}
+                        {downloadingOrderId === order.public_id ? 'Descargando…' : 'Descargar factura'}
                       </button>
                     </div>
                   </div>

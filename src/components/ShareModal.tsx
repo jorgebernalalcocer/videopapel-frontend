@@ -288,6 +288,26 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
     }
   }
 
+  const handleDeleteInvitation = async (invitation: Invitation) => {
+    if (!canManageSharing) return
+    setDeletingMembershipId(-1)
+    try {
+      const response = await apiFetch(`/${resourceType}s/${item.id}/invitations/${invitation.token}/`, {
+        method: 'DELETE',
+        headers: { Accept: 'application/json' },
+      })
+      const payload = await response.json().catch(() => null)
+      if (!response.ok) throw new Error(extractErrorMessage(payload, 'No se pudo eliminar la invitación.'))
+      setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : [])
+      setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : [])
+      toast.success('Invitación eliminada correctamente.')
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo eliminar la invitación.')
+    } finally {
+      setDeletingMembershipId(null)
+    }
+  }
+
   const openShareWindow = (url: string) => {
     if (typeof window === 'undefined') return
     window.open(url, '_blank', 'noopener,noreferrer,width=640,height=720')
@@ -388,6 +408,16 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
                       <p className="truncate text-sm text-gray-900">{invitation.email}</p>
                       <p className="text-xs text-amber-600">Invitación pendiente</p>
                     </div>
+                    {canManageSharing && (
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteInvitation(invitation)}
+                        disabled={deletingMembershipId === -1}
+                        className="rounded-lg bg-red-200 px-3 py-1 text-xs font-medium text-black shadow-sm transition duration-150 hover:bg-red-700 disabled:cursor-not-allowed disabled:bg-red-200 disabled:text-white"
+                      >
+                        {deletingMembershipId === -1 ? 'Eliminando...' : 'Eliminar acceso'}
+                      </button>
+                    )}
                     <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-medium text-amber-700">{invitation.role === 'edit' ? 'Rol editor' : 'Rol lectura'}</span>
                   </div>
                 ))}

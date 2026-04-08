@@ -172,7 +172,7 @@ export default function EventsPage() {
                     ) : null}
                     <div className="p-6">
                       <p className="mb-3 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-600">
-                        {event.project_count} {event.project_count === 1 ? 'Proyecto' : 'Proyectos'}
+                        {event.project_count} {event.project_count === 1 ? 'Proyecto en este evento' : 'Proyectos en este evento'}
                       </p>
                       <h2 className="text-xl font-semibold text-gray-900">{event.name}</h2>
                       {event.description ? (

@@ -227,7 +227,7 @@ export default function EventDetailPage() {
                       Creado por {event.owner_email || 'Sin email'}
                     </p>
                     <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                      Compartido por: {event.shared_with_emails?.length ? event.shared_with_emails.join(', ') : 'Nadie'}
+                      Compartido con: {event.shared_with_emails?.length ? event.shared_with_emails.join(', ') : 'Nadie'}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-3">
                       {event.current_user_can_edit && <NewProjectButton eventId={event.id} />}
