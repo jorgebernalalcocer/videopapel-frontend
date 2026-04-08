@@ -33,16 +33,27 @@ export default function CutClipModal({
     const selectedIndex = selectedId ? items.findIndex((item) => item.id === selectedId) : -1
     return selectedIndex >= 0 ? selectedIndex : 0
   }, [items, selectedId])
-  const [startIndex, setStartIndex] = useState(initialIndex)
-  const [endIndex, setEndIndex] = useState(initialIndex)
+  const initialRange = useMemo(() => {
+    if (items.length <= 1) {
+      return { startIndex: initialIndex, endIndex: initialIndex }
+    }
+
+    if (initialIndex >= items.length - 1) {
+      return { startIndex: initialIndex - 1, endIndex: initialIndex }
+    }
+
+    return { startIndex: initialIndex, endIndex: initialIndex + 9 }
+  }, [initialIndex, items.length])
+  const [startIndex, setStartIndex] = useState(initialRange.startIndex)
+  const [endIndex, setEndIndex] = useState(initialRange.endIndex)
   const [activeHandle, setActiveHandle] = useState<'start' | 'end'>('start')
 
   useEffect(() => {
     if (!open) return
-    setStartIndex(initialIndex)
-    setEndIndex(initialIndex)
+    setStartIndex(initialRange.startIndex)
+    setEndIndex(initialRange.endIndex)
     setActiveHandle('start')
-  }, [initialIndex, open])
+  }, [initialRange, open])
 
   const maxIndex = Math.max(0, items.length - 1)
   const safeStartIndex = Math.min(startIndex, endIndex)
@@ -102,7 +113,7 @@ export default function CutClipModal({
     <Modal
       open={open}
       onClose={onClose}
-      size="lg"
+      size="full"
       title="Recorte de clip"
       description="seleccione la parte que quieras eliminar del clip"
       footer={
@@ -145,7 +156,7 @@ export default function CutClipModal({
               <p className="text-gray-600">{rangeLabel}</p>
             </div>
             <p className="text-xs font-medium text-orange-700">
-              {selectionCount} fotograma seleccionados{selectionCount === 1 ? '' : 's'}
+              Se borrará {selectionCount} fotograma{selectionCount === 1 ? '' : 's'}
             </p>
           </div>
 

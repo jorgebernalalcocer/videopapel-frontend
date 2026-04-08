@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BaseTileModal, type TileOption } from '@/components/ui/BaseTileModal'
 import ApplyEffect from '@/components/project/viewer/ApplyEffect'
-import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 
 type PrintEffect = {
   id: number
@@ -13,9 +12,11 @@ type PrintEffect = {
 }
 
 export type EffectPreviewClip = {
-  videoUrl: string
+  videoUrl?: string | null
   frameTimeMs: number
+  url?: string | null
   imageUrl?: string | null
+  image_url?: string | null
 }
 
 type EffectsTileProps = {
@@ -100,12 +101,7 @@ export default function EffectsTile({
 
   const previewImage = useMemo(() => {
     if (!previewClip) return null
-    if (previewClip.imageUrl) return previewClip.imageUrl
-    try {
-      return cloudinaryFrameUrlFromVideoUrl(previewClip.videoUrl, previewClip.frameTimeMs, 360)
-    } catch {
-      return null
-    }
+    return previewClip.url ?? previewClip.imageUrl ?? previewClip.image_url ?? null
   }, [previewClip])
 
   const handleSelect = useCallback(async (option: TileOption) => {
@@ -142,19 +138,19 @@ export default function EffectsTile({
   const renderPreview = useCallback(
     (tile: TileOption) => (
       <ApplyEffect effectName={tile.label}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={previewImage ?? tile.imageUrl ?? undefined}
-          alt={`Vista previa con ${tile.label}`}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          onError={(event) => {
-            const img = event.currentTarget
-            if (img.dataset.fallbackApplied === '1') return
-            img.dataset.fallbackApplied = '1'
-            if (tile.imageUrl) img.src = tile.imageUrl
-          }}
-        />
+        {previewImage ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={previewImage}
+            alt={`Vista previa con ${tile.label}`}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-gray-100 text-xs text-gray-500">
+            Sin miniatura
+          </div>
+        )}
       </ApplyEffect>
     ),
     [previewImage],

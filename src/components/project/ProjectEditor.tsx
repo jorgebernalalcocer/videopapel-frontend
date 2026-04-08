@@ -149,30 +149,22 @@ const isShippingLine = (
 const resolveClipPreview = (
   clip?: ProjectClipPayload | null,
 ): EffectPreviewClip | null => {
-  if (!clip || !clip.video_url) return null;
+  if (!clip) return null;
 
-  // 1) Si hay thumbnails generados, usamos el primero
   const firstThumb =
     clip.thumbnails && clip.thumbnails.length > 0 ? clip.thumbnails[0] : null;
 
-  if (firstThumb) {
+  if (firstThumb?.image_url) {
     return {
-      videoUrl: clip.video_url,
+      videoUrl: clip.video_url ?? null,
       frameTimeMs: firstThumb.frame_time_ms,
-      imageUrl: firstThumb.image_url ?? null,
+      imageUrl: firstThumb.image_url,
+      image_url: firstThumb.image_url,
+      url: firstThumb.image_url,
     };
   }
 
-  // 2) Si no hay thumbnails, caemos al comportamiento antiguo usando frames
-  const frames = Array.isArray(clip.frames)
-    ? [...clip.frames].sort((a, b) => a - b)
-    : [];
-  const firstFrame = frames[0] ?? 0;
-
-  return {
-    videoUrl: clip.video_url,
-    frameTimeMs: firstFrame,
-  };
+  return null;
 };
 
 const STATUS_LABELS: Record<Project["status"], string> = {
@@ -469,20 +461,19 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
 
   const effectsPreviewClip = useMemo<EffectPreviewClip | null>(() => {
     const cover = project?.cover_image;
-    if (cover) {
+    if (cover?.image_url) {
       const coverClip = clips.find((clip) => clip.id === cover.project_clip_id);
-      const coverVideoUrl =
-        cover.video_url ??
-        coverClip?.video_url ??
-        project?.primary_clip?.video_url ??
-        null;
-      if (coverVideoUrl) {
-        return {
-          videoUrl: coverVideoUrl,
-          frameTimeMs: cover.frame_time_ms,
-          imageUrl: cover.image_url ?? null,
-        };
-      }
+      return {
+        videoUrl:
+          cover.video_url ??
+          coverClip?.video_url ??
+          project?.primary_clip?.video_url ??
+          null,
+        frameTimeMs: cover.frame_time_ms,
+        imageUrl: cover.image_url,
+        image_url: cover.image_url,
+        url: cover.image_url,
+      };
     }
     return (
       resolveClipPreview(clips[0]) ??

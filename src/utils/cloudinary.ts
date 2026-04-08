@@ -42,7 +42,7 @@ export function cloudinaryFrameUrlFromVideoUrl(videoUrl: string, tMs: number, h:
   const publicIdWithExt = afterUpload.join('/')
   const publicId = publicIdWithExt.replace(/\.[^.]+$/, '')
   const secs = Math.max(0, tMs / 1000)
-  const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.round(h)},q_auto:low,f_webp`
+  const trans = `so_${secs.toFixed(3)},c_scale,h_${Math.round(h)},q_auto:low,f_jpg`
   const base = '/' + parts.slice(0, uploadIdx + 1).join('/')
   const ver = version ? `/${version}` : ''
   return `${url.origin}${base}/${trans}${ver}/${publicId}.jpg`
