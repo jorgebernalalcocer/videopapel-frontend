@@ -114,7 +114,7 @@ export default function EventsPage() {
           <div className="flex items-center gap-3">
             <PartyPopper className="h-8 w-8 text-emerald-600" />
             <div>
-              <h1 className="text-3xl font-semibold text-gray-900">Archivo de eventos</h1>
+              <h1 className="text-3xl font-semibold text-grey-600">Archivo de eventos</h1>
               <p className="text-sm text-gray-500">Agrupa por eventos tus proyectos de papel</p>
             </div>
           </div>

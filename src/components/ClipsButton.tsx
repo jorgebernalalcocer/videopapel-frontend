@@ -4,6 +4,7 @@
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Film } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 
 export default function VideosButton() {
@@ -14,19 +15,15 @@ export default function VideosButton() {
   }
 
   return (
-    <Button className="
-    inline-flex items-center
-    px-3 py-1.5                  
-    rounded-lg                   
-    bg-orange-100                  
-    text-orange-700
-    font-medium
-    transition-colors
-    hover:bg-orange-700            
-    hover:text-white
-  "  onClick={handleClips}>
-       <Film className="w-4 h-4 mr-1.5" /> 
-      Videos digitales
-    </Button>
+    <ColorActionButton
+  type="button"
+  onClick={handleClips}
+  color="purple"
+  size="compact"
+  icon={Film}
+>
+  Videos digitales
+</ColorActionButton>
+
   )
 }

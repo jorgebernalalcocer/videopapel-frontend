@@ -1,21 +1,27 @@
 'use client'
 
 import { Share } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type ShareProjectButtonProps = {
   onClick: () => void
+  size?: 'large' | 'compact' | 'mini'
 }
 
-export default function ShareProjectButton({ onClick }: ShareProjectButtonProps) {
+export default function ShareProjectButton({
+  onClick,
+  size = 'large',
+}: ShareProjectButtonProps) {
   return (
-    <button
-      type="button"
+    <ColorActionButton
       onClick={onClick}
+      color="violet"
+      filled
+      size={size}
+      icon={Share}
       title="Compartir proyecto"
-      className="px-3 py-1.5 text-xs rounded-lg bg-purple-100 text-black hover:bg-gray-50 flex items-center justify-center gap-1"
     >
-      <Share className="w-3 h-3" />
       Compartir
-    </button>
+    </ColorActionButton>
   )
 }

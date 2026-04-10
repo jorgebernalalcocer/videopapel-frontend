@@ -6,6 +6,7 @@ import { Layers2, CheckCircle2, XCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import { cn } from '@/lib/utils'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 import { Modal } from '@/components/ui/Modal'
 
 type ProjectClone = {
@@ -21,7 +22,7 @@ interface DuplicateProjectButtonProps
   label?: string
   showIcon?: boolean
   children?: ReactNode
-  size?: 'compact' | 'large'
+  size?: 'mini' | 'compact' | 'large'
 }
 
 
@@ -42,9 +43,8 @@ export default function DuplicateProjectButton({
   const [duplicatedProjectId, setDuplicatedProjectId] = useState<string | null>(null)
   const accessToken = useAuth((s) => s.accessToken)
 // Línea ~43 (La línea que te dio error)
-const defaultLabel = size === 'compact' ? 'Duplicar' : 'Duplicar proyecto' 
-// 👇 CAMBIAR ESTA LÍNEA por la prop desestructurada 'label' (que es la personalizada)
-const finalLabel = label ?? defaultLabel // Usar la prop 'label' si existe, sino 'defaultLabel'
+  const defaultLabel = size === 'large' ? 'Duplicar proyecto' : 'Duplicar'
+  const finalLabel = label ?? defaultLabel
   const router = useRouter()
 
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
@@ -105,20 +105,17 @@ const finalLabel = label ?? defaultLabel // Usar la prop 'label' si existe, sino
 
   return (
     <>
-      <button
-        type="button"
-        className={cn(
-          'px-3 py-1.5 text-xs rounded-lg bg-yellow-100 text-black hover:bg-yellow-200 flex items-center justify-center gap-1 disabled:opacity-60 disabled:cursor-not-allowed',
-          className
-        )}
+      <ColorActionButton
+        color="amber"
+        icon={showIcon ? Layers2 : undefined}
+        size={size === 'large' ? 'large' : size}
+        className={className}
         onClick={handleDuplicate}
         disabled={disabled || isDuplicating}
         {...rest}
       >
- {showIcon && <Layers2 className="w-3 h-3" />}
-        {/* 👇 USAR 'finalLabel' */}
         {isDuplicating ? 'Duplicando…' : children ?? finalLabel}
-      </button>
+      </ColorActionButton>
 
       <Modal
         open={confirmOpen}

@@ -7,6 +7,7 @@ import { ChevronLeft, FolderPlus, PartyPopper, Share } from 'lucide-react'
 import MyProjects, { type Project } from '@/components/MyProjects'
 import NewProjectButton from '@/components/NewProjectButton'
 import { ShareModal } from '@/components/ShareModal'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/store/auth'
 
@@ -232,24 +233,23 @@ export default function EventDetailPage() {
                     <div className="mt-4 flex flex-wrap gap-3">
                       {event.current_user_can_edit && <NewProjectButton eventId={event.id} />}
                       {event.current_user_can_edit && (
-                        <button
-                          type="button"
+                        <ColorActionButton
                           onClick={() => void openProjectPicker()}
-                          className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 font-semibold text-pink-700 shadow-md ring-1 ring-pink-200 transition hover:bg-emerald-700 hover:text-white"
+                          color="pink"
+                          icon={FolderPlus}
                         >
-                          <FolderPlus className="mr-2 h-5 w-5" />
                           <span>Añadir proyecto existente</span>
-                        </button>
+                        </ColorActionButton>
                       )}
                       {event.current_user_can_manage_sharing && (
-                        <button
-                          type="button"
+                        <ColorActionButton
                           onClick={() => setShareOpen(true)}
-                          className="inline-flex items-center justify-center rounded-lg bg-white px-4 py-2 font-semibold text-violet-700 shadow-md ring-1 ring-violet-200 transition hover:bg-violet-700 hover:text-white"
+                          color="violet"
+                          size="large"
+                          icon={Share}
                         >
-                          <Share className="mr-2 h-5 w-5" />
                           <span>Compartir evento</span>
-                        </button>
+                        </ColorActionButton>
                       )}
                     </div>
                   </div>

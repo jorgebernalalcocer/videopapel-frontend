@@ -233,7 +233,7 @@ export default function UploadVideo({ registerOpenPicker }: UploadVideoProps) {
         o haz clic para seleccionar un archivo. Máximo 100 Mb.
       </p>
 
-      <Button
+      {/* <Button
         type="button"
         className="inline-flex items-center justify-center px-4 py-2 bg-orange-100 text-orange-700 hover:bg-orange-700 hover:text-white font-semibold rounded-lg shadow-md transition-colors"
         onClick={openFilePicker}
@@ -241,7 +241,7 @@ export default function UploadVideo({ registerOpenPicker }: UploadVideoProps) {
       >
         <Upload className="w-5 h-5 mr-2" />
         <span>Nuevo video</span>
-      </Button>
+      </Button> */}
       <input
         ref={inputRef}
         id="video-upload"

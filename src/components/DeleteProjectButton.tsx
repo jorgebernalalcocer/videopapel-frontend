@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { useAuth } from '@/store/auth'
 import { useConfirm } from '@/components/ui/ConfirmProvider'
 import { toast } from 'sonner'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, Trash2, XCircle } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type DeleteProjectButtonProps = {
   projectId: string
@@ -82,14 +83,18 @@ export default function DeleteProjectButton({
 
   return (
     <div className="mt-3">
-      <button
+      <ColorActionButton
         type="button"
         onClick={handleDelete}
         disabled={isDeleting || disabled}
-        className="px-3 py-1 text-xs font-medium bg-red-200 text-black rounded-lg shadow-sm hover:bg-red-700 transition duration-150 disabled:bg-red-200 disabled:text-white disabled:cursor-not-allowed"
+        color="rose"
+        filled
+        size="compact"
+        icon={Trash2}
       >
         {isDeleting ? 'Eliminando…' : 'Eliminar'}
-      </button>
+      </ColorActionButton>
+
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   )

@@ -713,7 +713,6 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           <DuplicateProjectButton
             projectId={project.id}
             size="large"
-            className="px-3 py-1 text-xs rounded-lg"
             title="Duplicar proyecto"
           />
           <ShareProjectButton onClick={() => setShareOpen(true)} />
@@ -1214,7 +1213,6 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                 <DuplicateProjectButton
                   projectId={project.id}
                   size="large"
-                  className="px-3 py-1 text-xs rounded-lg"
                   title="Duplicar proyecto"
                 />
               )}

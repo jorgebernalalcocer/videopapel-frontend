@@ -17,9 +17,9 @@ export default function ClipsPage() {
         <div className="hidden sm:block mb-8">
           <div className="flex items-center justify-between gap-6">
             <div className="flex items-center gap-3">
-              <Film className="h-8 w-8 text-orange-600" />
+              <Film className="h-8 w-8 text-purple-700" />
               <div>
-                <h1 className="mb-2 text-left text-3xl font-semibold">Sube tu video</h1>
+                <h1 className="mb-2 text-left text-3xl font-semibold text-grey-600">Sube tu video</h1>
                 <p className="text-left text-sm text-gray-500">Añade aqui tus videos para crear proyectos de papel</p>
               </div>
             </div>

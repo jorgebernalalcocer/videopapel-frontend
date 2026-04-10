@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/auth";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
-import { CircleX, ExternalLink, PartyPopper, Search } from "lucide-react";
+import { CircleX, ExternalLink, PartyPopper, Search, List } from "lucide-react";
 import { ShareModal } from "@/components/ShareModal";
 import { DateFormat } from "@/components/DateFormat";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
@@ -16,6 +16,8 @@ import StatusBadge from "@/components/project/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
 import { acceptProjectInvitation } from "@/lib/projectInvitations";
 import { toast } from "sonner";
+import { ColorActionButton } from "@/components/ui/color-action-button";
+
 
 type Project = {
   id: string;
@@ -443,14 +445,17 @@ export default function MyProjects({
                                   </span>
                                 )}
                               </div>
-                              {p.status === "exported" && p.order_id ? (
-                                <Link
-                                  href={`/orders/${p.order_id}`}
-                                  className="inline-flex items-center rounded-lg bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-700 transition hover:bg-blue-700 hover:text-white"
-                                >
-                                  Ver pedido
-                                </Link>
-                              ) : null}
+{p.status === "exported" && p.order_id ? (
+  <ColorActionButton
+    asChild
+    color="blue"
+    filled
+    size="mini"
+    icon={List}
+  >
+    <Link href={`/orders/${p.order_id}`}>Ver pedido</Link>
+  </ColorActionButton>
+) : null}
                             </div>
 
                             <p className="mt-1 text-xs text-gray-500">
@@ -513,17 +518,17 @@ export default function MyProjects({
                             )}
 
                             {canLinkToEvent && (
-                              <div className="mt-2">
-                                <button
-                                  type="button"
-                                  onClick={() => void openEventPicker(p)}
-                                  disabled={linkingProjectId === p.id}
-                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  <PartyPopper className="h-3.5 w-3.5" />
-                                  {linkingProjectId === p.id ? "Vinculando..." : "Vincular a evento"}
-                                </button>
-                              </div>
+         <ColorActionButton
+  type="button"
+  onClick={() => void openEventPicker(p)}
+  disabled={linkingProjectId === p.id}
+  color="emerald"
+  filled
+  size="mini"
+  icon={PartyPopper}
+>
+  {linkingProjectId === p.id ? "Vinculando..." : "Vincular a evento"}
+</ColorActionButton>
                             )}
 
                             {Array.isArray(p.shared_with_emails) &&
@@ -554,17 +559,21 @@ export default function MyProjects({
                                 </>
                               ) : (
                                 <>
-                                  <Link
-                                    href={`/projects/${p.id}`}
-                                    className="flex items-center justify-center gap-1 rounded-lg bg-pink-100 px-3 py-1.5 text-xs text-pink-700 hover:text-white hover:bg-pink-700"
+                                  <ColorActionButton
+                                    asChild
+                                    color="amber"
+                                    filled
+                                    size="mini"
+                                    icon={ExternalLink}
                                   >
-                                    <ExternalLink className="h-3 w-3" />
-                                    Abrir proyecto
-                                  </Link>
+                                    <Link href={`/projects/${p.id}`}>
+                                      Abrir proyecto
+                                    </Link>
+                                  </ColorActionButton>
 
                                   <DuplicateProjectButton
                                     projectId={p.id}
-                                    size="compact"
+                                    size="mini"
                                     onDuplicated={(clone) => {
                                       setProjects((prev) => [clone as Project, ...prev]);
                                     }}
@@ -572,7 +581,10 @@ export default function MyProjects({
                                     title="Duplicar proyecto"
                                   />
 
-                                  <ShareProjectButton onClick={() => handleShareClick(p)} />
+                                  <ShareProjectButton
+                                    onClick={() => handleShareClick(p)}
+                                    size="mini"
+                                  />
                                 </>
                               )}
                             </div>

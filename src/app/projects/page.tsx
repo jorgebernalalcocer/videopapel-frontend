@@ -13,9 +13,9 @@ export default function ProjectsPage() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <BookOpen className="h-8 w-8 text-pink-600" />
+            <BookOpen className="h-8 w-8 text-amber-600" />
             <div>
-              <h1 className="text-3xl font-semibold text-gray-900">Proyectos de papel</h1>
+              <h1 className="text-3xl font-semibold text-grey-600">Proyectos de papel</h1>
               <p className="text-sm text-gray-500">Crea videos de papel a partir de uno digital.</p>
             </div>
           </div>

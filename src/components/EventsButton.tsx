@@ -7,6 +7,7 @@ import { Modal } from '@/components/ui/Modal'
 import NewProjectButton from '@/components/NewProjectButton'
 import { PartyPopper } from 'lucide-react'
 import { useAuth } from '@/store/auth'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type Mode = 'link' | 'create'
 
@@ -174,49 +175,33 @@ export default function EventsButton({
 
   if (mode === 'link') {
     return (
-      <Button
-        className="
-          inline-flex items-center
-          px-3 py-1.5
-          rounded-lg
-          bg-emerald-100
-          text-emerald-700
-          font-medium
-          transition-colors
-          hover:bg-emerald-700
-          hover:text-white
-        "
-        onClick={openWizard}
-      >
-        <PartyPopper className="mr-1.5 h-4 w-4" />
-        Archivo de eventos
-      </Button>
+<ColorActionButton
+  type="button"
+  onClick={openWizard}
+  disabled={submitting}
+  color="emerald"
+  
+  size="compact"
+  icon={PartyPopper}
+>
+  Archivo de evento
+</ColorActionButton>
     )
   }
 
   return (
     <>
-      <button
-        className="
-          inline-flex
-          items-center
-          justify-center
-          px-4 py-2
-          bg-emerald-100
-          text-emerald-700
-          hover:bg-emerald-700
-          hover:text-white
-          font-semibold
-          rounded-lg
-          shadow-md
-          transition-colors
-        "
-        onClick={openWizard}
-        disabled={submitting}
-      >
-        <PartyPopper className="mr-2 h-5 w-5" />
-        <span>Nuevo evento</span>
-      </button>
+<ColorActionButton
+  type="button"
+  onClick={openWizard}
+  disabled={submitting}
+  color="emerald"
+  filled
+  size="large"
+  icon={PartyPopper}
+>
+  Nuevo evento
+</ColorActionButton>
 
       <Modal
         open={open}

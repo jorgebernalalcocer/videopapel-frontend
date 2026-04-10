@@ -9,6 +9,8 @@ import { Modal } from '@/components/ui/Modal'
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
 
 import { FilePlus } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
+
 
 
 // Eliminamos la definición local de Video, ahora usamos VideoItem de VideoPickerModal
@@ -126,27 +128,17 @@ export default function NewProjectButton({ eventId = null }: NewProjectButtonPro
   return (
     <>
       {/* Botón de Lanzamiento (sin cambios) */}
-      <button
-        className="
-          inline-flex             
-          items-center            
-          justify-center          
-          px-4 py-2               
-          bg-pink-100                  
-          text-pink-700
-          hover:bg-pink-700            
-          hover:text-white
-          font-semibold
-          rounded-lg
-          shadow-md
-          transition-colors       
-        "
-        onClick={openWizard}
-        disabled={submitting}
-      >
-        <FilePlus className="w-5 h-5 mr-2" /> 
-        <span>Nuevo proyecto</span> 
-      </button>
+<ColorActionButton
+  type="button"
+  onClick={openWizard}
+  disabled={submitting}
+  color="amber"
+  filled
+  size="large"
+  icon={FilePlus}
+>
+  Nuevo video de papel
+</ColorActionButton>
       
 
       {/* Modal Principal (Solo Step 1: Nombre) */}
