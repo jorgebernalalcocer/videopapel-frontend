@@ -51,7 +51,7 @@ export default function UploadVideoTriggerButton({
         type="button"
         onClick={handleButtonClick}
         disabled={disabled}
-        color="purple"
+        color="red"
         size="large"
         filled
         icon={Upload}

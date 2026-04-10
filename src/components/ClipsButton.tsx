@@ -18,7 +18,7 @@ export default function VideosButton() {
     <ColorActionButton
   type="button"
   onClick={handleClips}
-  color="purple"
+  color="red"
   size="compact"
   icon={Film}
 >

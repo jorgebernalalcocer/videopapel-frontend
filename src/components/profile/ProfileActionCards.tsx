@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, Film, Home, List, PartyPopper, ShoppingBasket, User } from 'lucide-react'
+import { BookOpen, Film, Home, List, Palette, PartyPopper, ReceiptEuro, ShoppingBasket, User } from 'lucide-react'
 import type { ElementType } from 'react'
 
 type ActionCardItem = {
@@ -18,9 +18,9 @@ const actionCards: ActionCardItem[] = [
     href: '/projects',
     icon: BookOpen,
     label: 'Proyectos de papel',
-    iconClassName: 'text-pink-700',
-    cardClassName: 'bg-pink-50 border-pink-100',
-    textClassName: 'text-pink-900',
+    iconClassName: 'text-amber-700',
+    cardClassName: 'bg-amber-50 border-amber-100',
+    textClassName: 'text-amber-900',
   },
   {
     href: '/events',
@@ -34,9 +34,9 @@ const actionCards: ActionCardItem[] = [
     href: '/clips',
     icon: Film,
     label: 'Videos',
-    iconClassName: 'text-orange-700',
-    cardClassName: 'bg-orange-50 border-orange-100',
-    textClassName: 'text-orange-900',
+    iconClassName: 'text-red-700',
+    cardClassName: 'bg-red-50 border-red-100',
+    textClassName: 'text-red-900',
   },
   {
     href: '/orders',
@@ -47,20 +47,20 @@ const actionCards: ActionCardItem[] = [
     textClassName: 'text-blue-900',
   },
   {
-    href: '/shipping',
-    icon: Home,
-    label: 'Dirección de entrega',
-    iconClassName: 'text-lime-700',
-    cardClassName: 'bg-lime-50 border-lime-100',
-    textClassName: 'text-lime-900',
-  },
-  {
     href: '/cart',
     icon: ShoppingBasket,
     label: 'Cesta de la compra',
     iconClassName: 'text-green-700',
     cardClassName: 'bg-green-50 border-green-100',
     textClassName: 'text-green-900',
+  },
+  {
+    href: '/shipping',
+    icon: Home,
+    label: 'Dirección de entrega',
+    iconClassName: 'text-lime-700',
+    cardClassName: 'bg-lime-50 border-lime-100',
+    textClassName: 'text-lime-900',
   },
 ]
 
@@ -71,6 +71,24 @@ const profileCard: ActionCardItem = {
   iconClassName: 'text-purple-700',
   cardClassName: 'bg-purple-50 border-purple-100',
   textClassName: 'text-purple-900',
+}
+
+const logosCard: ActionCardItem = {
+  href: '/logos',
+  icon: Palette,
+  label: 'Logos',
+  iconClassName: 'text-slate-700',
+  cardClassName: 'bg-slate-50 border-slate-200',
+  textClassName: 'text-slate-900',
+}
+
+const invoicesCard: ActionCardItem = {
+  href: '/invoice',
+  icon: ReceiptEuro,
+  label: 'Facturas',
+  iconClassName: 'text-stone-700',
+  cardClassName: 'bg-stone-50 border-stone-200',
+  textClassName: 'text-stone-900',
 }
 
 function ActionCard({
@@ -98,12 +116,23 @@ export default function ProfileActionCards({
   className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4',
   onCardClick,
   showProfileCard = false,
+  companiesCount = 0,
 }: {
   className?: string
   onCardClick?: () => void
   showProfileCard?: boolean
+  companiesCount?: number
 }) {
-  const cards = showProfileCard ? [ ...actionCards, profileCard] : actionCards
+  const cards = [...actionCards]
+
+  if (companiesCount > 0) {
+    cards.push(logosCard)
+    cards.push(invoicesCard)
+  }
+
+  if (showProfileCard) {
+    cards.push(profileCard)
+  }
 
   return (
     <div className={className}>

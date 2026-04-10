@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { ChevronLeft, FolderPlus, PartyPopper, Share } from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
+import { ChevronLeft, FolderPlus, PartyPopper, Share, Trash2 } from 'lucide-react'
 import MyProjects, { type Project } from '@/components/MyProjects'
 import NewProjectButton from '@/components/NewProjectButton'
 import { ShareModal } from '@/components/ShareModal'
@@ -38,6 +38,7 @@ type ProjectOption = {
 
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
@@ -53,6 +54,7 @@ export default function EventDetailPage() {
   const [projectPickerError, setProjectPickerError] = useState<string | null>(null)
   const [projectSearch, setProjectSearch] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
+  const [deletingEvent, setDeletingEvent] = useState(false)
 
   const loadEvent = useCallback(async () => {
     if (!params?.id) return
@@ -190,6 +192,30 @@ export default function EventDetailPage() {
       : (project.name || `Proyecto #${project.id}`).toLowerCase().includes(normalizedProjectSearch)
   )
 
+  const handleDeleteEvent = useCallback(async () => {
+    if (!accessToken || !event?.id || deletingEvent) return
+
+    const confirmed = window.confirm(`Se borrará el evento "${event.name}" y sus invitaciones y membresías. ¿Quieres continuar?`)
+    if (!confirmed) return
+
+    setDeletingEvent(true)
+    try {
+      const res = await fetch(`${API_BASE}/events/${event.id}/`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}: ${await res.text()}`)
+      }
+      router.push('/events')
+    } catch (e: any) {
+      setError(e.message || 'No se pudo borrar el evento')
+    } finally {
+      setDeletingEvent(false)
+    }
+  }, [API_BASE, accessToken, deletingEvent, event?.id, event?.name, router])
+
   return (
     <main className="min-h-screen px-6 py-10">
       <div className="mx-auto w-full max-w-6xl">
@@ -235,7 +261,7 @@ export default function EventDetailPage() {
                       {event.current_user_can_edit && (
                         <ColorActionButton
                           onClick={() => void openProjectPicker()}
-                          color="pink"
+                          color="amber"
                           icon={FolderPlus}
                         >
                           <span>Añadir proyecto existente</span>
@@ -244,11 +270,22 @@ export default function EventDetailPage() {
                       {event.current_user_can_manage_sharing && (
                         <ColorActionButton
                           onClick={() => setShareOpen(true)}
-                          color="violet"
+                          color="emerald"
                           size="large"
                           icon={Share}
                         >
                           <span>Compartir evento</span>
+                        </ColorActionButton>
+                      )}
+                      {event.current_user_can_manage_sharing && (
+                        <ColorActionButton
+                          onClick={() => void handleDeleteEvent()}
+                          color="rose"
+                          size="compact"
+                          icon={Trash2}
+                          disabled={deletingEvent}
+                        >
+                          <span>{deletingEvent ? 'Eliminando evento...' : 'Eliminar evento'}</span>
                         </ColorActionButton>
                       )}
                     </div>
