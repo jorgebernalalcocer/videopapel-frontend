@@ -968,6 +968,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   setCoverError(null);
                   setCoverPickerOpen(true);
                 }}
+                editingDisabled={isProjectExported}
               />
             ) : (
               <div className="h-full w-full grid place-items-center text-white/50">

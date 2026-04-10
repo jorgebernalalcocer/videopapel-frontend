@@ -61,6 +61,7 @@ type EditingCanvasProps = {
   printQualityPpi?: number | null;
   printEffectName?: string | null;
   coverFrame?: { projectClipId: number; frameTimeMs: number } | null;
+  editingDisabled?: boolean;
 }
 
 /* ===== Componente ===== */
@@ -82,6 +83,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     printQualityPpi = null,
     printEffectName = null,
     coverFrame = null,
+    editingDisabled = false,
   } = props
   const { onFrameChange, onPageEnumerationChange } = props
   const qualityDpi = printQualityDpi ?? printQualityPpi ?? null
@@ -837,6 +839,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   onOpenPresentation={() => setIsPresentationOpen(true)}
   onOpenCover={onOpenCover}
   onDiscardChanges={handleDiscardChanges}
+  editingDisabled={editingDisabled}
 />
       </div>
 

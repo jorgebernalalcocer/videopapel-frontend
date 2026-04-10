@@ -17,6 +17,7 @@ import { Modal } from "@/components/ui/Modal";
 import { acceptProjectInvitation } from "@/lib/projectInvitations";
 import { toast } from "sonner";
 import { ColorActionButton } from "@/components/ui/color-action-button";
+import ViewOrderButton from "@/components/ViewOrderButton";
 
 
 type Project = {
@@ -445,16 +446,8 @@ export default function MyProjects({
                                   </span>
                                 )}
                               </div>
-{p.status === "exported" && p.order_id ? (
-  <ColorActionButton
-    asChild
-    color="blue"
-    filled
-    size="mini"
-    icon={List}
-  >
-    <Link href={`/orders/${p.order_id}`}>Ver pedido</Link>
-  </ColorActionButton>
+{p.status === "exported" ? (
+  <ViewOrderButton orderId={p.order_id} size="mini" />
 ) : null}
                             </div>
 

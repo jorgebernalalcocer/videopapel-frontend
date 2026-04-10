@@ -24,6 +24,7 @@ type EditingToolsProps = {
   onOpenPresentation?: () => void
   onOpenCover?: () => void
   onDiscardChanges?: () => void
+  editingDisabled?: boolean
 }
 
 export default function EditingTools({
@@ -44,16 +45,18 @@ export default function EditingTools({
   onOpenPresentation,
   onOpenCover,
   onDiscardChanges,
+  editingDisabled = false,
 }: EditingToolsProps) {
   const hasPendingChanges = canSave && !isSaving
-  const actionsLocked = isGeneratingSubtitles
+  const actionsLocked = isGeneratingSubtitles || editingDisabled
   const showActionButtons = !hasPendingChanges
 
   const handleInsertClick = () => {
     if (actionsLocked) {
-      toast.warning(isGeneratingSubtitles
-        ? 'Estamos generando subtítulos. Espera a que finalice para insertar un nuevo video.'
-        : 'Acción no disponible en este momento.'
+      toast.warning(
+        isGeneratingSubtitles
+          ? 'Estamos generando subtítulos. Espera a que finalice para insertar un nuevo video.'
+          : 'Este proyecto ya ha sido comprado. Duplícalo para modificarlo.'
       )
       return
     }
@@ -62,9 +65,10 @@ export default function EditingTools({
 
   const handleInsertTextClick = () => {
     if (actionsLocked) {
-      toast.warning(isGeneratingSubtitles
-        ? 'Estamos generando subtítulos. Espera a que finalice para insertar un nuevo texto.'
-        : 'Acción no disponible en este momento.'
+      toast.warning(
+        isGeneratingSubtitles
+          ? 'Estamos generando subtítulos. Espera a que finalice para insertar un nuevo texto.'
+          : 'Este proyecto ya ha sido comprado. Duplícalo para modificarlo.'
       )
       return
     }
@@ -73,7 +77,11 @@ export default function EditingTools({
 
   const handleGenerateSubtitles = () => {
     if (actionsLocked) {
-      toast.warning('Estamos generando subtítulos. Espera a que finalice.')
+      toast.warning(
+        isGeneratingSubtitles
+          ? 'Estamos generando subtítulos. Espera a que finalice.'
+          : 'Este proyecto ya ha sido comprado. Duplícalo para modificarlo.'
+      )
       return
     }
     onGenerateSubtitles?.()
@@ -81,9 +89,10 @@ export default function EditingTools({
 
   const handleInsertFrame = () => {
     if (actionsLocked) {
-      toast.warning(isGeneratingSubtitles
-        ? 'Estamos generando subtítulos. Espera a que finalice para insertar un nuevo marco.'
-        : 'Acción no disponible en este momento.'
+      toast.warning(
+        isGeneratingSubtitles
+          ? 'Estamos generando subtítulos. Espera a que finalice para insertar un nuevo marco.'
+          : 'Este proyecto ya ha sido comprado. Duplícalo para modificarlo.'
       )
       return
     }
@@ -92,13 +101,22 @@ export default function EditingTools({
 
   const handleOpenEnumeration = () => {
     if (actionsLocked) {
-      toast.warning(isGeneratingSubtitles
-        ? 'Estamos generando subtítulos. Espera a que finalice para editar la enumeración.'
-        : 'Acción no disponible en este momento.'
+      toast.warning(
+        isGeneratingSubtitles
+          ? 'Estamos generando subtítulos. Espera a que finalice para editar la enumeración.'
+          : 'Este proyecto ya ha sido comprado. Duplícalo para modificarlo.'
       )
       return
     }
     onOpenEnumeration?.()
+  }
+
+  const handleOpenCover = () => {
+    if (editingDisabled) {
+      toast.warning('Este proyecto ya ha sido comprado. Duplícalo para modificarlo.')
+      return
+    }
+    onOpenCover?.()
   }
 
   const handleDiscardChanges = () => {
@@ -147,9 +165,10 @@ export default function EditingTools({
           <Button
             type="button"
             variant="secondary"
-            onClick={onOpenCover}
+            onClick={handleOpenCover}
             className="inline-flex items-center gap-2"
             title="Portada"
+            disabled={editingDisabled}
           >
             <ImageIcon className="h-4 w-4 text-indigo-700" />
             {'Portada'}
@@ -164,6 +183,7 @@ export default function EditingTools({
             variant="outline"
             onClick={handleInsertClick}
             aria-disabled={actionsLocked}
+            disabled={actionsLocked}
             aria-label="Insertar video"
             className={`
               inline-flex items-center gap-2
@@ -179,6 +199,7 @@ export default function EditingTools({
             variant="outline"
             onClick={handleInsertClick}
             aria-disabled={actionsLocked}
+            disabled={actionsLocked}
             aria-label="Insertar imagen"
             className={`
               inline-flex items-center gap-2
@@ -194,6 +215,7 @@ export default function EditingTools({
             variant="outline"
             onClick={handleInsertTextClick}
             aria-disabled={actionsLocked}
+            disabled={actionsLocked}
             aria-label="Insertar texto"
             className={`
               inline-flex items-center gap-2
@@ -208,7 +230,7 @@ export default function EditingTools({
             type="button"
             variant="outline"
             onClick={handleGenerateSubtitles}
-            disabled={isGeneratingSubtitles}
+            disabled={actionsLocked}
             aria-label="Subtítulos"
             className="inline-flex items-center gap-2"
           >
@@ -223,6 +245,7 @@ export default function EditingTools({
             variant="outline"
             onClick={hasFrame ? onEditFrame ?? handleInsertFrame : handleInsertFrame}
             aria-disabled={actionsLocked}
+            disabled={actionsLocked}
             aria-label={hasFrame ? 'Editar marco' : 'Insertar marco'}
             className={`
               inline-flex items-center gap-2
@@ -238,6 +261,7 @@ export default function EditingTools({
             variant="outline"
             onClick={handleOpenEnumeration}
             aria-disabled={actionsLocked}
+            disabled={actionsLocked}
             aria-label="Enumeración"
             className={`
               inline-flex items-center gap-2
