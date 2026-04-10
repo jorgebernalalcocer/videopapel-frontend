@@ -65,6 +65,18 @@ const colorStyles = {
     filledBg: 'bg-stone-200',
     hover: 'hover:bg-stone-500',
   },
+  green: {
+    text: 'text-green-700',
+    ring: 'ring-green-200',
+    filledBg: 'bg-green-100',
+    hover: 'hover:bg-green-700',
+  },
+  red: {
+    text: 'text-red-700',
+    ring: 'ring-red-200',
+    filledBg: 'bg-red-100',
+    hover: 'hover:bg-red-700',
+  },
 } as const
 
 export type ColorActionButtonColor = keyof typeof colorStyles

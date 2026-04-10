@@ -184,7 +184,7 @@ export default function EventsButton({
   size="compact"
   icon={PartyPopper}
 >
-  Archivo de evento
+  Archivo de eventos
 </ColorActionButton>
     )
   }
