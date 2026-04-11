@@ -20,17 +20,10 @@ import EventsButton from '@/components/EventsButton'
 import ProjectsButton from '@/components/ProjectsButton'
 import OrdersButton from './OrdersButton'
 import ProfileButton from '@/components/ProfileButton'
-import CartButtonIcon from '@/components/CartButtonIcon'
 import CartButtonString from '@/components/CartButtonString'
-import { LogIn, Menu as MenuIcon, Minimize, UserPlus, X } from 'lucide-react' // Importar iconos
-import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
+import { LogIn, Menu as MenuIcon, Minimize, UserPlus, X } from 'lucide-react'
 import { fascinate, fascinateFontStack } from '@/fonts/fascinate'
-import { borelFontStack } from '@/fonts/borel'
-import { cookieFontStack } from '@/fonts/cookie'
-import BookLogo from './BookLogo'
-import AnimatedLogo from '@/components/AnimatedLogoType'
 import ProfileActionCards from '@/components/profile/ProfileActionCards'
-// import '@/styles/animated-logo-type.css'
 
 type MobileGuestActionCardProps = {
   href: string
@@ -55,7 +48,7 @@ function MobileGuestActionCard({
     <Link
       href={href}
       onClick={onClick}
-      className={`flex aspect-square flex-col items-center justify-center rounded-xl border p-4 text-center shadow-sm transition hover:shadow-md ${cardClassName}`}
+      className={`flex aspect-square min-h-[140px] flex-col items-center justify-center rounded-xl border p-4 text-center shadow-sm transition hover:shadow-md ${cardClassName}`}
     >
       <Icon className={`mb-2 h-8 w-8 ${iconClassName}`} />
       <span className={`text-sm font-medium ${textClassName}`}>{label}</span>
@@ -64,11 +57,9 @@ function MobileGuestActionCard({
 }
 
 export default function Menu() {
-  // Estado para controlar la apertura del menú móvil
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [companiesCount, setCompaniesCount] = useState(0)
 
-  // Fuerza la rehidratación del store persistido (evita flicker)
   useEffect(() => {
     // @ts-ignore - propiedad añadida por zustand/persist
     useAuth.persist.rehydrate?.()
@@ -91,6 +82,7 @@ export default function Menu() {
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'include',
       })
+
       if (!res.ok) {
         throw new Error(`Error ${res.status}`)
       }
@@ -116,171 +108,152 @@ export default function Menu() {
     }
   }, [fetchCompaniesCount, user])
 
-  // Skeleton mientras se hidrata
+  useEffect(() => {
+    if (!isMobileMenuOpen) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [isMobileMenuOpen])
+
   if (!hasHydrated) {
     return (
-      <header className="h-16 w-full border-b bg-white/80 backdrop-blur flex items-center justify-between px-4" />
+      <header className="flex h-16 w-full items-center justify-between border-b bg-white/80 px-4 backdrop-blur" />
     )
   }
 
   return (
-    // Añadimos 'relative' para que el menú móvil absoluto se posicione correctamente
-<header className="sticky top-0 inset-x-0 h-16 w-full border-b bg-white/90 backdrop-blur flex items-center justify-between px-4 z-50">
+    <>
+      <header className="sticky inset-x-0 top-0 z-50 flex h-16 w-full items-center justify-between border-b bg-white/90 px-4 backdrop-blur">
+        <Link
+          href="/"
+          className={`ml-1 flex items-center gap-4 font-semibold leading-none ${fascinate.className}`}
+          style={{
+            fontFamily: fascinateFontStack,
+            fontSize: '2rem',
+            lineHeight: 2,
+            color: '#78ad70',
+          }}
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <span className="block px-1">papel video</span>
+        </Link>
 
+        <nav className="hidden items-center gap-3 md:flex">
+          {user ? (
+            <>
+              <span className="text-sm text-gray-600">Hola {user.email}</span>
+              <ProjectsButton />
+              <EventsButton />
+              <ClipsButton />
+              <OrdersButton />
+              <CartButtonString />
+              <ProfileButton />
+            </>
+          ) : (
+            <>
+              <LoginButton />
+              <RegisterButton />
+            </>
+          )}
+        </nav>
 
-{/* <Link
-  href="/"
-  className={`flex items-center gap-4 ml-1 ${fascinate.className} text-lg font-semibold leading-none`}
-  style={{ fontFamily: fascinateFontStack, fontSize: '2rem', lineHeight: 2}}
-  onClick={() => setIsMobileMenuOpen(false)}
->  
-  <span className="block px-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-500 via-sky-500 to-emerald-500">
-    papel video
+        <button
+          className="p-2 md:hidden"
+          onClick={() => setIsMobileMenuOpen((prev) => !prev)}
+          aria-label={isMobileMenuOpen ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={isMobileMenuOpen}
+          aria-controls="mobile-menu"
+          type="button"
+        >
+          {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
+        </button>
+      </header>
 
-  </span>
-</Link> */}
-
-<Link
-  href="/"
-  className={`flex items-center gap-4 ml-1 ${fascinate.className} font-semibold leading-none`}
-  style={{ 
-    fontFamily: fascinateFontStack, 
-    fontSize: '2rem', 
-    lineHeight: 2,
-    /* Aplicamos el color directamente aquí o mediante Tailwind */
-    color: '#78ad70' 
-  }}
-  onClick={() => setIsMobileMenuOpen(false)}
->  
-  <span className="block px-1">
-    papel video
-  </span>
-</Link>
-
-
-  {/* <AnimatedLogo /> */}
-
-
-      {/* Navegación de ESCRITORIO (visible desde 'md' hacia arriba) */}
-      <nav className="hidden md:flex items-center gap-3">
-        {user ? (
-          <>
-            <span className="text-sm text-gray-600">
-              Hola {user.email}
-            </span>
-            <ProjectsButton />
-            <EventsButton />
-            <ClipsButton />
-            <OrdersButton />
-            {/* <CartButtonIcon /> */}
-                            <CartButtonString />
-
-            <ProfileButton />
-            
-            {/* <LogoutButton /> */}
-          </>
-        ) : (
-          <>
-            <LoginButton />
-            <RegisterButton />
-          </>
-        )}
-      </nav>
-
-      {/* Botón de Hamburguesa (visible SÓLO en 'md' hacia abajo) */}
-      <button
-        className="md:hidden p-2"
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        aria-label="Abrir menú"
-        aria-expanded={isMobileMenuOpen}
-        aria-controls="mobile-menu"
-      >
-        {isMobileMenuOpen ? <X size={24} /> : <MenuIcon size={24} />}
-      </button>
-
-      {/* Panel de Menú MÓVIL */}
       {isMobileMenuOpen && (
         <div
           id="mobile-menu"
-          className="md:hidden absolute top-16 left-0 w-full min-h-[calc(100vh-4rem)] bg-white border-b shadow-lg shadow-black/5 overflow-y-auto"
+          className="fixed inset-x-0 top-16 bottom-0 z-40 bg-white md:hidden"
         >
-          {/* Envolvemos los botones en un componente simple 
-            para que al hacer clic en ellos se cierre el menú.
-          */}
-          <MobileMenuWrapper closeMenu={() => setIsMobileMenuOpen(false)}>
-            {user ? (
-              <>
-                {/* <span className="text-sm text-gray-600 px-4 pt-2">
-                  Hola {user.email}
-                </span> */}
-                <ProfileActionCards
-                  className="grid grid-cols-2 gap-3 pb-3"
-                  onCardClick={() => setIsMobileMenuOpen(false)}
-                  showProfileCard
-                  profileCardFirst
-                  companiesCount={companiesCount}
-                />
-                {/* <ProjectsButton />
-                <ClipsButton />
-                
-                <OrdersButton />
-                
-                <CartButtonString />
-                <ProfileButton /> */}
-                {/* <LogoutButton /> */}
-              </>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 pb-3">
-                <MobileGuestActionCard
-                  href="/login"
-                  label="Iniciar sesión"
-                  icon={LogIn}
-                  iconClassName="text-sky-700"
-                  cardClassName="bg-sky-50 border-sky-100"
-                  textClassName="text-sky-900"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                />
-                <MobileGuestActionCard
-                  href="/register"
-                  label="Registrarse"
-                  icon={UserPlus}
-                  iconClassName="text-emerald-700"
-                  cardClassName="bg-emerald-50 border-emerald-100"
-                  textClassName="text-emerald-900"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                />
-              </div>
-            )}
-          </MobileMenuWrapper>
-          <div className="flex justify-center pb-4">
-            <button
-              type="button"
-              onClick={() => setIsMobileMenuOpen(false)}
-              aria-label="Cerrar menú"
-              className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
+          <div className="flex h-full flex-col overflow-hidden">
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+              <MobileMenuWrapper closeMenu={() => setIsMobileMenuOpen(false)}>
+                {user ? (
+                  <ProfileActionCards
+                    className="grid grid-cols-2 gap-3"
+                    onCardClick={() => setIsMobileMenuOpen(false)}
+                    showProfileCard
+                    profileCardFirst
+                    companiesCount={companiesCount}
+                  />
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <MobileGuestActionCard
+                      href="/login"
+                      label="Iniciar sesión"
+                      icon={LogIn}
+                      iconClassName="text-sky-700"
+                      cardClassName="border-sky-100 bg-sky-50"
+                      textClassName="text-sky-900"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                    <MobileGuestActionCard
+                      href="/register"
+                      label="Registrarse"
+                      icon={UserPlus}
+                      iconClassName="text-emerald-700"
+                      cardClassName="border-emerald-100 bg-emerald-50"
+                      textClassName="text-emerald-900"
+                      onClick={() => setIsMobileMenuOpen(false)}
+                    />
+                  </div>
+                )}
+              </MobileMenuWrapper>
+            </div>
+
+            <div
+              className="border-t bg-white px-4 pb-4 pt-3"
+              style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
             >
-              <Minimize size={35} />
-            </button>
+              <div className="flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  aria-label="Cerrar menú"
+                  className="inline-flex items-center justify-center rounded-full border border-gray-200 bg-white p-2 text-gray-600 shadow-sm transition hover:bg-gray-50 hover:text-gray-900"
+                >
+                  <Minimize size={35} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
-    </header>
+    </>
   )
 }
 
 /**
- * Componente contenedor para los botones del menú móvil.
- * Clona sus hijos y les añade un 'onClick' para cerrar el menú.
- * También les aplica estilos para que sean verticales.
+ * Contenedor del menú móvil.
+ * Mantiene padding y asegura que el contenido pueda hacer scroll sin cortar la última card.
  */
-function MobileMenuWrapper({ children, closeMenu }: {
-  children: ReactNode,
+function MobileMenuWrapper({
+  children,
+  closeMenu,
+}: {
+  children: ReactNode
   closeMenu: () => void
 }) {
-  const childrenArray = Children.toArray(children);
+  const childrenArray = Children.toArray(children)
 
   return (
-    <nav className="flex flex-col gap-1 p-4">
+    <nav
+      className="flex flex-col gap-3 p-4"
+      style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+    >
       {childrenArray.map((child, index) => {
         if (!isValidElement(child)) return child
 
@@ -288,7 +261,7 @@ function MobileMenuWrapper({ children, closeMenu }: {
           <div
             key={index}
             onClick={closeMenu}
-            className="w-full [&>*]:w-full" // Aplica 'w-full' al hijo directo
+            className="w-full [&>*]:w-full"
           >
             {child}
           </div>
