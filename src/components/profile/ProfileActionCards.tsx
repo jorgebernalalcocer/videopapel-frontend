@@ -116,21 +116,27 @@ export default function ProfileActionCards({
   className = 'grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4',
   onCardClick,
   showProfileCard = false,
+  profileCardFirst = false,
   companiesCount = 0,
 }: {
   className?: string
   onCardClick?: () => void
   showProfileCard?: boolean
+  profileCardFirst?: boolean
   companiesCount?: number
 }) {
   const cards = [...actionCards]
+
+  if (showProfileCard && profileCardFirst) {
+    cards.unshift(profileCard)
+  }
 
   if (companiesCount > 0) {
     cards.push(logosCard)
     cards.push(invoicesCard)
   }
 
-  if (showProfileCard) {
+  if (showProfileCard && !profileCardFirst) {
     cards.push(profileCard)
   }
 
