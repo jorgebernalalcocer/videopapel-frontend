@@ -8,7 +8,7 @@ export type CompanyFormData = {
   id?: number
   name: string
   vat_number: string
-  phone?: string | null
+  phone: string
   mail?: string | null
 }
 
@@ -78,7 +78,7 @@ export default function CompanyModal({
       return
     }
 
-    if (!trimOrEmpty(form.name) || !trimOrEmpty(form.vat_number)) {
+    if (!trimOrEmpty(form.name) || !trimOrEmpty(form.vat_number) || !trimOrEmpty(form.phone)) {
       setError('Completa los campos obligatorios.')
       return
     }
@@ -98,7 +98,7 @@ export default function CompanyModal({
         body: JSON.stringify({
           name: trimOrEmpty(form.name),
           vat_number: trimOrEmpty(form.vat_number).toUpperCase(),
-          phone: trimOrEmpty(form.phone) || null,
+          phone: trimOrEmpty(form.phone),
           mail: trimOrEmpty(form.mail) || null,
         }),
       })
@@ -152,11 +152,12 @@ export default function CompanyModal({
         </label>
 
         <label className="block text-sm font-medium text-gray-700">
-          Teléfono (opcional)
+          Teléfono
           <input
             type="tel"
             value={form.phone ?? ''}
             onChange={(e) => updateField('phone', e.target.value)}
+            required
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </label>

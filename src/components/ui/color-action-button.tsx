@@ -71,6 +71,12 @@ const colorStyles = {
     filledBg: 'bg-red-100',
     hover: 'hover:bg-red-700',
   },
+  slate: {
+    text: 'text-slate-700',
+    ring: 'ring-slate-200',
+    filledBg: 'bg-slate-100',
+    hover: 'hover:bg-slate-700',
+  },
 } as const
 
 export type ColorActionButtonColor = keyof typeof colorStyles

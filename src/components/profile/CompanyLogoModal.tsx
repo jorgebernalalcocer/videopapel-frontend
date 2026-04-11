@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
 import { Upload } from "lucide-react";
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 
 type CompanyOption = {
@@ -40,6 +41,7 @@ export default function CompanyLogoModal({
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [name, setName] = useState('')
   const [file, setFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -48,13 +50,29 @@ export default function CompanyLogoModal({
     setSelectedCompanyId(companies[0] ? String(companies[0].id) : '')
     setName('')
     setFile(null)
+    setPreviewUrl(null)
     setError(null)
   }, [companies, open])
+
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null)
+      return
+    }
+
+    const objectUrl = URL.createObjectURL(file)
+    setPreviewUrl(objectUrl)
+
+    return () => {
+      URL.revokeObjectURL(objectUrl)
+    }
+  }, [file])
 
   const handleClose = () => {
     if (isSubmitting) return
     setError(null)
     setFile(null)
+    setPreviewUrl(null)
     setName('')
     onClose()
   }
@@ -171,7 +189,7 @@ export default function CompanyLogoModal({
         </label>
 
         <label className="block text-sm font-medium text-gray-700">
-          Nombre del logo:
+          Nombre del logo o empresa::
           <input
             type="text"
             value={name}
@@ -189,25 +207,28 @@ export default function CompanyLogoModal({
             className="hidden"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
-          <button
+          <ColorActionButton
             type="button"
+            color="slate"
+            icon={Upload}
             onClick={() => fileInputRef.current?.click()}
-            className="
-    inline-flex items-center
-    px-3 py-1.5                  
-    rounded-lg                   
-    bg-yellow-300                  
-    text-yellow-700
-    font-medium
-    transition-colors
-    hover:bg-yellow-700            
-    hover:text-white
-  "
           >
-                    <Upload className="w-4 h-4 mr-1.5" />
-
-            Insertar logo
-          </button>
+            {file ? 'Cambiar logo' : 'Seleccionar logo'}
+          </ColorActionButton>
+          {previewUrl && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Vista previa
+              </p>
+              <div className="flex justify-center rounded-lg border border-slate-200 bg-white p-3">
+                <img
+                  src={previewUrl}
+                  alt="Vista previa del logo seleccionado"
+                  className="max-h-40 w-auto object-contain"
+                />
+              </div>
+            </div>
+          )}
           {file && <p className="text-sm text-gray-500">{file.name}</p>}
         </div>
 

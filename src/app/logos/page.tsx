@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { Plus, Palette } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import CompanyModal from '@/components/profile/CompanyModal'
@@ -9,6 +10,7 @@ import MyLogos, {
   type MyLogosCompany,
   type MyLogosLogo,
 } from '@/components/profile/MyLogos'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -134,9 +136,25 @@ export default function LogosPage() {
 
   return (
     <section className="mx-auto max-w-5xl space-y-8 px-4 py-12">
-      <header>
-        <h1 className="text-3xl font-semibold text-gray-900">Logos</h1>
-        <p className="mt-1 text-gray-600">Gestiona tus logos y los de tus clientes.</p>
+      <header className="flex flex-wrap items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Palette className="h-8 w-8 text-slate-600" />
+          <div>
+            <h1 className="text-3xl font-semibold text-grey-600">Logos</h1>
+            <p className="text-sm text-gray-500">Gestiona tus logos y los de tus clientes.</p>
+          </div>
+        </div>
+        <ColorActionButton
+          onClick={() => setCompanyLogoModalOpen(true)}
+          color="slate"
+          filled
+          size="large"
+          icon={Plus}
+          title="Añadir logo"
+          disabled={!canRequest || companies.length === 0}
+        >
+          Añadir logo
+        </ColorActionButton>
       </header>
 
       {loading ? <p className="text-sm text-gray-500">Cargando logos…</p> : null}
@@ -150,6 +168,8 @@ export default function LogosPage() {
           onCreateCompany={() => setCompanyModalOpen(true)}
           onAddLogo={() => setCompanyLogoModalOpen(true)}
           onMarkLogoDefault={handleMarkLogoDefault}
+          showHeader={false}
+          showAddButton={false}
         />
       ) : null}
 

@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { Plus } from 'lucide-react'
 import PreviewLogo from '@/components/profile/PreviewLogo'
+import { ColorActionButton } from '@/components/ui/color-action-button'
+
 
 export type MyLogosCompany = {
   id: number
@@ -26,6 +28,8 @@ type MyLogosProps = {
   onCreateCompany: () => void
   onAddLogo: () => void
   onMarkLogoDefault: (logoId: number) => void
+  showHeader?: boolean
+  showAddButton?: boolean
 }
 
 export default function MyLogos({
@@ -35,6 +39,8 @@ export default function MyLogos({
   onCreateCompany,
   onAddLogo,
   onMarkLogoDefault,
+  showHeader = true,
+  showAddButton = true,
 }: MyLogosProps) {
   const [previewLogo, setPreviewLogo] = useState<MyLogosLogo | null>(null)
 
@@ -70,21 +76,27 @@ export default function MyLogos({
   return (
     <>
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900">Logos</h2>
-            <p className="text-sm text-gray-500">Almacena tu logo o el de tus clientes.</p>
+        {showHeader && (
+          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Logos</h2>
+              <p className="text-sm text-gray-500">Almacena tu logo o el de tus clientes.</p>
+            </div>
+            {showAddButton && (
+              <ColorActionButton
+                onClick={onAddLogo}
+                color="slate"
+                filled
+                size="compact"
+                icon={Plus}
+                title="Añadir logo"
+                disabled={!canRequest}
+              >
+                Añadir logo
+              </ColorActionButton>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={onAddLogo}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-            disabled={!canRequest}
-          >
-            <Plus className="h-4 w-4" />
-            Añadir logo
-          </button>
-        </div>
+        )}
 
         <div className="px-6 py-6">
           {companyLogos.length === 0 ? (

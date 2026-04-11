@@ -24,7 +24,7 @@ export default function ProjectsButton() {
   size="compact"
   icon={BookOpen}
 >
-  Biblioteca de proyectos de papel
+  Videos de papel
 </ColorActionButton>
   )
 }

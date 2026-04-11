@@ -1,9 +1,10 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Download, FileArchive, FileSpreadsheet } from 'lucide-react'
+import { Download, FileArchive, FileSpreadsheet, ReceiptEuro } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -399,10 +400,15 @@ export default function InvoicePage() {
   return (
     <section className="mx-auto max-w-6xl space-y-8 px-4 py-12">
       <header>
-        <h1 className="text-3xl font-semibold text-gray-900">Facturas</h1>
-        <p className="mt-1 text-gray-600">
-          Resumen operativo de facturas emitidas para tu cuenta de empresa.
-        </p>
+        <div className="flex items-center gap-3">
+          <ReceiptEuro className="h-8 w-8 text-stone-700" />
+          <div>
+            <h1 className="text-3xl font-semibold text-grey-600">Facturas</h1>
+            <p className="text-sm text-gray-500">
+              Resumen operativo de facturas emitidas para tu cuenta de empresa.
+            </p>
+          </div>
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -482,15 +488,19 @@ export default function InvoicePage() {
                     </div>
 
                     <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => void handleDownload(invoice)}
-                        disabled={downloadingId === invoice.id}
-                        className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-                      >
-                        <Download className="h-4 w-4" />
-                        {downloadingId === invoice.id ? 'Descargando…' : 'Descargar'}
-                      </button>
+                 
+                          <ColorActionButton
+      onClick={() => void handleDownload(invoice)}
+      color="violet"
+filled
+      size="compact"
+      icon={Download}
+                              disabled={downloadingId === invoice.id}
+
+      title={downloadingId === invoice.id ? 'Descargando…' : 'Descargar'}
+    >
+      {downloadingId === invoice.id ? 'Descargando…' : 'Descargar'}
+    </ColorActionButton>
                     </div>
                   </div>
                 </li>

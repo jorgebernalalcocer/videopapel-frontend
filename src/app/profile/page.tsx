@@ -91,6 +91,8 @@ export default function ProfilePage() {
     videos: 0,
     orders: 0,
     cart: 0,
+    invoices: 0,
+    logos: 0,
   })
 
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -124,6 +126,13 @@ export default function ProfilePage() {
     return 0
   }
 
+  const listFromPayload = (payload: any) => {
+    if (Array.isArray(payload)) return payload
+    if (Array.isArray(payload?.results)) return payload.results
+    if (Array.isArray(payload?.items)) return payload.items
+    return []
+  }
+
   const fetchStats = useCallback(async () => {
     if (!canRequest || !accessToken) return
     const withAuth = {
@@ -145,13 +154,19 @@ export default function ProfilePage() {
         fetch(`${API_BASE}/orders/`, withAuth).then(resolvePayload),
         fetch(`${API_BASE}/cart/`, withAuth).then(resolvePayload),
       ])
-      setStats({
+      setStats((prev) => ({
+        ...prev,
         projects: countFromPayload(projectsData),
         events: countFromPayload(eventsData),
         videos: countFromPayload(videosData),
         orders: countFromPayload(ordersData),
         cart: countFromPayload(cartData),
-      })
+        invoices: listFromPayload(ordersData).reduce(
+          (sum: number, order: any) =>
+            sum + (order?.invoice_pdf ? 1 : 0) + (order?.rectification_invoice_pdf ? 1 : 0),
+          0,
+        ),
+      }))
     } catch (err) {
       console.error('Error obteniendo las estadísticas del perfil:', err)
     }
@@ -237,6 +252,10 @@ export default function ProfilePage() {
       setCompanies(companiesList)
       setCompanyAddresses(companyAddressesList)
       setCompanyLogos(companyLogosList)
+      setStats((prev) => ({
+        ...prev,
+        logos: companyLogosList.length,
+      }))
     } catch (err: any) {
       setBillingError(err?.message || 'No se pudieron cargar las direcciones de facturación.')
     } finally {
@@ -421,6 +440,8 @@ export default function ProfilePage() {
 
   // Helper to capitalize the first letter of a string
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
+  const isCompanyUser = companies.length > 0
+  const mobileStatsColumns = Math.ceil((isCompanyUser ? 8 : 6) / 2)
 
   return (
     <section className="max-w-5xl mx-auto px-4 py-12 space-y-8">
@@ -449,7 +470,10 @@ export default function ProfilePage() {
 
         {/* Stats List */}
         <div className="mt-4 pt-4 border-t border-gray-100 sm:border-t-0 sm:pt-0 sm:mt-0">
-          <div className="flex space-x-6">
+          <div
+            className="grid gap-4 text-center sm:flex sm:flex-wrap sm:justify-end sm:gap-6"
+            style={{ gridTemplateColumns: `repeat(${mobileStatsColumns}, minmax(0, 1fr))` }}
+          >
             <ProfileStat
               label={pluralizeStat(stats.projects, 'Proyecto', 'Proyectos')}
               count={stats.projects}
@@ -467,10 +491,22 @@ export default function ProfilePage() {
               count={stats.orders}
             />
             <ProfileStat
-              label={pluralizeStat(addresses.length, 'Dirección', 'Direcciones')}
+              label={pluralizeStat(addresses.length, 'Direc.', 'Direc.')}
               count={addresses.length}
             />
             <ProfileStat label="Cesta" count={stats.cart} />
+            {isCompanyUser && (
+              <ProfileStat
+                label={pluralizeStat(stats.logos, 'Logo', 'Logos')}
+                count={stats.logos}
+              />
+            )}
+            {isCompanyUser && (
+              <ProfileStat
+                label={pluralizeStat(stats.invoices, 'Fact.', 'Fact.')}
+                count={stats.invoices}
+              />
+            )}
           </div>
         </div>
       </div>
