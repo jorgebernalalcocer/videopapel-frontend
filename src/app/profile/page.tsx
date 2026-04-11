@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import {
   MapPin,
@@ -69,11 +70,24 @@ type CompanyAddress = {
 type PrintStylePreset = PrintStylePresetResponse
 
 // --- NEW COMPONENT: Profile Stat ---
-const ProfileStat = ({ label, count }: { label: string; count: number }) => (
-  <div className="flex flex-col items-center">
+const ProfileStat = ({
+  label,
+  count,
+  href,
+  className,
+}: {
+  label: string
+  count: number
+  href: string
+  className: string
+}) => (
+  <Link
+    href={href}
+    className={`flex min-w-0 flex-col items-center rounded-xl border px-3 py-3 transition hover:shadow-sm ${className}`}
+  >
     <span className="text-xl font-bold text-gray-900">{count}</span>
-    <span className="text-sm text-gray-500">{label}</span>
-  </div>
+    <span className="text-sm text-gray-600">{label}</span>
+  </Link>
 )
 
 const pluralizeStat = (count: number, singular: string, plural: string) =>
@@ -446,22 +460,22 @@ export default function ProfilePage() {
   return (
     <section className="max-w-5xl mx-auto px-4 py-12 space-y-8">
       {/* --- NEW CARD: Profile Header Card --- */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-lg p-6 flex flex-col items-center sm:flex-row sm:justify-between sm:p-8">
-        <div className="flex flex-col items-center sm:flex-row sm:items-start sm:space-x-4">
+      <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
+        <div className="flex flex-col items-center text-center">
           {/* Circular Profile Icon */}
-          <div className="h-16 w-16 rounded-full bg-purple-400 flex items-center justify-center mb-3 sm:mb-0">
+          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-purple-400">
             <span className="text-3xl font-bold text-white">
               {mail.charAt(0).toUpperCase()}
             </span>
           </div>
-          <div className="text-center sm:text-left">
+          <div>
             <h1 className="text-2xl font-semibold text-gray-900">
               {capitalize(mail)}
             </h1>
             <p className="text-sm text-gray-500">
               {/* Assuming you have user email or another identifier */}
-              {companies.length === 0 && isSuperuser ? 'SuperUser' : 'Perfil de usuario'}
-              {companies.length > 0 && ` / Perfil de empresa: ${companies[0].name}`}
+              {companies.length === 0 && isSuperuser ? 'SuperUser' : ''}
+              {companies.length > 0 && ` Perfil de empresa: ${companies[0].name}`}
 
 
             </p>
@@ -469,42 +483,61 @@ export default function ProfilePage() {
         </div>
 
         {/* Stats List */}
-        <div className="mt-4 pt-4 border-t border-gray-100 sm:border-t-0 sm:pt-0 sm:mt-0">
+        <div className="mt-6 border-t border-gray-100 pt-6">
           <div
-            className="grid gap-4 text-center sm:flex sm:flex-wrap sm:justify-end sm:gap-6"
+            className="grid gap-4 text-center"
             style={{ gridTemplateColumns: `repeat(${mobileStatsColumns}, minmax(0, 1fr))` }}
           >
             <ProfileStat
               label={pluralizeStat(stats.projects, 'Proyecto', 'Proyectos')}
               count={stats.projects}
+              href="/projects"
+              className="border-amber-100 bg-amber-50"
             />
             <ProfileStat
               label={pluralizeStat(stats.events, 'Evento', 'Eventos')}
               count={stats.events}
+              href="/events"
+              className="border-emerald-100 bg-emerald-50"
             />
             <ProfileStat
               label={pluralizeStat(stats.videos, 'Video', 'Videos')}
               count={stats.videos}
+              href="/clips"
+              className="border-red-100 bg-red-50"
             />
             <ProfileStat
               label={pluralizeStat(stats.orders, 'Pedido', 'Pedidos')}
               count={stats.orders}
+              href="/orders"
+              className="border-blue-100 bg-blue-50"
             />
             <ProfileStat
               label={pluralizeStat(addresses.length, 'Direc.', 'Direc.')}
               count={addresses.length}
+              href="/shipping"
+              className="border-lime-100 bg-lime-50"
             />
-            <ProfileStat label="Cesta" count={stats.cart} />
+            <ProfileStat
+              label="Cesta"
+              count={stats.cart}
+              href="/cart"
+              className="border-green-100 bg-green-50"
+            />
             {isCompanyUser && (
               <ProfileStat
                 label={pluralizeStat(stats.logos, 'Logo', 'Logos')}
                 count={stats.logos}
+                href="/logos"
+                className="border-slate-200 bg-slate-50"
               />
             )}
             {isCompanyUser && (
               <ProfileStat
                 label={pluralizeStat(stats.invoices, 'Fact.', 'Fact.')}
                 count={stats.invoices}
+                href="/invoice"
+                className="border-stone-200 bg-stone-50"
               />
             )}
           </div>
@@ -513,7 +546,9 @@ export default function ProfilePage() {
       {/* --- END NEW CARD --- */}
 
       {/* --- NEW SECTION: Action Cards Grid --- */}
-      <ProfileActionCards companiesCount={companies.length} />
+      <div className="hidden md:block">
+        <ProfileActionCards companiesCount={companies.length} />
+      </div>
       {/* --- END NEW SECTION --- */}
 
       <header>

@@ -7,6 +7,7 @@ import {
   isValidElement,
   type ElementType,
   ReactNode,
+  useCallback,
   useEffect,
   useState,
 } from 'react'
@@ -65,6 +66,7 @@ function MobileGuestActionCard({
 export default function Menu() {
   // Estado para controlar la apertura del menú móvil
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [companiesCount, setCompaniesCount] = useState(0)
 
   // Fuerza la rehidratación del store persistido (evita flicker)
   useEffect(() => {
@@ -74,6 +76,45 @@ export default function Menu() {
 
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const user = useAuth((s) => s.user)
+  const accessToken = useAuth((s) => s.accessToken)
+  const canRequest = Boolean(accessToken)
+  const apiBase = process.env.NEXT_PUBLIC_API_BASE!
+
+  const fetchCompaniesCount = useCallback(async () => {
+    if (!canRequest || !accessToken) {
+      setCompaniesCount(0)
+      return
+    }
+
+    try {
+      const res = await fetch(`${apiBase}/companies/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        throw new Error(`Error ${res.status}`)
+      }
+
+      const payload = await res.json()
+      const companies = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.results)
+        ? payload.results
+        : []
+
+      setCompaniesCount(companies.length)
+    } catch {
+      setCompaniesCount(0)
+    }
+  }, [accessToken, apiBase, canRequest])
+
+  useEffect(() => {
+    if (user) {
+      void fetchCompaniesCount()
+    } else {
+      setCompaniesCount(0)
+    }
+  }, [fetchCompaniesCount, user])
 
   // Skeleton mientras se hidrata
   if (!hasHydrated) {
@@ -176,6 +217,7 @@ export default function Menu() {
                   className="grid grid-cols-2 gap-3 pb-3"
                   onCardClick={() => setIsMobileMenuOpen(false)}
                   showProfileCard
+                  companiesCount={companiesCount}
                 />
                 {/* <ProjectsButton />
                 <ClipsButton />
