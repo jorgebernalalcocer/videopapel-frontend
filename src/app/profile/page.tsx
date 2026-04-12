@@ -813,24 +813,24 @@ export default function ProfilePage() {
 
       {companies.length > 0 && (
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <div className="border-b border-gray-100 px-6 py-4">
+          <div className="border-b border-gray-100 px-4 py-4 sm:px-6">
             <h2 className="text-xl font-semibold text-gray-900">
               Datos de empresa
             </h2>
-                <p className="text-sm text-gray-500">
-                Información para generar facturas.
-              </p>
+            <p className="text-sm text-gray-500">
+              Información para generar facturas.
+            </p>
           </div>
 
-          <div className="px-6 py-6">
+          <div className="px-4 py-4 sm:px-6 sm:py-6">
             <ul className="space-y-4">
               {companies.map((company) => (
                 <li
                   key={company.id}
                   className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="space-y-4 text-sm text-gray-700">
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0 space-y-4 text-sm text-gray-700">
                       <div className="space-y-1">
                         <p className="font-semibold text-gray-900">Nombre de la empresa: {company.name}</p>
                         <p>NIF: {company.vat_number}</p>
@@ -844,11 +844,11 @@ export default function ProfilePage() {
                       </div>
 
                       <div className="rounded-lg border border-gray-200 bg-white px-4 py-3">
-                        <div className="flex items-start justify-between gap-4">
-                          <div className="space-y-1">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0 space-y-1">
                             <p className="font-medium text-gray-900">Recibir facturas en:</p>
                             {company.invoice_emails && company.invoice_emails.length > 0 ? (
-                              <ul className="space-y-1 text-sm text-gray-600">
+                              <ul className="space-y-1 break-all text-sm text-gray-600">
                                 {company.invoice_emails.map((email) => (
                                   <li key={email}>{email}</li>
                                 ))}
@@ -859,22 +859,28 @@ export default function ProfilePage() {
                               </p>
                             )}
                           </div>
-                          <EditActionButton
-                            compact
-                            onClick={() => {
-                              setSelectedCompany(company)
-                              setInvoiceMailingModalOpen(true)
-                            }}
-                          />
+                          <div className="w-full sm:w-auto">
+                            <EditActionButton
+                              compact
+                              fullWidthOnMobile
+                              onClick={() => {
+                                setSelectedCompany(company)
+                                setInvoiceMailingModalOpen(true)
+                              }}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
-                    <EditActionButton
-                      onClick={() => {
-                        setSelectedCompany(company)
-                        setCompanyModalOpen(true)
-                      }}
-                    />
+                    <div className="w-full md:w-auto">
+                      <EditActionButton
+                        fullWidthOnMobile
+                        onClick={() => {
+                          setSelectedCompany(company)
+                          setCompanyModalOpen(true)
+                        }}
+                      />
+                    </div>
                   </div>
                 </li>
               ))}

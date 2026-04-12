@@ -186,7 +186,6 @@ export default function Menu() {
                     className="grid grid-cols-2 gap-3"
                     onCardClick={() => setIsMobileMenuOpen(false)}
                     showProfileCard
-                    profileCardFirst
                     companiesCount={companiesCount}
                   />
                 ) : (

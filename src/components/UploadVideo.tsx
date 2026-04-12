@@ -93,9 +93,9 @@ export default function UploadVideo({ registerOpenPicker }: UploadVideoProps) {
       return;
     }
 
-    const MAX_BYTES = 100 * 1024 * 1024; // 100 MB
+    const MAX_BYTES = 150 * 1024 * 1024; // 150 MB
     if (file.size > MAX_BYTES) {
-      toast.error("El límite del archivo no puede superar los 100 MB.", {
+      toast.error("El límite del archivo no puede superar los 150 MB.", {
         icon: <XCircle className="text-red-500" />,
         duration: 5000,
       });
