@@ -230,7 +230,7 @@ export default function UploadVideo({ registerOpenPicker }: UploadVideoProps) {
       <UploadCloud className="h-12 w-12 text-gray-500 mb-3" />
       <p className="text-gray-700 font-medium">Arrastra tu video aquí</p>
       <p className="text-gray-500 text-sm mb-4">
-        o haz clic para seleccionar un archivo. Máximo 100 Mb.
+        o haz clic para seleccionar un archivo. Máximo 150 Mb.
       </p>
 
       {/* <Button

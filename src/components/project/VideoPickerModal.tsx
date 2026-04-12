@@ -14,6 +14,15 @@ export type VideoItem = {
   url?: string | null
   file?: string | null
   frame_status?: 'pending' | 'processing' | 'processing' | 'ready_partial' | 'ready_full' | 'error' | 'error_transient' | null
+  extracted_frames?: number | null
+  total_frames?: number | null
+  extraction_progress_pct?: number | null
+}
+
+type ExtractionProgress = {
+  extracted: number
+  total: number
+  percent: number
 }
 
 type VideoPickerModalProps = {
@@ -79,6 +88,7 @@ export default function VideoPickerModal({
   const [error, setError] = useState<string | null>(null)
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null)
   const [isCheckingFrames, setIsCheckingFrames] = useState(false)
+  const [extractionProgress, setExtractionProgress] = useState<ExtractionProgress | null>(null)
 
   const fetchVideos = useCallback(async () => {
     if (!accessToken) return
@@ -108,49 +118,43 @@ export default function VideoPickerModal({
     if (open) {
       void fetchVideos()
       setIsCheckingFrames(false)
+      setExtractionProgress(null)
     }
   }, [open, fetchVideos])
 
   const checkFrameStatus = useCallback(
-    (video: VideoItem) => {
+    async (video: VideoItem) => {
       if (!accessToken) return Promise.reject(new Error('No hay token de acceso.'))
 
-      return new Promise<VideoItem>((resolve, reject) => {
-        const maxRetries = 40
-        let retries = 0
+      for (;;) {
+        const res = await fetch(`${apiBase}/videos/${video.id}/`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          throw new Error(`Error ${res.status} al verificar el estado de frames.`)
+        }
 
-        const intervalId = setInterval(async () => {
-          if (retries >= maxRetries) {
-            clearInterval(intervalId)
-            reject(new Error('Tiempo de espera agotado para la generación de imágenes.'))
-            return
-          }
-          retries += 1
+        const updatedVideo: VideoItem = await res.json()
+        const extracted = Math.max(0, Number(updatedVideo.extracted_frames ?? 0))
+        const total = Math.max(0, Number(updatedVideo.total_frames ?? 0))
+        const percent = total > 0
+          ? Math.min(100, Math.max(0, Number(updatedVideo.extraction_progress_pct ?? Math.round((extracted * 100) / total))))
+          : 0
 
-          try {
-            const res = await fetch(`${apiBase}/videos/${video.id}/`, {
-              headers: { Authorization: `Bearer ${accessToken}` },
-              credentials: 'include',
-            })
-            if (!res.ok) {
-              clearInterval(intervalId)
-              throw new Error(`Error ${res.status} al verificar el estado de frames.`)
-            }
-            const updatedVideo: VideoItem = await res.json()
+        setExtractionProgress({ extracted, total, percent })
+        setVideos((prev) => prev.map((item) => (item.id === updatedVideo.id ? { ...item, ...updatedVideo } : item)))
+        setSelectedVideo((prev) => (prev?.id === updatedVideo.id ? { ...prev, ...updatedVideo } : prev))
 
-            if (updatedVideo.frame_status === FRAME_STATUS.READYFULL) {
-              clearInterval(intervalId)
-              resolve(updatedVideo)
-            } else if (updatedVideo.frame_status === FRAME_STATUS.ERROR) {
-              clearInterval(intervalId)
-              reject(new Error('Error al generar las imágenes del video.'))
-            }
-          } catch (e) {
-            clearInterval(intervalId)
-            reject(e)
-          }
-        }, 3000)
-      })
+        if (updatedVideo.frame_status === FRAME_STATUS.READYFULL) {
+          return updatedVideo
+        }
+        if (updatedVideo.frame_status === FRAME_STATUS.ERROR) {
+          throw new Error('Error al generar las imágenes del video.')
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 3000))
+      }
     },
     [apiBase, accessToken],
   )
@@ -162,17 +166,24 @@ export default function VideoPickerModal({
 
     if (currentStatus !== FRAME_STATUS.READYFULL) {
       setIsCheckingFrames(true)
+      setExtractionProgress({
+        extracted: Math.max(0, Number(selectedVideo.extracted_frames ?? 0)),
+        total: Math.max(0, Number(selectedVideo.total_frames ?? 0)),
+        percent: Math.max(0, Number(selectedVideo.extraction_progress_pct ?? 0)),
+      })
       try {
         const readyVideo = await checkFrameStatus(selectedVideo)
         await onSelect(readyVideo)
+        setSelectedVideo(null)
+        setExtractionProgress(null)
+        onClose()
       } catch (e: any) {
         setError(e.message || 'Error desconocido al verificar la preparación del video.')
         setIsCheckingFrames(false)
+        setExtractionProgress(null)
         return
       } finally {
         setIsCheckingFrames(false)
-        setSelectedVideo(null)
-        onClose()
       }
     } else {
       await onSelect(selectedVideo)
@@ -182,7 +193,10 @@ export default function VideoPickerModal({
   }
 
   if (isCheckingFrames) {
-    return <GlobalSpinner force message="Generando imágenes de tu video" />
+    const progressText = extractionProgress && extractionProgress.total > 0
+      ? `Generando imágenes de tu video (${extractionProgress.extracted}/${extractionProgress.total}, ${extractionProgress.percent}%)`
+      : 'Generando imágenes de tu video'
+    return <GlobalSpinner force message={progressText} />
   }
 
   return (
@@ -212,12 +226,17 @@ export default function VideoPickerModal({
       renderItem={({ item: v }) => {
         const isPending = v.frame_status === FRAME_STATUS.PENDING || v.frame_status === FRAME_STATUS.PROCESSING
         const isError = v.frame_status === FRAME_STATUS.ERROR
+        const extracted = Math.max(0, Number(v.extracted_frames ?? 0))
+        const total = Math.max(0, Number(v.total_frames ?? 0))
+        const percent = total > 0
+          ? Math.min(100, Math.max(0, Number(v.extraction_progress_pct ?? Math.round((extracted * 100) / total))))
+          : 0
         return (
           <>
             <div className="relative">
               {isPending && (
                 <div className="absolute top-1 right-1 bg-yellow-500 text-white text-xs font-bold px-2 py-0.5 rounded z-10">
-                  Extrayendo imagenes
+                  {total > 0 ? `Extrayendo imágenes ${percent}%` : 'Extrayendo imágenes'}
                 </div>
               )}
               {isError && (
@@ -230,6 +249,9 @@ export default function VideoPickerModal({
             <div className="p-2">
               <p className="text-sm font-medium truncate">{v.title || `Video #${v.id}`}</p>
               <p className="text-xs text-gray-500">{(v.duration_ms / 1000).toFixed(1)}s • {v.format?.toUpperCase() || '—'}</p>
+              {isPending && total > 0 && (
+                <p className="text-xs text-gray-500 mt-1">{extracted} de {total} imágenes extraídas</p>
+              )}
             </div>
           </>
         )
