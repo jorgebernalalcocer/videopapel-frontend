@@ -55,15 +55,16 @@ export default function StatusBadge({
   const { label, color, Icon } = config
 
   const size = compact ? 'compact' : 'large'
+  const isClickable = status === 'ready' && Boolean(onAddToCart)
 
   // 👉 Caso NO clicable
-  if (!onAddToCart) {
+  if (!isClickable) {
     return (
       <ColorActionButton
         color={color}
         filled={false}
         bordered
-        shadowed={false}
+        shadowed={true}
         forceDisabled
         size={size}
         icon={Icon}
@@ -108,7 +109,7 @@ export default function StatusBadge({
           <button
             type="button"
             onClick={() => {
-              onAddToCart()
+              onAddToCart?.()
               setOpen(false)
             }}
             disabled={addToCartDisabled}

@@ -15,7 +15,6 @@ export default function ProjectPrivacyBadge({
   compact = false,
   className = '',
   clickable = false,
-  filled = false,
 }: Props) {
   const label = isPublic ? 'Público' : 'Privado'
   const title = isPublic
@@ -27,18 +26,18 @@ export default function ProjectPrivacyBadge({
 
   return (
     <ColorActionButton
+      asChild
       color={color}
-      filled={filled}
+      filled={clickable}
       bordered
       shadowed={false}
-      forceDisabled={!clickable}
       size={compact ? 'compact' : 'large'}
       icon={Icon}
       title={title}
       aria-label={title}
       className={className}
     >
-      {label}
+      <span>{label}</span>
     </ColorActionButton>
   )
 }
