@@ -82,14 +82,14 @@ export default function DeleteProjectButton({
   }
 
   return (
-    <div className="mt-3">
+    <div>
       <ColorActionButton
         type="button"
         onClick={handleDelete}
         disabled={isDeleting || disabled}
         color="rose"
         filled
-        size="compact"
+        size="mini"
         icon={Trash2}
       >
         {isDeleting ? 'Eliminando…' : 'Eliminar'}

@@ -740,12 +740,12 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
     <div className="flex items-center gap-3">
       <DeleteFrameButton
         onClick={handleDeleteButtonClick}
-        disabled={!combinedThumbs.length || generating}
+        disabled={!combinedThumbs.length || generating || editingDisabled}
         shouldConfirm={shouldConfirmFrameDeletion && thumbsDensity >= MAX_DENSITY}
       />
       <CutClipButton
         onClick={handleCutClipButtonClick}
-        disabled={!combinedThumbs.length || generating}
+        disabled={!combinedThumbs.length || generating || editingDisabled}
       />
 
     </div>

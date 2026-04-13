@@ -5,7 +5,17 @@ import ProjectEditor from '@/components/project/ProjectEditor'
 import { useAuth } from '@/store/auth'
 import { notFound } from 'next/navigation'
 
-export default function ProjectEditorGate({ projectId }: { projectId: string }) {
+type ProjectEditorGateProps = {
+  projectId: string
+  allowAnonymous?: boolean
+  suppressOwnershipPrompt?: boolean
+}
+
+export default function ProjectEditorGate({
+  projectId,
+  allowAnonymous = false,
+  suppressOwnershipPrompt = false,
+}: ProjectEditorGateProps) {
   if (!projectId) return notFound()
 
   const hasHydrated = useAuth((s) => s.hasHydrated)
@@ -15,9 +25,14 @@ export default function ProjectEditorGate({ projectId }: { projectId: string }) 
     return <main className="min-h-screen px-6 py-10"><p className="text-gray-500">Preparando...</p></main>
   }
 
-  if (!accessToken) {
+  if (!allowAnonymous && !accessToken) {
     return <main className="min-h-screen px-6 py-10"><p className="text-red-500">Inicia sesión para ver este proyecto.</p></main>
   }
 
-  return <ProjectEditor projectId={projectId} />
+  return (
+    <ProjectEditor
+      projectId={projectId}
+      suppressOwnershipPrompt={suppressOwnershipPrompt}
+    />
+  )
 }

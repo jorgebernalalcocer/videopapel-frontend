@@ -10,7 +10,7 @@ type ShareProjectButtonProps = {
 
 export default function ShareProjectButton({
   onClick,
-  size = 'large',
+  size = 'compact',
 }: ShareProjectButtonProps) {
   return (
     <ColorActionButton

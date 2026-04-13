@@ -175,13 +175,17 @@ const STATUS_LABELS: Record<Project["status"], string> = {
 
 interface ProjectEditorProps {
   projectId: string; // UUID del proyecto
+  suppressOwnershipPrompt?: boolean;
 }
 
 /* =========================
    Componente
 ========================= */
 
-export default function ProjectEditor({ projectId }: ProjectEditorProps) {
+export default function ProjectEditor({
+  projectId,
+  suppressOwnershipPrompt = false,
+}: ProjectEditorProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [clips, setClips] = useState<ProjectClipPayload[]>([]);
   const [loading, setLoading] = useState(true);
@@ -371,12 +375,16 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
   }, [project, fetchProjectPrice]);
 
   useEffect(() => {
+    if (suppressOwnershipPrompt) {
+      setOwnershipModalOpen(false);
+      return;
+    }
     if (isForeignOwner && !ownershipModalDismissed) {
       setOwnershipModalOpen(true);
     } else {
       setOwnershipModalOpen(false);
     }
-  }, [isForeignOwner, ownershipModalDismissed]);
+  }, [isForeignOwner, ownershipModalDismissed, suppressOwnershipPrompt]);
 
   const handleCloseOwnershipModal = useCallback(() => {
     setOwnershipModalDismissed(true);
@@ -712,7 +720,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
           />
           <DuplicateProjectButton
             projectId={project.id}
-            size="large"
+            size="compact"
             title="Duplicar proyecto"
           />
           <ShareProjectButton onClick={() => setShareOpen(true)} />
@@ -968,7 +976,7 @@ export default function ProjectEditor({ projectId }: ProjectEditorProps) {
                   setCoverError(null);
                   setCoverPickerOpen(true);
                 }}
-                editingDisabled={isProjectExported}
+                editingDisabled={isInteractionDisabled}
               />
             ) : (
               <div className="h-full w-full grid place-items-center text-white/50">

@@ -8,6 +8,7 @@ import {
   Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { GoogleLogo } from '@/components/icons/GoogleLogo'
 import { useAuth } from '@/store/auth'
 import ShippingAddressModal, {
   type AddressModalResponse,
@@ -456,6 +457,7 @@ export default function ProfilePage() {
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
   const isCompanyUser = companies.length > 0
   const mobileStatsColumns = Math.ceil((isCompanyUser ? 8 : 6) / 2)
+  const isGmailUser = /@gmail\.com$/i.test(mail)
 
   return (
     <section className="max-w-5xl mx-auto px-4 py-12 space-y-8">
@@ -463,10 +465,14 @@ export default function ProfilePage() {
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-lg sm:p-8">
         <div className="flex flex-col items-center text-center">
           {/* Circular Profile Icon */}
-          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-purple-400">
-            <span className="text-3xl font-bold text-white">
-              {mail.charAt(0).toUpperCase()}
-            </span>
+          <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-gray-200">
+            {isGmailUser ? (
+              <GoogleLogo className="h-10 w-10" />
+            ) : (
+              <span className="text-3xl font-bold text-purple-500">
+                {mail.charAt(0).toUpperCase()}
+              </span>
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">

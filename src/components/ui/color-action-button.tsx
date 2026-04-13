@@ -84,6 +84,9 @@ export type ColorActionButtonColor = keyof typeof colorStyles
 type ColorActionButtonProps = React.ComponentProps<'button'> & {
   color: ColorActionButtonColor
   filled?: boolean
+  bordered?: boolean
+  shadowed?: boolean
+  forceDisabled?: boolean
   size?: 'large' | 'compact' | 'mini'
   icon?: LucideIcon
   asChild?: boolean
@@ -105,22 +108,30 @@ export function colorActionButtonClassName({
   className,
   color,
   filled = false,
+  bordered = true,
+  shadowed = true,
+  forceDisabled = false,
   size = 'large',
 }: {
   className?: string
   color: ColorActionButtonColor
   filled?: boolean
+  bordered?: boolean
+  shadowed?: boolean
+  forceDisabled?: boolean
   size?: 'large' | 'compact' | 'mini'
 }) {
   const styles = colorStyles[color]
 
   return cn(
-    'inline-flex items-center justify-center whitespace-nowrap rounded-lg font-semibold leading-none ring-1 shadow-md transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none',
+    'inline-flex items-center justify-center whitespace-nowrap rounded-lg font-semibold leading-none transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none',
     sizeStyles[size],
     styles.text,
-    styles.ring,
+    bordered && ['ring-1', styles.ring],
+    shadowed && 'shadow-md',
     filled ? styles.filledBg : 'bg-white',
     styles.hover,
+    forceDisabled && 'pointer-events-none shadow-none',
     className
   )
 }
@@ -129,11 +140,16 @@ export function ColorActionButton({
   className,
   color,
   filled = false,
+  bordered = true,
+  shadowed = true,
+  forceDisabled = false,
   icon: Icon,
   size = 'large',
   type = 'button',
   children,
   asChild = false,
+  disabled,
+  onClick,
   ...props
 }: ColorActionButtonProps) {
   if (asChild) {
@@ -148,12 +164,18 @@ export function ColorActionButton({
           className,
           color,
           filled,
+          bordered,
+          shadowed,
+          forceDisabled,
           size,
         })}
         {...props}
+        aria-disabled={forceDisabled || undefined}
+        onClick={forceDisabled ? (event) => event.preventDefault() : onClick}
       >
         {React.cloneElement(child, {
           className: child.props.className,
+          tabIndex: forceDisabled ? -1 : child.props.tabIndex,
           children: (
             <>
               {Icon ? (
@@ -175,8 +197,18 @@ export function ColorActionButton({
   return (
     <button
       type={type}
-      className={colorActionButtonClassName({ className, color, filled, size })}
+      className={colorActionButtonClassName({
+        className,
+        color,
+        filled,
+        bordered,
+        shadowed,
+        forceDisabled,
+        size,
+      })}
       {...props}
+      disabled={forceDisabled || disabled}
+      onClick={onClick}
     >
       {Icon ? (
         <Icon className={cn(iconSizeStyles[size], children ? 'mr-1' : '')} />

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/auth";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
-import { CircleX, ExternalLink, PartyPopper, Search, List } from "lucide-react";
+import { CircleX, ExternalLink, PartyPopper, Search, List, Layers2 } from "lucide-react";
 import { ShareModal } from "@/components/ShareModal";
 import { DateFormat } from "@/components/DateFormat";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
@@ -465,15 +465,21 @@ export default function MyProjects({
 
                             {p.duplicate_of && (
                               <div className="mt-1 space-y-1">
-                                <p className="text-xs text-gray-400">
-                                  <Link
-                                    href={`/projects/${p.duplicate_of}`}
-                                    className="font-medium text-purple-600 hover:text-purple-400"
-                                  >
+                                <ColorActionButton
+                                  asChild
+                                  color="amber"
+                                  size="mini"
+                                  icon={Layers2}
+                                  bordered={false}
+                                  shadowed={false}
+                                  forceDisabled={false}
+      
+                                >
+                                  <Link href={`/projects/${p.duplicate_of}`}>
                                     Proyecto duplicado de{" "}
                                     {p.duplicate_of_name || p.duplicate_of}
                                   </Link>
-                                </p>
+                                </ColorActionButton>
                                 {p.membership_invited_by && (
                                   <p className="text-xs text-gray-400">
                                     Creado por: {p.membership_invited_by}
@@ -484,13 +490,18 @@ export default function MyProjects({
 
                             {p.event_id && p.event_name && !isInsideCurrentEvent && (
                               <div className="mt-2">
-                                <Link
-                                  href={`/events/${p.event_id}`}
-                                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-100 px-3 py-1.5 text-xs font-medium text-emerald-800 transition hover:bg-emerald-700 hover:text-white"
+                                <ColorActionButton
+                                  asChild
+                                  color="emerald"
+                                  size="mini"
+                                  icon={PartyPopper}
+                                  bordered={false}
+                                  shadowed={false}
                                 >
-                                  <PartyPopper className="h-3.5 w-3.5" />
-                                  Vinculado al evento {p.event_name}
-                                </Link>
+                                  <Link href={`/events/${p.event_id}`}>
+                                    Vinculado al evento {p.event_name}
+                                  </Link>
+                                </ColorActionButton>
                               </div>
                             )}
 
@@ -508,20 +519,6 @@ export default function MyProjects({
                                     : "Desvincular de este evento"}
                                 </button>
                               </div>
-                            )}
-
-                            {canLinkToEvent && (
-         <ColorActionButton
-  type="button"
-  onClick={() => void openEventPicker(p)}
-  disabled={linkingProjectId === p.id}
-  color="emerald"
-  filled
-  size="mini"
-  icon={PartyPopper}
->
-  {linkingProjectId === p.id ? "Vinculando..." : "Vincular a evento"}
-</ColorActionButton>
                             )}
 
                             {Array.isArray(p.shared_with_emails) &&
@@ -583,16 +580,33 @@ export default function MyProjects({
                             </div>
 
                             {!hasPendingInvitation && (
-                              <DeleteProjectButton
-                                projectId={p.id}
-                                projectName={p.name}
-                                disabled={p.status === "exported"}
-                                onDeleted={() => {
-                                  setProjects((prev) =>
-                                    prev.filter((proj) => proj.id !== p.id)
-                                  );
-                                }}
-                              />
+                          <div className="mt-4 flex items-center gap-2">
+                                {canLinkToEvent && (
+                                  <ColorActionButton
+                                    type="button"
+                                    onClick={() => void openEventPicker(p)}
+                                    disabled={linkingProjectId === p.id}
+                                    color="emerald"
+                                    filled
+                                    size="mini"
+                                    icon={PartyPopper}
+                                  >
+                                    {linkingProjectId === p.id ? "Vinculando..." : "Vincular a evento"}
+                                  </ColorActionButton>
+                                )}
+
+                                <DeleteProjectButton
+                                  projectId={p.id}
+                                  projectName={p.name}
+                                  disabled={p.status === "exported"}
+                                  onDeleted={() => {
+                                    setProjects((prev) =>
+                                      prev.filter((proj) => proj.id !== p.id)
+                                    );
+                                  }}
+                                />
+                              </div>
+
                             )}
                           </div>
                         </>

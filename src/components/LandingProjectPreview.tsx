@@ -27,8 +27,8 @@ type PublicProjectResponse = {
   clips: PublicClip[]
 }
 
-
-const PREVIEW_PROJECT_ID = '93b607ee-e392-46c8-bb68-6c686f120fb8'
+// const PREVIEW_PROJECT_ID = 'f807820c-036d-4d05-a016-a631a449251a'
+const PREVIEW_PROJECT_ID = '6b201603-0b01-4aa7-b9c5-8254ebf40f89'
 
 export default function LandingProjectPreview() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? ''
@@ -116,7 +116,11 @@ export default function LandingProjectPreview() {
         </div>
       ) : (
         <div className="h-[70vh] min-h-[480px] rounded-2xl border border-gray-200 bg-white shadow-sm">
-          <ProjectEditorGate projectId={PREVIEW_PROJECT_ID} />
+          <ProjectEditorGate
+            projectId={PREVIEW_PROJECT_ID}
+            allowAnonymous
+            suppressOwnershipPrompt
+          />
           
           {/* <EditingCanvas
             projectId={PREVIEW_PROJECT_ID}
