@@ -1,6 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import {
+  colorActionButtonClassName,
+  type ColorActionButtonColor,
+} from '@/components/ui/color-action-button'
 
 type BadgeSize = 'compact' | 'large'
 
@@ -12,33 +16,43 @@ type MainBadgeProps = {
   size?: BadgeSize
   icon?: ReactNode
   className?: string
+  color?: ColorActionButtonColor
+  filled?: boolean
+  bordered?: boolean
+  shadowed?: boolean
+  forceDisabled?: boolean
 }
 
-const sizeClasses: Record<BadgeSize, string> = {
-  compact: 'text-xs px-2 py-0.5',
-  large: 'text-sm px-3 py-1',
-}
-
-const gapClasses: Record<BadgeSize, string> = {
-  compact: 'gap-1',
-  large: 'gap-1.5',
+const sizeMap: Record<BadgeSize, 'mini' | 'compact'> = {
+  compact: 'mini',
+  large: 'compact',
 }
 
 export default function MainBadge({
   label,
-  toneClassName = 'bg-gray-100 text-gray-600 ring-gray-200',
+  toneClassName: _toneClassName,
   title,
   ariaLabel,
   size = 'large',
   icon,
   className = '',
+  color = 'slate',
+  filled = false,
+  bordered = true,
+  shadowed = true,
+  forceDisabled = false,
 }: MainBadgeProps) {
-  const sizeClass = sizeClasses[size] ?? sizeClasses.large
-  const gapClass = icon ? gapClasses[size] : 'gap-0'
-
   return (
     <span
-      className={`inline-flex items-center rounded-full ring-1 font-medium ${sizeClass} ${gapClass} ${toneClassName} ${className}`}
+      className={colorActionButtonClassName({
+        color,
+        filled,
+        bordered,
+        shadowed,
+        forceDisabled,
+        size: sizeMap[size] ?? 'mini',
+        className,
+      })}
       title={title}
       aria-label={ariaLabel ?? title ?? label}
     >

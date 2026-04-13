@@ -1,7 +1,7 @@
 'use client'
 
 import { Globe, Lock } from 'lucide-react'
-import MainBadge from '@/components/project/MainBadge'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type Props = {
   isPublic?: boolean | null
@@ -15,33 +15,30 @@ export default function ProjectPrivacyBadge({
   compact = false,
   className = '',
   clickable = false,
+  filled = false,
 }: Props) {
-  const tone = isPublic
-    ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-    : 'bg-rose-50 text-rose-700 ring-rose-200'
-  const staticTone = isPublic
-    ? 'bg-white text-emerald-700 ring-emerald-200'
-    : 'bg-white text-rose-700 ring-rose-200'
   const label = isPublic ? 'Público' : 'Privado'
   const title = isPublic
     ? 'Este proyecto es público'
     : 'Este proyecto es privado'
 
-  const icon = isPublic ? (
-    <Globe className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
-  ) : (
-    <Lock className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
-  )
+  const color = isPublic ? 'emerald' : 'rose'
+  const Icon = isPublic ? Globe : Lock
 
   return (
-    <MainBadge
-      label={label}
-      title={title}
-      ariaLabel={title}
-      toneClassName={clickable ? tone : staticTone}
+    <ColorActionButton
+      color={color}
+      filled={filled}
+      bordered
+      shadowed={false}
+      forceDisabled={!clickable}
       size={compact ? 'compact' : 'large'}
-      icon={icon}
+      icon={Icon}
+      title={title}
+      aria-label={title}
       className={className}
-    />
+    >
+      {label}
+    </ColorActionButton>
   )
 }
