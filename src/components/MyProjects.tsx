@@ -438,17 +438,17 @@ export default function MyProjects({
 
                             <div className="mt-2 flex items-center justify-between gap-3">
                               <div className="flex items-center gap-3">
-                                <ProjectPrivacyBadge isPublic={p.is_public} compact />
-                                <StatusBadge status={p.status} compact />
+                                <ProjectPrivacyBadge isPublic={p.is_public} size="mini" forceDisabled bordered={false} />
+                                <StatusBadge status={p.status} size="mini" bordered={false} />
                                 {hasPendingInvitation && (
                                   <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700">
                                     Invitación pendiente
                                   </span>
                                 )}
                               </div>
-{p.status === "exported" ? (
+{/* {p.status === "exported" ? (
   <ViewOrderButton orderId={p.order_id} size="mini" />
-) : null}
+) : null} */}
                             </div>
 
                             <p className="mt-1 text-xs text-gray-500">
@@ -470,8 +470,8 @@ export default function MyProjects({
                                   color="amber"
                                   size="mini"
                                   icon={Layers2}
-                                  bordered={false}
-                                  shadowed={false}
+                                  bordered={true}
+                                  shadowed={true}
                                   forceDisabled={false}
       
                                 >
@@ -495,8 +495,8 @@ export default function MyProjects({
                                   color="emerald"
                                   size="mini"
                                   icon={PartyPopper}
-                                  bordered={false}
-                                  shadowed={false}
+                                  bordered={true}
+                                  shadowed={true}
                                 >
                                   <Link href={`/events/${p.event_id}`}>
                                     Vinculado al evento {p.event_name}
@@ -570,11 +570,14 @@ export default function MyProjects({
                                     onError={setError}
                                     title="Duplicar proyecto"
                                   />
+                                  {p.status === "exported" ? (
+  <ViewOrderButton orderId={p.order_id} size="mini" />
+) : null}
 
-                                  <ShareProjectButton
+                                  {/* <ShareProjectButton
                                     onClick={() => handleShareClick(p)}
                                     size="mini"
-                                  />
+                                  /> */}
                                 </>
                               )}
                             </div>
@@ -594,6 +597,10 @@ export default function MyProjects({
                                     {linkingProjectId === p.id ? "Vinculando..." : "Vincular a evento"}
                                   </ColorActionButton>
                                 )}
+                                <ShareProjectButton
+                                    onClick={() => handleShareClick(p)}
+                                    size="mini"
+                                  />
 
                                 <DeleteProjectButton
                                   projectId={p.id}
@@ -605,6 +612,7 @@ export default function MyProjects({
                                     );
                                   }}
                                 />
+                          
                               </div>
 
                             )}

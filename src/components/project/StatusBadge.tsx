@@ -11,6 +11,8 @@ type ProjectStatus = 'draft' | 'ready' | 'exported'
 type StatusBadgeProps = {
   status: ProjectStatus
   compact?: boolean
+  size?: 'large' | 'compact' | 'mini'
+  bordered?: boolean
   className?: string
   onAddToCart?: () => void
   addToCartDisabled?: boolean
@@ -45,6 +47,8 @@ const STATUS_CONFIG: Record<
 export default function StatusBadge({
   status,
   compact = false,
+  size,
+  bordered = true,
   className = '',
   onAddToCart,
   addToCartDisabled = false,
@@ -54,7 +58,7 @@ export default function StatusBadge({
   const config = STATUS_CONFIG[status]
   const { label, color, Icon } = config
 
-  const size = compact ? 'compact' : 'large'
+  const resolvedSize = size ?? (compact ? 'compact' : 'large')
   const isClickable = status === 'ready' && Boolean(onAddToCart)
 
   // 👉 Caso NO clicable
@@ -63,10 +67,10 @@ export default function StatusBadge({
       <ColorActionButton
         color={color}
         filled={false}
-        bordered
+        bordered={bordered}
         shadowed={true}
         forceDisabled
-        size={size}
+        size={resolvedSize}
         icon={Icon}
         className={className}
         aria-label={`Estado del proyecto: ${label}`}
@@ -83,9 +87,9 @@ export default function StatusBadge({
       <ColorActionButton
         color={color}
         filled
-        bordered
+        bordered={bordered}
         shadowed={false}
-        size={size}
+        size={resolvedSize}
         icon={Icon}
         className={className}
         onClick={() => setOpen(true)}

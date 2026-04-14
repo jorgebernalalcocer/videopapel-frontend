@@ -6,15 +6,21 @@ import { ColorActionButton } from '@/components/ui/color-action-button'
 type Props = {
   isPublic?: boolean | null
   compact?: boolean
+  size?: 'large' | 'compact' | 'mini'
   className?: string
   clickable?: boolean
+  forceDisabled?: boolean
+  bordered?: boolean
 }
 
 export default function ProjectPrivacyBadge({
   isPublic = false,
   compact = false,
+  size,
   className = '',
   clickable = false,
+  forceDisabled = false,
+  bordered = true,
 }: Props) {
   const label = isPublic ? 'Público' : 'Privado'
   const title = isPublic
@@ -23,15 +29,17 @@ export default function ProjectPrivacyBadge({
 
   const color = isPublic ? 'emerald' : 'rose'
   const Icon = isPublic ? Globe : Lock
+  const resolvedSize = size ?? (compact ? 'compact' : 'large')
 
   return (
     <ColorActionButton
       asChild
       color={color}
       filled={clickable}
-      bordered
+      bordered={bordered}
       shadowed={false}
-      size={compact ? 'compact' : 'large'}
+      forceDisabled={forceDisabled}
+      size={resolvedSize}
       icon={Icon}
       title={title}
       aria-label={title}

@@ -4,6 +4,8 @@
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { ShoppingBasket } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
+
 
 
 export default function CartButton() {
@@ -14,20 +16,14 @@ export default function CartButton() {
   }
 
   return (
-    <Button className="
-    inline-flex items-center
-    px-3 py-1.5                  
-    rounded-lg                   
-    bg-green-100                  
-    text-green-700
-    font-medium
-    transition-colors
-    hover:bg-green-700            
-    hover:text-white
-  " onClick={handleCart}>
-      <ShoppingBasket className="w-4 h-4 mr-1.5" /> 
-
-      Mi cesta
-    </Button>
+    <ColorActionButton
+      type="button"
+      onClick={handleCart}
+      color="emerald"
+      size="compact"
+      icon={ShoppingBasket}
+    >
+      Mi carrito
+    </ColorActionButton>
   )
 }
