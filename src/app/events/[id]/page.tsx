@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, FolderPlus, PartyPopper, Share, Trash2 } from 'lucide-react'
+import { ChevronLeft, FolderPlus, PartyPopper, Share, Trash2, PackageCheck } from 'lucide-react'
 import MyProjects, { type Project } from '@/components/MyProjects'
 import NewProjectButton from '@/components/NewProjectButton'
 import { ShareModal } from '@/components/ShareModal'
 import { ColorActionButton } from '@/components/ui/color-action-button'
 import { Modal } from '@/components/ui/Modal'
 import { useAuth } from '@/store/auth'
+import { toast } from 'sonner'
 
 type EventDetail = {
   id: string
@@ -36,6 +37,12 @@ type ProjectOption = {
   event_id?: string | null
 }
 
+type CartSnapshot = {
+  items?: Array<{
+    project_id: string
+  }>
+}
+
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -55,6 +62,7 @@ export default function EventDetailPage() {
   const [projectSearch, setProjectSearch] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
   const [deletingEvent, setDeletingEvent] = useState(false)
+  const [buyingEvent, setBuyingEvent] = useState(false)
 
   const loadEvent = useCallback(async () => {
     if (!params?.id) return
@@ -216,6 +224,83 @@ export default function EventDetailPage() {
     }
   }, [API_BASE, accessToken, deletingEvent, event?.id, event?.name, router])
 
+  const handleBuyEvent = useCallback(async () => {
+    if (!accessToken) {
+      toast.error('Debes iniciar sesión para añadir al cesta.')
+      return
+    }
+    if (!event?.projects?.length || buyingEvent) return
+
+    setBuyingEvent(true)
+    try {
+      const cartRes = await fetch(`${API_BASE}/cart/`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+
+      if (!cartRes.ok) {
+        throw new Error(`Error ${cartRes.status}: ${await cartRes.text()}`)
+      }
+
+      const cartData: CartSnapshot = await cartRes.json()
+      const existingProjectIds = new Set(
+        Array.isArray(cartData.items)
+          ? cartData.items
+              .map((item) => item?.project_id)
+              .filter((projectId): projectId is string => typeof projectId === 'string' && projectId.length > 0)
+          : []
+      )
+      const missingProjects = event.projects.filter((project) => !existingProjectIds.has(project.id))
+
+      if (missingProjects.length === 0) {
+        toast.success('Los proyectos del evento ya están en la cesta.')
+        router.push('/cart')
+        return
+      }
+
+      const failed: { projectName: string; detail: string }[] = []
+
+      for (const project of missingProjects) {
+        const res = await fetch(`${API_BASE}/cart/`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: 'include',
+          body: JSON.stringify({ project_id: project.id, quantity: 1 }),
+        })
+
+        if (!res.ok) {
+          const detail = await res.text()
+          failed.push({
+            projectName: project.name || `Proyecto #${project.id}`,
+            detail: detail || `Error ${res.status} al añadir al cesta`,
+          })
+        }
+      }
+
+      if (failed.length) {
+        throw new Error(
+          failed.length === 1
+            ? `No se pudo añadir ${failed[0].projectName}: ${failed[0].detail}`
+            : `No se pudieron añadir ${failed.length} proyectos del evento a la cesta.`
+        )
+      }
+
+      toast.success(
+        missingProjects.length === event.projects.length
+          ? 'Se han añadido los proyectos del evento a la cesta.'
+          : `Se han vuelto a añadir ${missingProjects.length} proyecto${missingProjects.length === 1 ? '' : 's'} que faltaban en la cesta.`
+      )
+      router.push('/cart')
+    } catch (e: any) {
+      toast.error(e?.message || 'No se pudo comprar el evento.')
+    } finally {
+      setBuyingEvent(false)
+    }
+  }, [API_BASE, accessToken, buyingEvent, event?.projects, router])
+
   return (
     <main className="min-h-screen px-6 py-10">
       <div className="mx-auto w-full max-w-6xl">
@@ -270,13 +355,22 @@ export default function EventDetailPage() {
                       {event.current_user_can_manage_sharing && (
                         <ColorActionButton
                           onClick={() => setShareOpen(true)}
-                          color="emerald"
+                          color="purple"
                           size="large"
                           icon={Share}
                         >
                           <span>Compartir evento</span>
                         </ColorActionButton>
                       )}
+                      <ColorActionButton
+                        onClick={() => void handleBuyEvent()}
+                        color="emerald"
+                        size="large"
+                        icon={PackageCheck}
+                        disabled={buyingEvent || !event.projects.length}
+                      >
+                        <span>{buyingEvent ? 'Comprando evento...' : 'Comprar evento'}</span>
+                      </ColorActionButton>
                       {event.current_user_can_manage_sharing && (
                         <ColorActionButton
                           onClick={() => void handleDeleteEvent()}

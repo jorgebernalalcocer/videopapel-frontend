@@ -1,7 +1,10 @@
 'use client'
 
 import { Layers } from 'lucide-react'
-import MainBadge from '@/components/project/MainBadge'
+import {
+  ColorActionButton,
+  type ColorActionButtonColor,
+} from '@/components/ui/color-action-button'
 
 type Props = {
   label?: string | null
@@ -28,25 +31,32 @@ export default function PrintSheetPaperBadge({
 
   const hasValue = parts.length > 0
   const text = hasValue ? parts.join(' — ') : 'Sin papel'
+
   const title = titleHint
     ? hasValue
       ? `Papel de impresión: ${text}`
       : 'Papel de impresión no seleccionado'
     : undefined
 
-  const tone = hasValue
-    ? 'bg-cyan-50 text-cyan-700 ring-cyan-200'
-    : 'bg-gray-100 text-gray-500 ring-gray-200'
+  // 👇 Mapeo de color
+  // const color: ColorActionButtonColor = hasValue ? 'blue' : 'slate'
+    const color: ColorActionButtonColor = hasValue ? 'slate' : 'slate'
+
 
   return (
-    <MainBadge
-      label={text}
-      title={title}
-      ariaLabel={title}
-      toneClassName={tone}
+    <ColorActionButton
+      asChild
+      color={color}
+      filled={false}
+      bordered
+      shadowed={false}
       size={compact ? 'compact' : 'large'}
-      icon={<Layers className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
+      icon={Layers}
+      title={title}
+      aria-label={title}
       className={className}
-    />
+    >
+      <span>{text}</span>
+    </ColorActionButton>
   )
 }

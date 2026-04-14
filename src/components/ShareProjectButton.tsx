@@ -15,7 +15,7 @@ export default function ShareProjectButton({
   return (
     <ColorActionButton
       onClick={onClick}
-      color="violet"
+      color="purple"
       filled
       size={size}
       icon={Share}

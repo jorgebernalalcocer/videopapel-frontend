@@ -41,6 +41,10 @@ type CartItem = {
   print_aspect_name_snapshot?: string | null
   print_aspect_slug_snapshot?: string | null
   price_breakdown?: PriceBreakdown | null
+  project_preview?: {
+    image_url?: string | null
+    frame_time_ms?: number | null
+  } | null
 }
 
 type CartResponse = {
@@ -211,7 +215,21 @@ export default function CartPage() {
               {cart.items.map((item) => (
                 <div key={item.id} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                    <div className="flex min-w-0 flex-1 items-start gap-4">
+                      {item.project_preview?.image_url ? (
+                        <Link
+                          href={`/projects/${item.project_id}`}
+                          className="block h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white"
+                        >
+                          <img
+                            src={item.project_preview.image_url}
+                            alt={`Primer frame de ${item.project_name}`}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        </Link>
+                      ) : null}
+                      <div className="min-w-0">
                         <Link
                           href={`/projects/${item.project_id}`}
                           className="font-semibold text-gray-900 text-purple-600 hover:text-purple-400"
@@ -239,6 +257,7 @@ export default function CartPage() {
                           </p>
                         )}
                       </div>
+                    </div>
                     </div>
                     <div className="flex flex-col items-end gap-3">
                       <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white shadow-sm">

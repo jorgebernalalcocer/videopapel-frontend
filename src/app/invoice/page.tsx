@@ -491,7 +491,7 @@ export default function InvoicePage() {
                  
                           <ColorActionButton
       onClick={() => void handleDownload(invoice)}
-      color="violet"
+      color="purple"
 filled
       size="compact"
       icon={Download}

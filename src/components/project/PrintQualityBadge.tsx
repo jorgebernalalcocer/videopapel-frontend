@@ -1,18 +1,13 @@
 'use client'
 
 import { Sparkles } from 'lucide-react'
-import MainBadge from '@/components/project/MainBadge'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type Props = {
-  /** Nombre comercial: Draft / Standard / Photo ... */
   name?: string | null
-  /** Dots per inch (calidad de impresión) */
   dpi?: number | null
-  /** Alias legacy para compatibilidad */
   ppi?: number | null
-  /** Modo compacto (menos padding/tamaño) */
   compact?: boolean
-  /** Mostrar tooltip con texto largo */
   titleHint?: boolean
   className?: string
 }
@@ -27,27 +22,39 @@ export default function PrintQualityBadge({
 }: Props) {
   const quality = dpi ?? ppi ?? null
   const hasValue = Boolean(name) || Boolean(quality)
-  const label = hasValue ? `${name ?? ''}${quality ? ` — ${quality} DPI` : ''}`.trim() : 'Elige la calidad'
+
+  const label = hasValue
+    ? `${name ?? ''}${quality ? ` — ${quality} DPI` : ''}`.trim()
+    : 'Elige la calidad'
+
   const title = titleHint
-    ? (hasValue ? `Calidad de impresión: ${label}` : 'Calidad de impresión no seleccionada')
+    ? hasValue
+      ? `Calidad de impresión: ${label}`
+      : 'Calidad de impresión no seleccionada'
     : undefined
 
-  // Color por “categoría” simple
-  const tone =
-    (quality ?? 0) >= 300 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
-    : (quality ?? 0) >= 150 ? 'bg-blue-50 text-blue-700 ring-blue-200'
-    : hasValue ? 'bg-amber-50 text-amber-700 ring-amber-200'
-    : 'bg-gray-100 text-gray-500 ring-gray-200'
+  // 👇 Mapeo de tonos a tu sistema de colores
+  let color: any = 'slate'
+
+  if ((quality ?? 0) >= 300) color = 'blue'
+  else if ((quality ?? 0) > 150) color = 'emerald'
+  else if (hasValue) color = 'amber'
+  else color = 'slate'
 
   return (
-    <MainBadge
-      label={label}
-      title={title}
-      ariaLabel={title}
-      toneClassName={tone}
+    <ColorActionButton
+      asChild
+      color={color}
+      filled={false}
+      bordered
+      shadowed={false}
       size={compact ? 'compact' : 'large'}
-      icon={<Sparkles className={compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />}
+      icon={Sparkles}
+      title={title}
+      aria-label={title}
       className={className}
-    />
+    >
+      <span>{label}</span>
+    </ColorActionButton>
   )
 }

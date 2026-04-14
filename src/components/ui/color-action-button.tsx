@@ -35,12 +35,6 @@ const colorStyles = {
     filledBg: 'bg-purple-100',
     hover: 'hover:bg-purple-700',
   },
-  violet: {
-    text: 'text-violet-700',
-    ring: 'ring-violet-200',
-    filledBg: 'bg-violet-100',
-    hover: 'hover:bg-violet-700',
-  },
   blue: {
     text: 'text-blue-700',
     ring: 'ring-blue-200',
