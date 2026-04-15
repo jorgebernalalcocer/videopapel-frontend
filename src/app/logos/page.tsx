@@ -168,6 +168,7 @@ export default function LogosPage() {
           onCreateCompany={() => setCompanyModalOpen(true)}
           onAddLogo={() => setCompanyLogoModalOpen(true)}
           onMarkLogoDefault={handleMarkLogoDefault}
+          onDeleteLogo={fetchLogosData}
           showHeader={false}
           showAddButton={false}
         />

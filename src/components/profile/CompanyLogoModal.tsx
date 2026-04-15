@@ -84,7 +84,7 @@ export default function CompanyLogoModal({
       return
     }
     if (!selectedCompanyId) {
-      setError('Selecciona una empresa.')
+      setError('No se ha encontrado una empresa asociada al usuario.')
       return
     }
     if (!trimOrEmpty(name)) {
@@ -172,23 +172,6 @@ export default function CompanyLogoModal({
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block text-sm font-medium text-gray-700">
-          Tu empresa:
-          <select
-            value={selectedCompanyId}
-            onChange={(e) => setSelectedCompanyId(e.target.value)}
-            className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            required
-          >
-            <option value="">Selecciona una empresa</option>
-            {companies.map((company) => (
-              <option key={company.id} value={company.id}>
-                {company.name}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className="block text-sm font-medium text-gray-700">
           Nombre del logo o empresa::
           <input
             type="text"
@@ -246,7 +229,7 @@ export default function CompanyLogoModal({
           <button
             type="submit"
             className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
-            disabled={isSubmitting}
+            disabled={isSubmitting || !file}
           >
             {isSubmitting ? 'Guardando…' : 'Guardar logo'}
           </button>

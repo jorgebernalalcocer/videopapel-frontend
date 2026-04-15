@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Plus } from 'lucide-react'
+import { Palette, Plus, Expand } from 'lucide-react'
+import DeleteLogoButton from '@/components/DeleteLogoButton'
 import PreviewLogo from '@/components/profile/PreviewLogo'
 import { ColorActionButton } from '@/components/ui/color-action-button'
 
@@ -28,6 +29,7 @@ type MyLogosProps = {
   onCreateCompany: () => void
   onAddLogo: () => void
   onMarkLogoDefault: (logoId: number) => void
+  onDeleteLogo?: () => void
   showHeader?: boolean
   showAddButton?: boolean
 }
@@ -39,6 +41,7 @@ export default function MyLogos({
   onCreateCompany,
   onAddLogo,
   onMarkLogoDefault,
+  onDeleteLogo,
   showHeader = true,
   showAddButton = true,
 }: MyLogosProps) {
@@ -47,6 +50,15 @@ export default function MyLogos({
   const companyMap = useMemo(
     () => new Map(companies.map((company) => [company.id, company.name])),
     [companies],
+  )
+  const sortedCompanyLogos = useMemo(
+    () =>
+      [...companyLogos].sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
+        return bTime - aTime
+      }),
+    [companyLogos],
   )
 
   if (companies.length === 0) {
@@ -103,7 +115,7 @@ export default function MyLogos({
             <p className="text-sm text-gray-500">Todavía no has añadido ningún logo.</p>
           ) : (
             <ul className="space-y-4">
-              {companyLogos.map((logo) => (
+              {sortedCompanyLogos.map((logo) => (
                 <li
                   key={logo.id}
                   className={`cursor-pointer rounded-xl bg-gray-50 px-4 py-3 transition hover:bg-slate-100 ${
@@ -124,40 +136,63 @@ export default function MyLogos({
                       </div>
                     )}
                     <div className="space-y-1 text-sm text-gray-700">
-                      {companyMap.get(logo.company) && (
+                      {/* {companyMap.get(logo.company) && (
                         <p className="font-semibold text-gray-900">{companyMap.get(logo.company)}</p>
-                      )}
+                      )} */}
                       <div className="flex items-center gap-2">
-                        <p>Nombre: {logo.name}</p>
+                        <p>Nombre: <b>{logo.name}</b></p>
                         {logo.is_default && (
                           <span className="text-md font-semibold text-emerald-600">
                             Logo principal
                           </span>
                         )}
                       </div>
-                      <p>Tipo: {logo.type}</p>
+                      {/* <p>Tipo: {logo.type}</p> */}
                       <p>Predeterminado: {logo.is_default ? 'Sí' : 'No'}</p>
                       {logo.created_at && (
                         <p className="text-xs text-gray-400">
                           Añadido el {new Date(logo.created_at).toLocaleDateString()}
                         </p>
                       )}
+                      {companyMap.get(logo.company) && (
+                        <p className="text-gray-900">Subido por: {companyMap.get(logo.company)}</p>
+                      )}
                     </div>
                   </div>
-                  {!logo.is_default && (
-                    <div className="mt-3 text-right">
-                      <button
+                  <div className="mt-3 flex items-center justify-end gap-2">
+                    <ColorActionButton
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setPreviewLogo(logo)
+                      }}
+                      color="slate"
+                      filled
+                      size="compact"
+                      icon={Expand}
+                    >
+                      Ver
+                    </ColorActionButton>
+                    {!logo.is_default && (
+                      <ColorActionButton
                         type="button"
-                        onClick={(event) => {
-                          event.stopPropagation()
+                        onClick={(e) => {
+                          e.stopPropagation()
                           onMarkLogoDefault(logo.id)
                         }}
-                        className="text-xs font-medium text-purple-600 hover:text-purple-700"
+                        color="slate"
+                        size="compact"
+                        icon={Palette}
                       >
-                        Marcar logo como principal
-                      </button>
-                    </div>
-                  )}
+                        Marcar como principal
+                      </ColorActionButton>
+                    )}
+                    <DeleteLogoButton
+                      logoId={logo.id}
+                      logoName={logo.name}
+                      onDeleted={onDeleteLogo}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

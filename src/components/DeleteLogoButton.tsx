@@ -1,25 +1,26 @@
 'use client'
 
-import { useState } from 'react'
-import { useAuth } from '@/store/auth'
-import { useConfirm } from '@/components/ui/ConfirmProvider'
-import { toast } from 'sonner'
+import { type MouseEvent, useState } from 'react'
 import { CheckCircle2, Trash2, XCircle } from 'lucide-react'
+import { toast } from 'sonner'
+import { useConfirm } from '@/components/ui/ConfirmProvider'
+import { useAuth } from '@/store/auth'
 import { ColorActionButton } from '@/components/ui/color-action-button'
 
-type DeleteProjectButtonProps = {
-  projectId: string
-  projectName?: string | null
+
+type DeleteLogoButtonProps = {
+  logoId: number
+  logoName?: string | null
   onDeleted?: () => void
   disabled?: boolean
 }
 
-export default function DeleteProjectButton({
-  projectId,
-  projectName,
+export default function DeleteLogoButton({
+  logoId,
+  logoName,
   onDeleted,
   disabled = false,
-}: DeleteProjectButtonProps) {
+}: DeleteLogoButtonProps) {
   const [isDeleting, setIsDeleting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -27,14 +28,15 @@ export default function DeleteProjectButton({
   const accessToken = useAuth((s) => s.accessToken)
   const confirm = useConfirm()
 
-  const handleDelete = async () => {
+  const handleDelete = async (event: MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation()
     if (!accessToken || isDeleting || disabled) return
 
     const ok = await confirm({
-      title: 'Eliminar proyecto',
+      title: 'Eliminar logo',
       description: (
         <>
-          ¿Seguro que quieres eliminar {projectName ? `“${projectName}”` : 'este proyecto'}?
+          ¿Seguro que quieres eliminar {logoName ? `“${logoName}”` : 'este logo'}?
           <br />
           <span className="text-red-600">Esta acción es irreversible.</span>
         </>
@@ -49,7 +51,7 @@ export default function DeleteProjectButton({
     setError(null)
 
     try {
-      const res = await fetch(`${API_BASE}/projects/${projectId}/`, {
+      const res = await fetch(`${API_BASE}/company-logos/${logoId}/`, {
         method: 'DELETE',
         headers: {
           Authorization: `Bearer ${accessToken}`,
@@ -58,20 +60,18 @@ export default function DeleteProjectButton({
       })
       if (!res.ok && res.status !== 204) {
         const text = await res.text()
-        throw new Error(text || `Error ${res.status} al eliminar el proyecto`)
+        throw new Error(text || `Error ${res.status} al eliminar el logo`)
       }
 
-      toast.success('Proyecto eliminado correctamente', {
+      toast.success('Logo eliminado correctamente', {
         icon: <CheckCircle2 className="text-green-500" />,
         duration: 5000,
       })
-
       onDeleted?.()
-      window.dispatchEvent(new CustomEvent('videopapel:project:changed'))
     } catch (e: any) {
-      const message = e?.message || 'Error al eliminar el proyecto.'
+      const message = e?.message || 'Error al eliminar el logo.'
       setError(message)
-      toast.error('No se pudo eliminar el proyecto', {
+      toast.error('No se pudo eliminar el logo', {
         icon: <XCircle className="text-red-500" />,
         duration: 5000,
         description: message,
@@ -89,12 +89,11 @@ export default function DeleteProjectButton({
         disabled={isDeleting || disabled}
         color="rose"
       
-        size="mini"
+        size="compact"
         icon={Trash2}
       >
-        {isDeleting ? 'Eliminando…' : 'Eliminar'}
+        {isDeleting ? 'Eliminando…' : 'Eliminar logo'}
       </ColorActionButton>
-
       {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
     </div>
   )

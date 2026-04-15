@@ -118,7 +118,7 @@ export function colorActionButtonClassName({
   const styles = colorStyles[color]
 
   return cn(
-    'inline-flex items-center justify-center whitespace-nowrap rounded-lg font-semibold leading-none transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-70 disabled:shadow-none',
+    'inline-flex items-center justify-center whitespace-nowrap rounded-lg font-semibold leading-none transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none',
     sizeStyles[size],
     styles.text,
     bordered && ['ring-1', styles.ring],
