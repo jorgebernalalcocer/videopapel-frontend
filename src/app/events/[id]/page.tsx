@@ -3,8 +3,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { ChevronLeft, FolderPlus, PartyPopper, Share, Trash2, PackageCheck } from 'lucide-react'
+import { ChevronLeft, FolderPlus, PartyPopper, Share, PackageCheck, Link as LinkIcon } from 'lucide-react'
 import MyProjects, { type Project } from '@/components/MyProjects'
+import DeleteEventButton from '@/components/DeleteEventButton'
 import NewProjectButton from '@/components/NewProjectButton'
 import { ShareModal } from '@/components/ShareModal'
 import { ColorActionButton } from '@/components/ui/color-action-button'
@@ -61,7 +62,6 @@ export default function EventDetailPage() {
   const [projectPickerError, setProjectPickerError] = useState<string | null>(null)
   const [projectSearch, setProjectSearch] = useState('')
   const [shareOpen, setShareOpen] = useState(false)
-  const [deletingEvent, setDeletingEvent] = useState(false)
   const [buyingEvent, setBuyingEvent] = useState(false)
 
   const loadEvent = useCallback(async () => {
@@ -200,30 +200,6 @@ export default function EventDetailPage() {
       : (project.name || `Proyecto #${project.id}`).toLowerCase().includes(normalizedProjectSearch)
   )
 
-  const handleDeleteEvent = useCallback(async () => {
-    if (!accessToken || !event?.id || deletingEvent) return
-
-    const confirmed = window.confirm(`Se borrará el evento "${event.name}" y sus invitaciones y membresías. ¿Quieres continuar?`)
-    if (!confirmed) return
-
-    setDeletingEvent(true)
-    try {
-      const res = await fetch(`${API_BASE}/events/${event.id}/`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${accessToken}` },
-        credentials: 'include',
-      })
-      if (!res.ok) {
-        throw new Error(`Error ${res.status}: ${await res.text()}`)
-      }
-      router.push('/events')
-    } catch (e: any) {
-      setError(e.message || 'No se pudo borrar el evento')
-    } finally {
-      setDeletingEvent(false)
-    }
-  }, [API_BASE, accessToken, deletingEvent, event?.id, event?.name, router])
-
   const handleBuyEvent = useCallback(async () => {
     if (!accessToken) {
       toast.error('Debes iniciar sesión para añadir al cesta.')
@@ -346,17 +322,19 @@ export default function EventDetailPage() {
                       {event.current_user_can_edit && (
                         <ColorActionButton
                           onClick={() => void openProjectPicker()}
-                          color="amber"
-                          icon={FolderPlus}
+                          color="emerald"
+                          icon={LinkIcon}
+                          filled
+                          size="large"
                         >
-                          <span>Añadir proyecto existente</span>
+                          <span>Vincular proyecto existente</span>
                         </ColorActionButton>
                       )}
                       {event.current_user_can_manage_sharing && (
                         <ColorActionButton
                           onClick={() => setShareOpen(true)}
                           color="purple"
-                          size="large"
+                          size="compact"
                           icon={Share}
                         >
                           <span>Compartir evento</span>
@@ -365,22 +343,18 @@ export default function EventDetailPage() {
                       <ColorActionButton
                         onClick={() => void handleBuyEvent()}
                         color="emerald"
-                        size="large"
+                        size="compact"
                         icon={PackageCheck}
                         disabled={buyingEvent || !event.projects.length}
                       >
                         <span>{buyingEvent ? 'Comprando evento...' : 'Comprar evento'}</span>
                       </ColorActionButton>
                       {event.current_user_can_manage_sharing && (
-                        <ColorActionButton
-                          onClick={() => void handleDeleteEvent()}
-                          color="rose"
-                          size="compact"
-                          icon={Trash2}
-                          disabled={deletingEvent}
-                        >
-                          <span>{deletingEvent ? 'Eliminando evento...' : 'Eliminar evento'}</span>
-                        </ColorActionButton>
+                        <DeleteEventButton
+                          eventId={event.id}
+                          eventName={event.name}
+                          onDeleted={async () => router.push('/events')}
+                        />
                       )}
                     </div>
                   </div>

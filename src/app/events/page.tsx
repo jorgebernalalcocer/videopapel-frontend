@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { PartyPopper } from 'lucide-react'
 import EventsButton from '@/components/EventsButton'
+import EventsLandingSection from '@/components/EventsLandingSection'
 import { acceptEventInvitation } from '@/lib/eventInvitations'
 import { useAuth } from '@/store/auth'
 import { toast } from 'sonner'
@@ -200,7 +201,7 @@ export default function EventsPage() {
               ))}
             </ul>
           ) : (
-            <p className="text-gray-500">Aún no tienes eventos.</p>
+            <EventsLandingSection onCreated={async () => void loadEventsRef.current?.()} />
           )
         ) : null}
       </div>

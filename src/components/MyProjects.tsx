@@ -6,11 +6,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/store/auth";
 import DeleteProjectButton from "@/components/DeleteProjectButton";
-import { CircleX, ExternalLink, PartyPopper, Search, List, Layers2 } from "lucide-react";
+import { CircleX, ExternalLink, PartyPopper, Search, List, Layers2, Link as LinkIcon, Link2Off } from "lucide-react";
 import { ShareModal } from "@/components/ShareModal";
 import { DateFormat } from "@/components/DateFormat";
 import DuplicateProjectButton from "@/components/DuplicateProjectButton";
 import ShareProjectButton from "@/components/ShareProjectButton";
+import EventsButton from "@/components/EventsButton";
 import ProjectPrivacyBadge from "@/components/project/ProjectPrivacyBadge";
 import StatusBadge from "@/components/project/StatusBadge";
 import { Modal } from "@/components/ui/Modal";
@@ -507,17 +508,18 @@ export default function MyProjects({
 
                             {isInsideCurrentEvent && (
                               <div className="mt-2">
-                                <button
-                                  type="button"
-                                  onClick={() => void handleUnlinkFromEvent(p)}
-                                  disabled={unlinkingProjectId === p.id}
-                                  className="inline-flex items-center gap-1 rounded-lg bg-red-100 px-3 py-1.5 text-xs font-medium text-red-700 transition hover:bg-red-200 disabled:cursor-not-allowed disabled:opacity-60"
-                                >
-                                  <PartyPopper className="h-3.5 w-3.5" />
-                                  {unlinkingProjectId === p.id
-                                    ? "Desvinculando..."
-                                    : "Desvincular de este evento"}
-                                </button>
+        
+                                <ColorActionButton
+                                    type="button"
+                                    onClick={() => void handleUnlinkFromEvent(p)}
+                                    disabled={unlinkingProjectId === p.id}
+                                    color="red"
+                                    filled
+                                    size="mini"
+                                    icon={Link2Off}
+                                  >
+                                    {linkingProjectId === p.id ? "Desvinculando..." : "Desvincular de este evento"}
+                                  </ColorActionButton>
                               </div>
                             )}
 
@@ -671,14 +673,21 @@ export default function MyProjects({
             >
               Cancelar
             </button>
-            <button
-              type="button"
-              onClick={() => void handleLinkToEvent()}
-              disabled={!selectedEventId || Boolean(linkingProjectId) || loadingEvents}
-              className="rounded-xl bg-emerald-600 px-4 py-2 text-white hover:bg-emerald-700 disabled:opacity-50"
-            >
-              {linkingProjectId ? "Vinculando..." : "Vincular"}
-            </button>
+            {events.length ? (
+              <ColorActionButton
+                type="button"
+                onClick={() => void handleLinkToEvent()}
+                disabled={!selectedEventId || Boolean(linkingProjectId) || loadingEvents}
+                color="emerald"
+                filled
+                size="large"
+                icon={LinkIcon}
+              >
+                {linkingProjectId ? "Vinculando..." : "Vincular"}
+              </ColorActionButton>
+            ) : (
+              <EventsButton mode="create" onCreated={async () => void fetchEvents()} />
+            )}
           </>
         }
       >
