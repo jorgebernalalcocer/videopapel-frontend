@@ -21,6 +21,10 @@ type CartItem = {
   total_pages: number
   print_size_label_snapshot?: string | null
   price_breakdown?: PriceBreakdown | null
+  project_preview?: {
+    image_url?: string | null
+    frame_time_ms?: number | null
+  } | null
 }
 
 type CartResponse = {
@@ -273,6 +277,7 @@ export default function SummaryPage() {
                   projectId={item.project_id}
                   projectName={item.project_name}
                   projectLink={`/projects/${item.project_id}`}
+                  projectPreview={item.project_preview}
                   quantity={item.quantity}
                   totalPages={item.total_pages}
                   unitPrice={item.unit_price}

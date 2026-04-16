@@ -15,6 +15,10 @@ type OrderItem = {
   id: number
   project_id: string
   project_name_snapshot: string
+  project_preview?: {
+    image_url?: string | null
+    frame_time_ms?: number | null
+  } | null
   print_size_label_snapshot: string | null
   orientation_snapshot: string | null
   frame_name_snapshot: string | null
@@ -311,46 +315,61 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
                         {order.items.map((item) => {
                           const canSeePdf = Boolean(isSuperuser && item.pdf_snapshot)
                           return (
-                            <li key={item.id} className="flex items-center justify-between py-2">
-                              <div>
-                                <Link
-                                  href={`/projects/${item.project_id}`}
-                                  className="font-medium text-purple-600 hover:text-purple-400"
-                                >
-                                  {item.project_name_snapshot}
-                                </Link>
-                                <p className="text-xs text-gray-500">
-                                  {item.quantity} unidad{item.quantity === 1 ? '' : 'es'} · {formatAmount(item.unit_price)} € / unidad
-                                </p>
-                                {item.print_size_label_snapshot && (
-                                  <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
-                                )}
-                                {item.frame_name_snapshot && (
-                                  <p className="text-xs text-gray-500">Orientación: {item.orientation_snapshot}</p>
-                                )}
-                                {item.orientation_snapshot && (
-                                  <p className="text-xs text-gray-500">Marco decorativo: {item.frame_name_snapshot}</p>
-                                )}
-                                {item.aspect_name_snapshot && (
-                                  <p className="text-xs text-gray-500">Aspecto: {item.aspect_name_snapshot}</p>
-                                )}
-                                {item.effect_name_snapshot && (
-                                  <p className="text-xs text-gray-500">Efecto: {item.effect_name_snapshot}</p>
-                                )}
-                                {item.quality_label_snapshot && (
-                                  <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
-                                )}
-                                {item.number_pages_snapshot && (
-                                  <p className="text-xs text-gray-500">Número de páginas: {item.number_pages_snapshot}</p>
-                                )}
-                                {canSeePdf && (
+                            <li key={item.id} className="flex items-start justify-between gap-4 py-2">
+                              <div className="flex min-w-0 flex-1 items-start gap-4">
+                                {item.project_preview?.image_url ? (
                                   <Link
-                                    href={item.pdf_snapshot!}
-                                    className="font-medium text-gray-900 text-green-600 hover:text-green-400"
+                                    href={`/projects/${item.project_id}`}
+                                    className="block h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white"
                                   >
-                                    Link PDF
+                                    <img
+                                      src={item.project_preview.image_url}
+                                      alt={`Primer frame de ${item.project_name_snapshot}`}
+                                      className="h-full w-full object-cover"
+                                      loading="lazy"
+                                    />
                                   </Link>
-                                )}
+                                ) : null}
+                                <div className="min-w-0">
+                                  <Link
+                                    href={`/projects/${item.project_id}`}
+                                    className="font-medium text-purple-600 hover:text-purple-400"
+                                  >
+                                    {item.project_name_snapshot}
+                                  </Link>
+                                  <p className="text-xs text-gray-500">
+                                    {item.quantity} unidad{item.quantity === 1 ? '' : 'es'} · {formatAmount(item.unit_price)} € / unidad
+                                  </p>
+                                  {item.print_size_label_snapshot && (
+                                    <p className="text-xs text-gray-500">Tamaño: {item.print_size_label_snapshot}</p>
+                                  )}
+                                  {item.frame_name_snapshot && (
+                                    <p className="text-xs text-gray-500">Orientación: {item.orientation_snapshot}</p>
+                                  )}
+                                  {item.orientation_snapshot && (
+                                    <p className="text-xs text-gray-500">Marco decorativo: {item.frame_name_snapshot}</p>
+                                  )}
+                                  {item.aspect_name_snapshot && (
+                                    <p className="text-xs text-gray-500">Aspecto: {item.aspect_name_snapshot}</p>
+                                  )}
+                                  {item.effect_name_snapshot && (
+                                    <p className="text-xs text-gray-500">Efecto: {item.effect_name_snapshot}</p>
+                                  )}
+                                  {item.quality_label_snapshot && (
+                                    <p className="text-xs text-gray-500">Calidad de impresión: {item.quality_label_snapshot}</p>
+                                  )}
+                                  {item.number_pages_snapshot && (
+                                    <p className="text-xs text-gray-500">Número de páginas: {item.number_pages_snapshot}</p>
+                                  )}
+                                  {canSeePdf && (
+                                    <Link
+                                      href={item.pdf_snapshot!}
+                                      className="font-medium text-gray-900 text-green-600 hover:text-green-400"
+                                    >
+                                      Link PDF
+                                    </Link>
+                                  )}
+                                </div>
                               </div>
                               <span className="text-sm font-semibold text-gray-900">
                                 {formatAmount(parseFloat(item.unit_price) * item.quantity)} €

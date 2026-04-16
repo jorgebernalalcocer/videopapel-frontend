@@ -22,6 +22,10 @@ type ProjectPriceCardProps = {
   projectId: string | number
   projectName: string
   projectLink?: string
+  projectPreview?: {
+    image_url?: string | null
+    frame_time_ms?: number | null
+  } | null
   quantity: number
   totalPages: number
   unitPrice?: string | null
@@ -51,6 +55,7 @@ export function ProjectPriceCard({
   projectId,
   projectName,
   projectLink,
+  projectPreview,
   quantity,
   totalPages,
   unitPrice,
@@ -69,18 +74,42 @@ export function ProjectPriceCard({
   return (
     <div key={projectId} className={outerClass}>
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          {projectLink ? (
-            <Link href={projectLink} className="font-semibold text-purple-600 hover:text-purple-400">
-              {projectName}
+        <div className="flex min-w-0 flex-1 items-start gap-4">
+          {projectPreview?.image_url && projectLink ? (
+            <Link
+              href={projectLink}
+              className="block h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white"
+            >
+              <img
+                src={projectPreview.image_url}
+                alt={`Primer frame de ${projectName}`}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
             </Link>
-          ) : (
-            <p className="font-semibold text-gray-900">{projectName}</p>
-          )}
-          <p className="text-sm text-gray-600">
-            {quantity} unidad{quantity === 1 ? '' : 'es'} · {totalPages} página{totalPages === 1 ? '' : 's'}
-          </p>
-          {printSizeLabel && <p className="text-xs text-gray-500">Tamaño: {printSizeLabel}</p>}
+          ) : projectPreview?.image_url ? (
+            <div className="block h-20 w-20 shrink-0 overflow-hidden rounded-lg border border-gray-200 bg-white">
+              <img
+                src={projectPreview.image_url}
+                alt={`Primer frame de ${projectName}`}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
+            </div>
+          ) : null}
+          <div className="min-w-0">
+            {projectLink ? (
+              <Link href={projectLink} className="font-semibold text-purple-600 hover:text-purple-400">
+                {projectName}
+              </Link>
+            ) : (
+              <p className="font-semibold text-gray-900">{projectName}</p>
+            )}
+            <p className="text-sm text-gray-600">
+              {quantity} unidad{quantity === 1 ? '' : 'es'} · {totalPages} página{totalPages === 1 ? '' : 's'}
+            </p>
+            {printSizeLabel && <p className="text-xs text-gray-500">Tamaño: {printSizeLabel}</p>}
+          </div>
         </div>
         <div className="text-right">
           {lineTotalLabel && <p className="text-base font-semibold text-gray-900">{lineTotalLabel} €</p>}
