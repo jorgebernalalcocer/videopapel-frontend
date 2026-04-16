@@ -5,6 +5,7 @@ import { ArrowLeft, MessageCircle, CircleX, Crown, Eye, Facebook, Globe, Instagr
 import { toast } from 'sonner'
 
 import { apiFetch } from '@/lib/api'
+import GenerateQrShareButton from '@/components/GenerateQrShareButton'
 import { Modal } from '@/components/ui/Modal'
 import SelectPersonalize, { type SelectPersonalizeOption } from '@/components/SelectPersonalize'
 import { useAuth } from '@/store/auth'
@@ -39,6 +40,15 @@ type Invitation = {
   created_at: string
   expires_at: string | null
   accepted_at: string | null
+  share_via_qr?: boolean
+  qr_image?: string | null
+}
+
+type ShareQrResponse = {
+  detail: string
+  invitation: Invitation
+  invitation_url: string
+  qr_image_url: string
 }
 
 type MembershipResponse = {
@@ -106,6 +116,9 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
   const [updatingMembershipId, setUpdatingMembershipId] = useState<number | null>(null)
   const [deletingMembershipId, setDeletingMembershipId] = useState<number | null>(null)
   const [membersError, setMembersError] = useState<string | null>(null)
+  const [shareQrUrl, setShareQrUrl] = useState('')
+  const [shareInvitationUrl, setShareInvitationUrl] = useState('')
+  const [creatingShareQr, setCreatingShareQr] = useState(false)
   const stepOneInputRef = useRef<HTMLInputElement>(null)
   const stepTwoInputRef = useRef<HTMLInputElement>(null)
 
@@ -139,6 +152,8 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
     setMemberships([])
     setInvitations([])
     setMembersError(null)
+    setShareQrUrl('')
+    setShareInvitationUrl('')
 
     let cancelled = false
     const loadMemberships = async () => {
@@ -150,6 +165,12 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
         if (cancelled) return
         setMemberships(payload.memberships ?? [])
         setInvitations(payload.invitations ?? [])
+        const qrInvitation = (payload.invitations ?? []).find((invitation) => invitation.share_via_qr && invitation.qr_image)
+        if (qrInvitation?.qr_image) {
+          setShareQrUrl(qrInvitation.qr_image)
+          const invitationPath = resourceType === 'project' ? `/invitations/${qrInvitation.token}` : `/event-invitations/${qrInvitation.token}`
+          setShareInvitationUrl(typeof window === 'undefined' ? invitationPath : `${window.location.origin}${invitationPath}`)
+        }
         setIsPublic(Boolean(payload.is_public))
         setOwnerEmail(payload.owner_email ?? item.owner_email ?? '')
         setOwnerName(payload.owner_name ?? payload.owner_email ?? item.owner_name ?? item.owner_email ?? '')
@@ -300,6 +321,10 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
       if (!response.ok) throw new Error(extractErrorMessage(payload, 'No se pudo eliminar la invitación.'))
       setMemberships(Array.isArray(payload?.memberships) ? payload.memberships : [])
       setInvitations(Array.isArray(payload?.invitations) ? payload.invitations : [])
+      if (invitation.share_via_qr) {
+        setShareQrUrl('')
+        setShareInvitationUrl('')
+      }
       toast.success('Invitación eliminada correctamente.')
     } catch (error: any) {
       toast.error(error?.message || 'No se pudo eliminar la invitación.')
@@ -323,6 +348,40 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
     }
   }
 
+  const handleGenerateShareQr = async () => {
+    if (!canManageSharing) return
+    setCreatingShareQr(true)
+    try {
+      const response = await apiFetch(`/${resourceType}s/${item.id}/share-qr/`, {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+      })
+      const payload = (await response.json().catch(() => null)) as ShareQrResponse | null
+      if (!response.ok || !payload) throw new Error(extractErrorMessage(payload, 'No se pudo generar el QR de compartición.'))
+      setShareQrUrl(payload.qr_image_url)
+      setShareInvitationUrl(payload.invitation_url)
+      setInvitations((current) => {
+        const next = current.filter((invitation) => !invitation.share_via_qr)
+        return [...next, payload.invitation]
+      })
+      toast.success(payload.detail || 'QR de compartición generado correctamente.')
+    } catch (error: any) {
+      toast.error(error?.message || 'No se pudo generar el QR de compartición.')
+    } finally {
+      setCreatingShareQr(false)
+    }
+  }
+
+  const copyShareInvitationLink = async () => {
+    if (!shareInvitationUrl) return
+    try {
+      await navigator.clipboard.writeText(shareInvitationUrl)
+      toast.success('Enlace del QR copiado al portapapeles.')
+    } catch {
+      toast.error('No se pudo copiar el enlace del QR.')
+    }
+  }
+
   const shareOptions = [
     { name: 'Copiar enlace', icon: <LinkIcon className="h-5 w-5" />, action: copyLink, color: 'bg-purple-500 hover:bg-purple-600' },
     { name: 'Facebook', icon: <Facebook className="h-5 w-5" />, action: () => openShareWindow(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(itemUrl)}&quote=${encodeURIComponent(itemText)}`), color: 'bg-blue-600 hover:bg-blue-700' },
@@ -336,6 +395,7 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
     { value: false, icon: Users, title: `Solo tienen acceso las personas añadidas (${resourceLabelCaps} privado)`, description: `Solo las personas con acceso explícito al ${resourceLabel} pueden abrirlo.` },
     { value: true, icon: Globe, title: `Cualquier persona con el enlace (${resourceLabelCaps} público)`, description: `Cualquiera puede acceder al ${resourceLabel} desde el enlace sin iniciar sesión.` },
   ] as const
+  const standardInvitations = invitations.filter((invitation) => !invitation.share_via_qr)
 
   return (
     <Modal open={Boolean(item)} onClose={onClose} title={`Compartir ${resourceLabel}`} size="lg">
@@ -401,7 +461,7 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
                   )
                 })}
 
-                {invitations.map((invitation) => (
+                {standardInvitations.map((invitation) => (
                   <div key={invitation.token} className="flex items-center gap-3 rounded-2xl border border-dashed border-gray-200 px-4 py-3">
                     <div className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold text-white ${avatarColorFor(invitation.email)}`}>{emailInitial(invitation.email)}</div>
                     <div className="min-w-0 flex-1">
@@ -422,6 +482,22 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
                   </div>
                 ))}
               </div>
+            </section>
+
+            <section className="space-y-4">
+              <p className="text-sm font-semibold text-gray-900">Compartir en proximidad con QR</p>
+              <GenerateQrShareButton onClick={() => void handleGenerateShareQr()} disabled={!canManageSharing} loading={creatingShareQr} />
+              {shareQrUrl && (
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4">
+                  <img src={shareQrUrl} alt={`QR de compartición del ${resourceLabel}`} className="mx-auto h-52 w-52 rounded-xl border border-gray-200 bg-white p-3" />
+                  <p className="mt-3 text-sm text-gray-600">
+                    Quien escanee este QR y acepte la invitación con su sesión iniciada obtendrá permisos de edición en este {resourceLabel}.
+                  </p>
+                  <button type="button" onClick={() => void copyShareInvitationLink()} className="mt-3 rounded-xl bg-black px-3 py-2 text-sm font-medium text-white transition hover:bg-gray-800">
+                    Copiar enlace del QR
+                  </button>
+                </div>
+              )}
             </section>
 
             <section className="space-y-4">

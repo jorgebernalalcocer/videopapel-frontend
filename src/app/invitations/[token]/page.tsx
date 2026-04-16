@@ -94,7 +94,7 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
   if (!invitation) return null
 
   const requiresLogin = !accessToken
-  const emailMismatch = Boolean(user?.email) && user?.email?.toLowerCase() !== invitation.email.toLowerCase()
+  const emailMismatch = !invitation.share_via_qr && Boolean(user?.email) && user?.email?.toLowerCase() !== invitation.email.toLowerCase()
 
   return (
     <main className="mx-auto flex min-h-screen max-w-xl items-center justify-center px-6 py-16">
@@ -102,8 +102,15 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
         <p className="text-xs font-semibold uppercase tracking-[0.25em] text-gray-500">Papel Video</p>
         <h1 className="mt-3 text-3xl font-semibold text-gray-900">Invitación a proyecto</h1>
         <p className="mt-4 text-sm text-gray-600">
-          <strong>{invitation.email}</strong> te ha dado acceso al proyecto <strong>{invitation.project.name || invitation.project.id}</strong> con permiso de{' '}
-          <strong>{invitation.role_label}</strong>.
+          {invitation.share_via_qr ? (
+            <>
+              Al aceptar esta invitación obtendrás acceso al proyecto <strong>{invitation.project.name || invitation.project.id}</strong> con permiso de <strong>{invitation.role_label}</strong>.
+            </>
+          ) : (
+            <>
+              <strong>{invitation.email}</strong> te ha dado acceso al proyecto <strong>{invitation.project.name || invitation.project.id}</strong> con permiso de <strong>{invitation.role_label}</strong>.
+            </>
+          )}
         </p>
         {/* <p className="mt-2 text-sm text-gray-600">
           Email invitado: <strong>{invitation.email}</strong>
@@ -123,7 +130,11 @@ export default function InvitationPage({ params }: { params: Promise<{ token: st
 
         {requiresLogin && !invitation.is_expired && !invitation.is_accepted && (
           <div className="mt-6 rounded-2xl bg-amber-50 px-4 py-4 text-sm text-amber-800">
-            Inicia sesión o registrate con <strong>{invitation.email}</strong> para aceptar la invitación.
+            {invitation.share_via_qr ? (
+              <>Inicia sesión o registrate para aceptar esta invitación QR.</>
+            ) : (
+              <>Inicia sesión o registrate con <strong>{invitation.email}</strong> para aceptar la invitación.</>
+            )}
             <div className="mt-3">
               <Link href="/login" className="font-semibold text-amber-900 underline">
                 Ir a iniciar sesión

@@ -9,6 +9,7 @@ export type InvitationDetail = {
   role_label: string
   is_expired: boolean
   is_accepted: boolean
+  share_via_qr: boolean
   project: {
     id: string
     name: string | null
