@@ -4,14 +4,35 @@ import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 import { loadThumbsFromIndexedDb, saveThumbsToIndexedDb } from '@/utils/thumbsIndexedDb'
 import { buildSig, loadThumbsFromCache, saveThumbsToCache, Thumbnail } from '@/utils/thumbCache'
 
+type InsertedImageLayout = {
+  id: number
+  image_url: string
+  offset_x_pct: number
+  offset_y_pct: number
+  width_pct: number
+  height_pct: number
+}
+
+type BackendThumb = {
+  t: number
+  url: string
+  baseUrl: string
+  insertedImage: InsertedImageLayout | null
+}
+
 export type ClipState = {
   clipId: number; videoSrc: string; durationMs: number; frames: number[];
-  thumbnails?: { image_url?: string | null; frame_time_ms?: number | null }[];
+  thumbnails?: {
+    image_url?: string | null
+    base_image_url?: string | null
+    frame_time_ms?: number | null
+    inserted_image?: InsertedImageLayout | null
+  }[];
   timeStartMs?: number; timeEndMs?: number
 }
 
 export type CombinedThumb = {
-  id: string; clipId: number; tLocal: number; tGlobal: number; videoSrc: string; url?: string
+  id: string; clipId: number; tLocal: number; tGlobal: number; videoSrc: string; url?: string; baseUrl?: string; insertedImage?: InsertedImageLayout | null
 }
 
 const BASE_GRID_DENSITY = 8
@@ -111,7 +132,7 @@ export function useCombinedThumbs(params: {
           })
 
           const indexedDbThumbs = await loadThumbsFromIndexedDb(projectId, c.clipId, sig)
-          let items = indexedDbThumbs ?? loadThumbsFromCache(projectId, c.clipId, sig)
+          let items: Array<Thumbnail | BackendThumb> | null = indexedDbThumbs ?? loadThumbsFromCache(projectId, c.clipId, sig)
 
           const backendFramesRaw = Array.isArray(c.frames)
             ? c.frames
@@ -124,7 +145,7 @@ export function useCombinedThumbs(params: {
             ? snapTimesToGrid(backendFramesRaw, stepMs, c.durationMs)
             : []
 
-          const backendThumbnails = Array.isArray(c.thumbnails)
+          const backendThumbnails: BackendThumb[] = Array.isArray(c.thumbnails)
             ? c.thumbnails
                 .map((thumb) => {
                     const t = Number(thumb?.frame_time_ms ?? 0)
@@ -132,9 +153,11 @@ export function useCombinedThumbs(params: {
                     return {
                     t: Math.max(0, Math.min(c.durationMs, Math.round(t))),
                     url: thumb?.image_url ?? '',
+                    baseUrl: thumb?.base_image_url ?? thumb?.image_url ?? '',
+                    insertedImage: thumb?.inserted_image ?? null,
                   }
                 })
-                .filter((entry): entry is { t: number; url: string } => Boolean(entry))
+                .filter((entry): entry is BackendThumb => entry !== null)
                 .sort((a, b) => a.t - b.t)
             : []
 
@@ -145,8 +168,8 @@ export function useCombinedThumbs(params: {
               sample: backendThumbnails.slice(0, 4),
             })
             items = backendThumbnails
-            saveThumbsToCache(projectId, c.clipId, sig, backendThumbnails)
-            await saveThumbsToIndexedDb(projectId, c.clipId, sig, backendThumbnails)
+            saveThumbsToCache(projectId, c.clipId, sig, backendThumbnails.map(({ t, url }) => ({ t, url })))
+            await saveThumbsToIndexedDb(projectId, c.clipId, sig, backendThumbnails.map(({ t, url }) => ({ t, url })))
           } else {
             console.log('[useCombinedThumbs] sin thumbnails backend', { clipId: c.clipId })
           }
@@ -187,13 +210,15 @@ export function useCombinedThumbs(params: {
             }
           }
 
-          const merged: CombinedThumb[] = items.map(({ t, url }) => ({
-            id: `${c.clipId}:${t}`,
+          const merged: CombinedThumb[] = items.map((item) => ({
+            id: `${c.clipId}:${item.t}`,
             clipId: c.clipId,
-            tLocal: t,
-            tGlobal: (t - start) + offset,
+            tLocal: item.t,
+            tGlobal: (item.t - start) + offset,
             videoSrc: c.videoSrc,
-            url,
+            url: item.url,
+            baseUrl: 'baseUrl' in item ? item.baseUrl : item.url,
+            insertedImage: 'insertedImage' in item ? item.insertedImage : null,
           }))
 
           perClip.push(merged)

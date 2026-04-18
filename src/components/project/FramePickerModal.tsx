@@ -8,8 +8,17 @@ export type FramePickerItem = {
   clipId: number
   frameTimeMs: number
   imageUrl: string | null
+  baseImageUrl?: string | null
   videoUrl: string | null
   clipPosition?: number | null
+  insertedImage?: {
+    id: number
+    image_url: string
+    offset_x_pct: number
+    offset_y_pct: number
+    width_pct: number
+    height_pct: number
+  } | null
 }
 
 type FramePickerModalProps = {
@@ -23,16 +32,17 @@ type FramePickerModalProps = {
 
 function FramePreview({ item }: { item: FramePickerItem }) {
   const [aspectRatio, setAspectRatio] = useState<number>(16 / 9)
+  const baseSrc = item.baseImageUrl ?? item.imageUrl
 
   return (
     <div
-      className="bg-black w-full"
+      className="bg-black w-full relative overflow-hidden"
       style={{ aspectRatio: `${aspectRatio}` }}
     >
-      {item.imageUrl ? (
+      {baseSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={item.imageUrl}
+          src={baseSrc}
           alt={`Frame ${item.frameTimeMs}ms`}
           className="w-full h-full object-contain"
           onLoad={(event) => {
@@ -46,6 +56,21 @@ function FramePreview({ item }: { item: FramePickerItem }) {
         <div className="w-full h-full grid place-items-center text-white text-xs">
           Clip {item.clipPosition ?? item.clipId} · {item.frameTimeMs}ms
         </div>
+      )}
+      {item.insertedImage && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.insertedImage.image_url}
+          alt=""
+          className="absolute object-contain pointer-events-none"
+          style={{
+            left: `${item.insertedImage.offset_x_pct * 100}%`,
+            top: `${item.insertedImage.offset_y_pct * 100}%`,
+            width: `${item.insertedImage.width_pct * 100}%`,
+            height: `${item.insertedImage.height_pct * 100}%`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
       )}
     </div>
   )

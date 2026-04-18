@@ -37,7 +37,19 @@ type ClipState = {
   videoSrc: string
   durationMs: number
   frames: number[]
-  thumbnails?: { image_url: string; frame_time_ms: number }[] // 👈 miniaturas del backend
+  thumbnails?: {
+    image_url: string
+    base_image_url?: string | null
+    frame_time_ms: number
+    inserted_image?: {
+      id: number
+      image_url: string
+      offset_x_pct: number
+      offset_y_pct: number
+      width_pct: number
+      height_pct: number
+    } | null
+  }[]
   timeStartMs?: number
   timeEndMs?: number
 }
@@ -241,6 +253,54 @@ const currentThumb = useMemo(() => {
   const idx = nearestIndex(visibleThumbs.map(t => t.tGlobal), selectedGlobalMs)
   return visibleThumbs[idx] ?? null
 }, [visibleThumbs, selectedId, selectedGlobalMs])
+
+  const handleSaveInsertedImageLayout = useCallback(async (payload: {
+    id: number
+    offset_x_pct: number
+    offset_y_pct: number
+    width_pct: number
+    height_pct: number
+  }) => {
+    if (!accessToken) {
+      toast.error('Debes iniciar sesión para guardar la imagen insertada.')
+      return
+    }
+    const res = await fetch(`${apiBase}/projects/${projectId}/images/${payload.id}/`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) {
+      const msg = await res.text()
+      throw new Error(msg || 'No se pudo guardar la imagen insertada.')
+    }
+    onFrameChange?.()
+    toast.success('Imagen actualizada.')
+  }, [accessToken, apiBase, projectId, onFrameChange])
+
+  const handleDeleteInsertedImage = useCallback(async (imageId: number) => {
+    if (!accessToken) {
+      toast.error('Debes iniciar sesión para borrar la imagen insertada.')
+      return
+    }
+    const res = await fetch(`${apiBase}/projects/${projectId}/images/${imageId}/`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      credentials: 'include',
+    })
+    if (!res.ok) {
+      const msg = await res.text()
+      throw new Error(msg || 'No se pudo borrar la imagen insertada.')
+    }
+    onFrameChange?.()
+    toast.success('Imagen eliminada.')
+  }, [accessToken, apiBase, projectId, onFrameChange])
 
 
   // Textos del proyecto
@@ -717,6 +777,8 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
     videoSrc: currentThumb.videoSrc,
     tLocal: currentThumb.tLocal,
     previewUrl: currentThumb.url ?? undefined,
+    basePreviewUrl: currentThumb.baseUrl ?? currentThumb.url ?? undefined,
+    insertedImage: currentThumb.insertedImage ?? null,
   } : null}
   generating={generating}
   isCacheLoaded={isCacheLoaded}
@@ -737,6 +799,8 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   isCoverPhoto={isCurrentCoverFrame}
   onOpenCover={onOpenCover}
   showViewerControls
+  onSaveInsertedImageLayout={handleSaveInsertedImageLayout}
+  onDeleteInsertedImage={handleDeleteInsertedImage}
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton
@@ -920,6 +984,8 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
               videoSrc: currentThumb.videoSrc,
               tLocal: currentThumb.tLocal,
               previewUrl: currentThumb.url ?? undefined,
+              basePreviewUrl: currentThumb.baseUrl ?? currentThumb.url ?? undefined,
+              insertedImage: currentThumb.insertedImage ?? null,
             } : null}
             generating={generating}
             isCacheLoaded={isCacheLoaded}
@@ -942,6 +1008,8 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
             showViewerControls={false}
             forceFull
             isPresentation
+            onSaveInsertedImageLayout={handleSaveInsertedImageLayout}
+            onDeleteInsertedImage={handleDeleteInsertedImage}
           />
           <div className="absolute bottom-6 left-0 right-0 z-[130] px-6">
             <div className="flex items-center justify-between">
@@ -980,7 +1048,7 @@ function scrollThumbIntoView(combinedId: string) {
   el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' })
 }
 
-function applyDensityToThumbs(thumbs: { id?: string; tGlobal: number }[], density: number) {
+function applyDensityToThumbs<T extends { id: string; tGlobal: number }>(thumbs: T[], density: number): T[] {
   const d = Math.max(1, Math.round(density || 1))
   if (thumbs.length <= d) return thumbs
 

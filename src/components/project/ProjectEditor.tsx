@@ -55,8 +55,16 @@ import { Modal } from "@/components/ui/Modal";
 
 type ClipThumbnail = {
   image_url: string;
+  base_image_url?: string | null;
   frame_time_ms: number;
-  inserted_image_id?: number | null;
+  inserted_image?: {
+    id: number;
+    image_url: string;
+    offset_x_pct: number;
+    offset_y_pct: number;
+    width_pct: number;
+    height_pct: number;
+  } | null;
 };
 
 type ProjectClipPayload = {
@@ -505,7 +513,9 @@ export default function ProjectEditor({
           clipPosition: clip.position ?? null,
           frameTimeMs: thumb.frame_time_ms,
           imageUrl: thumb.image_url ?? null,
+          baseImageUrl: thumb.base_image_url ?? thumb.image_url ?? null,
           videoUrl: clip.video_url ?? null,
+          insertedImage: thumb.inserted_image ?? null,
         });
       }
     }
@@ -1009,7 +1019,7 @@ export default function ProjectEditor({
                   durationMs:
                     (c.time_end_ms ?? c.duration_ms) - (c.time_start_ms ?? 0),
                   frames: c.frames ?? [],
-                  thumbnails: c.thumbnails ?? [], // 👈 NUEVO: pasamos thumbnails al canvas
+                      thumbnails: c.thumbnails ?? [], // 👈 NUEVO: pasamos thumbnails al canvas
                   timeStartMs: c.time_start_ms ?? 0,
                   timeEndMs: c.time_end_ms ?? c.duration_ms,
                 }))}
@@ -1045,7 +1055,10 @@ export default function ProjectEditor({
                     };
                   });
                 }}
-                onFrameChange={() => void fetchProject()}
+                onFrameChange={() => {
+                  void fetchProject();
+                  void fetchClips();
+                }}
                 playbackFps={2}
                 onChange={() => {}}
                 onInsertVideo={() => {

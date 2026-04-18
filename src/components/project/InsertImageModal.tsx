@@ -14,7 +14,7 @@ type InsertImageModalProps = {
 }
 
 function FramePreview({ item }: { item: FramePickerItem }) {
-  const src = item.imageUrl ?? item.videoUrl ?? null
+  const src = item.baseImageUrl ?? item.imageUrl ?? item.videoUrl ?? null
 
   if (!src) {
     return (
@@ -25,12 +25,29 @@ function FramePreview({ item }: { item: FramePickerItem }) {
   }
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={`Frame ${(item.frameTimeMs / 1000).toFixed(2)}s`}
-      className="aspect-video w-full object-contain bg-black"
-    />
+    <div className="relative aspect-video w-full overflow-hidden bg-black">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`Frame ${(item.frameTimeMs / 1000).toFixed(2)}s`}
+        className="h-full w-full object-contain"
+      />
+      {item.insertedImage && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={item.insertedImage.image_url}
+          alt=""
+          className="absolute object-contain pointer-events-none"
+          style={{
+            left: `${item.insertedImage.offset_x_pct * 100}%`,
+            top: `${item.insertedImage.offset_y_pct * 100}%`,
+            width: `${item.insertedImage.width_pct * 100}%`,
+            height: `${item.insertedImage.height_pct * 100}%`,
+            transform: 'translate(-50%, -50%)',
+          }}
+        />
+      )}
+    </div>
   )
 }
 

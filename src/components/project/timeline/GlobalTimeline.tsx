@@ -7,8 +7,17 @@ import { Scissors, Type } from 'lucide-react'
 export type TimelineItem = {
   id: string
   url?: string
+  baseUrl?: string
   imageUrl?: string
   image_url?: string
+  insertedImage?: {
+    id: number
+    image_url: string
+    offset_x_pct: number
+    offset_y_pct: number
+    width_pct: number
+    height_pct: number
+  } | null
   tGlobal: number
 }
 export default function GlobalTimeline(props: {
@@ -43,7 +52,7 @@ export default function GlobalTimeline(props: {
           ) : (
             items.map((it) => {
               const selected = it.id === selectedId
-              const previewUrl = it.url ?? it.imageUrl ?? it.image_url
+              const previewUrl = it.baseUrl ?? it.url ?? it.imageUrl ?? it.image_url
               const hasText = textPresence?.get(it.id)
               const isMarkedForCut = markedForCutIds?.has(it.id) ?? false
               return (
@@ -56,14 +65,31 @@ export default function GlobalTimeline(props: {
                     }`}
                   >
                     {previewUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={previewUrl}
-                        alt={`Frame ${formatTime(it.tGlobal)}`}
-                        height={thumbnailHeight}
-                        className="block"
-                        style={{ height: thumbnailHeight, width: 'auto' }}
-                      />
+                      <div className="relative overflow-hidden bg-black" style={{ height: thumbnailHeight }}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={previewUrl}
+                          alt={`Frame ${formatTime(it.tGlobal)}`}
+                          height={thumbnailHeight}
+                          className="block"
+                          style={{ height: thumbnailHeight, width: 'auto' }}
+                        />
+                        {it.insertedImage && (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={it.insertedImage.image_url}
+                            alt=""
+                            className="absolute object-contain pointer-events-none"
+                            style={{
+                              left: `${it.insertedImage.offset_x_pct * 100}%`,
+                              top: `${it.insertedImage.offset_y_pct * 100}%`,
+                              width: `${it.insertedImage.width_pct * 100}%`,
+                              height: `${it.insertedImage.height_pct * 100}%`,
+                              transform: 'translate(-50%, -50%)',
+                            }}
+                          />
+                        )}
+                      </div>
                     ) : (
                       <div
                         className="bg-gray-100 grid place-items-center text-xs text-gray-500"

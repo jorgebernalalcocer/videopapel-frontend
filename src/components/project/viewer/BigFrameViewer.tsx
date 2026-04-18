@@ -50,7 +50,20 @@ type PrintOverlay =
     }
 
 export default function BigFrameViewer(props: {
-  current?: { videoSrc: string; tLocal: number; previewUrl?: string } | null
+  current?: {
+    videoSrc: string
+    tLocal: number
+    previewUrl?: string
+    basePreviewUrl?: string
+    insertedImage?: {
+      id: number
+      image_url: string
+      offset_x_pct: number
+      offset_y_pct: number
+      width_pct: number
+      height_pct: number
+    } | null
+  } | null
   generating: boolean
   isCacheLoaded: boolean
   activeTextFrames: ActiveTextItem[]
@@ -75,6 +88,8 @@ export default function BigFrameViewer(props: {
   showViewerControls?: boolean
   forceFull?: boolean
   isPresentation?: boolean
+  onSaveInsertedImageLayout?: (payload: { id: number; offset_x_pct: number; offset_y_pct: number; width_pct: number; height_pct: number }) => void | Promise<void>
+  onDeleteInsertedImage?: (imageId: number) => void | Promise<void>
 }) {
   const {
     current,
@@ -102,6 +117,8 @@ export default function BigFrameViewer(props: {
     showViewerControls = true,
     forceFull = false,
     isPresentation = false,
+    onSaveInsertedImageLayout,
+    onDeleteInsertedImage,
   } = props
 
   // 👇 te faltaban estos
@@ -114,11 +131,40 @@ export default function BigFrameViewer(props: {
   const [flash, setFlash] = useState(false)
   const [showPrintArea, setShowPrintArea] = useState(true)
   const [printFrame, setPrintFrame] = useState<{ width: number; height: number } | null>(null)
+  const [imageEditMode, setImageEditMode] = useState(false)
+  const [imageLayout, setImageLayout] = useState(() => ({
+    offset_x_pct: 0.5,
+    offset_y_pct: 0.5,
+    width_pct: 0.5,
+    height_pct: 0.5,
+  }))
+  const [insertedImageNaturalSize, setInsertedImageNaturalSize] = useState<{ width: number; height: number } | null>(null)
   const activeFrameSetting =
     frameSetting && Array.isArray(frameSetting.positions) && frameSetting.positions.length
       ? frameSetting
       : null
   const qualityDpi = printQualityDpi ?? printQualityPpi ?? null
+
+  useEffect(() => {
+    const inserted = current?.insertedImage
+    if (!inserted) {
+      setImageEditMode(false)
+      return
+    }
+    setImageLayout({
+      offset_x_pct: inserted.offset_x_pct,
+      offset_y_pct: inserted.offset_y_pct,
+      width_pct: inserted.width_pct,
+      height_pct: inserted.height_pct,
+    })
+    setImageEditMode(false)
+  }, [
+    current?.insertedImage?.id,
+    current?.insertedImage?.offset_x_pct,
+    current?.insertedImage?.offset_y_pct,
+    current?.insertedImage?.width_pct,
+    current?.insertedImage?.height_pct,
+  ])
 
   useEffect(() => {
     ;(async () => {
@@ -133,7 +179,7 @@ export default function BigFrameViewer(props: {
       setPaintError(false)
       setFlash(true)
 
-      const previewSrc = current.previewUrl
+      const previewSrc = current.basePreviewUrl ?? current.previewUrl
 
       const tryPaintPreview = async () => {
         if (!previewSrc) return false
@@ -247,7 +293,7 @@ export default function BigFrameViewer(props: {
         innerHeight: imgH,
         marginX,
         marginY,
-        shadow: undefined as string | undefined,
+        shadow: undefined,
       }
     }
 
@@ -280,6 +326,95 @@ export default function BigFrameViewer(props: {
   useEffect(() => {
     if (forceFull) setIsFull(true)
   }, [forceFull])
+
+  const insertedImage = current?.insertedImage ?? null
+
+  const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
+
+  const updateLayout = (partial: Partial<typeof imageLayout>) => {
+    setImageLayout((prev) => {
+      const next = { ...prev, ...partial }
+      return {
+        offset_x_pct: clamp(next.offset_x_pct, 0, 1),
+        offset_y_pct: clamp(next.offset_y_pct, 0, 1),
+        width_pct: clamp(next.width_pct, 0.02, 1),
+        height_pct: clamp(next.height_pct, 0.02, 1),
+      }
+    })
+  }
+
+  const handleOverlayPointerDown = (
+    event: React.PointerEvent<HTMLElement>,
+    mode: 'move' | 'resize-nw' | 'resize-ne' | 'resize-sw' | 'resize-se',
+  ) => {
+    if (!imageEditMode || !wrapperRef.current || !printFrame) return
+    event.preventDefault()
+    event.stopPropagation()
+    const target = event.currentTarget
+    target.setPointerCapture(event.pointerId)
+    const startX = event.clientX
+    const startY = event.clientY
+    const start = { ...imageLayout }
+    const frameWidth = printFrame.width
+    const frameHeight = printFrame.height
+
+    const onMove = (moveEvent: PointerEvent) => {
+      const dxPct = (moveEvent.clientX - startX) / frameWidth
+      const dyPct = (moveEvent.clientY - startY) / frameHeight
+
+      if (mode === 'move') {
+        updateLayout({
+          offset_x_pct: start.offset_x_pct + dxPct,
+          offset_y_pct: start.offset_y_pct + dyPct,
+        })
+        return
+      }
+
+      const xSign = mode.includes('e') ? 1 : -1
+      const ySign = mode.includes('s') ? 1 : -1
+      updateLayout({
+        width_pct: start.width_pct + dxPct * xSign,
+        height_pct: start.height_pct + dyPct * ySign,
+      })
+    }
+
+    const onUp = () => {
+      target.releasePointerCapture(event.pointerId)
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+  }
+
+  const handleForceExpand = () => {
+    if (!printFrame || !insertedImageNaturalSize) return
+
+    const frameRatio = printFrame.width / printFrame.height
+    const imageRatio = insertedImageNaturalSize.width / insertedImageNaturalSize.height
+    if (!Number.isFinite(frameRatio) || !Number.isFinite(imageRatio) || frameRatio <= 0 || imageRatio <= 0) {
+      return
+    }
+
+    let widthPct = 1
+    let heightPct = 1
+
+    if (imageRatio >= frameRatio) {
+      heightPct = 1
+      widthPct = imageRatio / frameRatio
+    } else {
+      widthPct = 1
+      heightPct = frameRatio / imageRatio
+    }
+
+    setImageLayout({
+      offset_x_pct: 0.5,
+      offset_y_pct: 0.5,
+      width_pct: widthPct,
+      height_pct: heightPct,
+    })
+  }
 
   return (
     <div className={clsx(
@@ -325,14 +460,122 @@ export default function BigFrameViewer(props: {
             style={{ display: paintError ? 'none' : 'block' }}
           />
         </ApplyEffect>
+        {printFrame && insertedImage && (
+          <div
+            className="absolute z-0"
+            style={{
+              left: '50%',
+              top: '50%',
+              width: `${printFrame.width}px`,
+              height: `${printFrame.height}px`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <div
+              className={clsx(
+                'absolute',
+                imageEditMode ? 'cursor-move' : 'pointer-events-none',
+              )}
+              style={{
+                left: `${imageLayout.offset_x_pct * 100}%`,
+                top: `${imageLayout.offset_y_pct * 100}%`,
+                width: `${imageLayout.width_pct * 100}%`,
+                height: `${imageLayout.height_pct * 100}%`,
+                transform: 'translate(-50%, -50%)',
+              }}
+              onPointerDown={(event) => handleOverlayPointerDown(event, 'move')}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={insertedImage.image_url}
+                alt=""
+                className="h-full w-full object-contain select-none"
+                draggable={false}
+                onLoad={(event) => {
+                  const { naturalWidth, naturalHeight } = event.currentTarget
+                  if (naturalWidth > 0 && naturalHeight > 0) {
+                    setInsertedImageNaturalSize({ width: naturalWidth, height: naturalHeight })
+                  }
+                }}
+              />
+
+              {!imageEditMode && !isPresentation && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
+                  <button
+                    type="button"
+                    onClick={() => setImageEditMode(true)}
+                    className="rounded-lg bg-black/70 px-4 py-2 text-sm font-medium text-white hover:bg-black/80"
+                  >
+                    Editar imagen
+                  </button>
+                </div>
+              )}
+
+              {imageEditMode && !isPresentation && (
+                <>
+                  <div className="absolute inset-0 border-2 border-white/80" />
+                  {([
+                    ['resize-nw', 'left-0 top-0 -translate-x-1/2 -translate-y-1/2'],
+                    ['resize-ne', 'right-0 top-0 translate-x-1/2 -translate-y-1/2'],
+                    ['resize-sw', 'left-0 bottom-0 -translate-x-1/2 translate-y-1/2'],
+                    ['resize-se', 'right-0 bottom-0 translate-x-1/2 translate-y-1/2'],
+                  ] as const).map(([mode, className]) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onPointerDown={(event) => handleOverlayPointerDown(event, mode)}
+                      className={clsx('absolute h-4 w-4 rounded-full border-2 border-black bg-white', className)}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+
+            {imageEditMode && !isPresentation && (
+              <div className="absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleForceExpand}
+                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
+                >
+                  Forzar expansión
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!insertedImage || !onSaveInsertedImageLayout) return
+                    await onSaveInsertedImageLayout({ id: insertedImage.id, ...imageLayout })
+                    setImageEditMode(false)
+                  }}
+                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+                >
+                  Guardar cambios
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!insertedImage || !onDeleteInsertedImage) return
+                    await onDeleteInsertedImage(insertedImage.id)
+                    setImageEditMode(false)
+                  }}
+                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                >
+                  Borrar imagen
+                </button>
+              </div>
+            )}
+          </div>
+        )}
         {activeFrameSetting && !showPrintArea && !paintError && printFrame && (
-          <FrameStyleOverlay
-            setting={activeFrameSetting}
-            dimensions={printFrame}
-            printWidthMm={printWidthMm}
-            printHeightMm={printHeightMm}
-            printQualityDpi={qualityDpi ?? undefined}
-          />
+          <div className="absolute inset-0 z-30 pointer-events-none">
+            <FrameStyleOverlay
+              setting={activeFrameSetting}
+              dimensions={printFrame}
+              printWidthMm={printWidthMm}
+              printHeightMm={printHeightMm}
+              printQualityDpi={qualityDpi ?? undefined}
+            />
+          </div>
         )}
         {showPrintArea && !paintError && printOverlay && (
           <div
@@ -369,22 +612,26 @@ export default function BigFrameViewer(props: {
                       transform: 'translate(-50%, -50%)',
                     }}
                   >
+                    <div className="absolute inset-0 z-30 pointer-events-none">
+                      <FrameStyleOverlay
+                        setting={activeFrameSetting}
+                        dimensions={{ width: printOverlay.innerWidth, height: printOverlay.innerHeight }}
+                        printWidthMm={printWidthMm}
+                        printHeightMm={printHeightMm}
+                        printQualityDpi={qualityDpi ?? undefined}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 z-30 pointer-events-none">
                     <FrameStyleOverlay
                       setting={activeFrameSetting}
-                      dimensions={{ width: printOverlay.innerWidth, height: printOverlay.innerHeight }}
+                      dimensions={{ width: printOverlay.width, height: printOverlay.height }}
                       printWidthMm={printWidthMm}
                       printHeightMm={printHeightMm}
                       printQualityDpi={qualityDpi ?? undefined}
                     />
                   </div>
-                ) : (
-                  <FrameStyleOverlay
-                    setting={activeFrameSetting}
-                    dimensions={{ width: printOverlay.width, height: printOverlay.height }}
-                    printWidthMm={printWidthMm}
-                    printHeightMm={printHeightMm}
-                    printQualityDpi={qualityDpi ?? undefined}
-                  />
                 )
               )}
               {printOverlay.mode === 'fit' && printOverlay.innerWidth && printOverlay.innerHeight && (
@@ -444,31 +691,32 @@ export default function BigFrameViewer(props: {
 
       {/* Capa de textos arrastrables (solo si no hay error) */}
       {!paintError && (
-        <TextOverlayLayer
-          wrapperRef={wrapperRef}
-          canvasRef={canvasRef}
-          items={activeTextFrames.map((tf) => ({
-            id: tf.id,
-            textId: tf.text_id,
-            content: tf.content,
-            typography: tf.typography ?? null,
-            font_size: tf.font_size ?? null,
-            color_hex: tf.color_hex ?? null,
-            text_background_enabled: tf.text_background_enabled ?? null,
-            text_background_style: tf.text_background_style ?? null,
-            text_background_color_hex: tf.text_background_color_hex ?? null,
-            x: Number(tf.position_x ?? 0.5),
-            y: Number(tf.position_y ?? 0.5),
-          }))}
-          // la actualización se gestiona desde el padre con su callback propio; aquí no hacemos nada
-          onLocalPositionChange={onPositionChange}
-          getLinkedOverlayIds={getLinkedOverlayIds}
-          onDeleteText={onDeleteText}
-          apiBase={apiBase}
-          accessToken={accessToken}
-          disabled={generating || !isCacheLoaded}
-          onEdit={onEditText}
-        />
+        <div className="absolute inset-0 z-40">
+          <TextOverlayLayer
+            wrapperRef={wrapperRef as React.RefObject<HTMLDivElement>}
+            canvasRef={canvasRef as React.RefObject<HTMLCanvasElement>}
+            items={activeTextFrames.map((tf) => ({
+              id: tf.id,
+              textId: tf.text_id,
+              content: tf.content,
+              typography: tf.typography ?? null,
+              font_size: tf.font_size ?? null,
+              color_hex: tf.color_hex ?? null,
+              text_background_enabled: tf.text_background_enabled ?? null,
+              text_background_style: tf.text_background_style ?? null,
+              text_background_color_hex: tf.text_background_color_hex ?? null,
+              x: Number(tf.position_x ?? 0.5),
+              y: Number(tf.position_y ?? 0.5),
+            }))}
+            onLocalPositionChange={onPositionChange}
+            getLinkedOverlayIds={getLinkedOverlayIds}
+            onDeleteText={onDeleteText}
+            apiBase={apiBase}
+            accessToken={accessToken}
+            disabled={generating || !isCacheLoaded}
+            onEdit={onEditText}
+          />
+        </div>
       )}
 
       {/* flash parpadeante ejecto pasar pagina */}
