@@ -13,6 +13,7 @@ type PickerSelectorProps<T extends { id: string | number }> = {
   onConfirm: () => void | Promise<void>
   confirmLabel?: string
   confirmBusyLabel?: string
+  confirmDisabled?: boolean
   busy?: boolean
   loading?: boolean
   error?: string | null
@@ -31,6 +32,7 @@ export default function PickerSelector<T extends { id: string | number }>({
   onConfirm,
   confirmLabel = 'Confirmar',
   confirmBusyLabel,
+  confirmDisabled = false,
   busy = false,
   loading = false,
   error,
@@ -57,7 +59,7 @@ export default function PickerSelector<T extends { id: string | number }>({
             </button>
             <button
               type="button"
-              disabled={!selectedItem || loading || busy}
+              disabled={!selectedItem || loading || busy || confirmDisabled}
               className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               onClick={() => {
                 void onConfirm()

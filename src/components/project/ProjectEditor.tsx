@@ -12,6 +12,7 @@ import VideoPickerModal, {
 import FramePickerModal, {
   type FramePickerItem,
 } from "@/components/project/FramePickerModal";
+import InsertImageModal from "@/components/project/InsertImageModal";
 import QualitySelector from "@/components/project/QualitySelector";
 import PrintQualityBadge from "@/components/project/PrintQualityBadge";
 import SizeSelector from "@/components/project/SizeSelector";
@@ -55,6 +56,7 @@ import { Modal } from "@/components/ui/Modal";
 type ClipThumbnail = {
   image_url: string;
   frame_time_ms: number;
+  inserted_image_id?: number | null;
 };
 
 type ProjectClipPayload = {
@@ -193,10 +195,13 @@ export default function ProjectEditor({
   const [pickerOpen, setPickerOpen] = useState(false);
   const [effectsModalOpen, setEffectsModalOpen] = useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
+  const [insertImageOpen, setInsertImageOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
+  const [insertImageError, setInsertImageError] = useState<string | null>(null);
   const [creatingClip, setCreatingClip] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
+  const [insertImageBusy, setInsertImageBusy] = useState(false);
   const [editTitleOpen, setEditTitleOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [advancedPdfModalOpen, setAdvancedPdfModalOpen] = useState(false);
@@ -620,6 +625,82 @@ export default function ProjectEditor({
     [API_BASE, accessToken, isInteractionDisabled, projectId],
   );
 
+  const handleInsertImage = useCallback(
+    async ({ file, item }: { file: File; item: FramePickerItem }) => {
+      if (!accessToken || isInteractionDisabled) {
+        if (isInteractionDisabled) {
+          toast.error("Duplica el proyecto para poder editarlo.");
+        }
+        return;
+      }
+
+      setInsertImageError(null);
+      setInsertImageBusy(true);
+      try {
+        const signRes = await fetch(`${API_BASE}/projects/${projectId}/images/upload-url/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            filename: file.name,
+            content_type: file.type || "application/octet-stream",
+          }),
+        });
+        if (!signRes.ok) {
+          const detail = await signRes.text();
+          throw new Error(detail || `Error ${signRes.status} firmando la subida.`);
+        }
+
+        const { upload_url, object_name } = (await signRes.json()) as {
+          upload_url: string;
+          object_name: string;
+        };
+
+        const uploadRes = await fetch(upload_url, {
+          method: "PUT",
+          headers: {
+            "Content-Type": file.type || "application/octet-stream",
+          },
+          body: file,
+        });
+        if (!uploadRes.ok) {
+          throw new Error(`Error subiendo la imagen a GCS (${uploadRes.status}).`);
+        }
+
+        const createRes = await fetch(`${API_BASE}/projects/${projectId}/images/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            project_clip_id: item.clipId,
+            frame_time_ms: item.frameTimeMs,
+            object_name,
+            content_type: file.type || "application/octet-stream",
+          }),
+        });
+        if (!createRes.ok) {
+          const detail = await createRes.text();
+          throw new Error(detail || `Error ${createRes.status} guardando la imagen.`);
+        }
+
+        await fetchClips();
+        setInsertImageOpen(false);
+        toast.success("Imagen establecida correctamente.");
+      } catch (err: any) {
+        setInsertImageError(err?.message || "No se pudo establecer la imagen.");
+      } finally {
+        setInsertImageBusy(false);
+      }
+    },
+    [API_BASE, accessToken, fetchClips, isInteractionDisabled, projectId],
+  );
+
   const handleAddToCart = useCallback(async () => {
     if (!project) return;
     if (!accessToken) {
@@ -971,6 +1052,11 @@ export default function ProjectEditor({
                   if (isInteractionDisabled) return;
                   setPickerOpen(true);
                 }} // <<— ABRIR MODAL
+                onInsertImage={() => {
+                  if (isInteractionDisabled) return;
+                  setInsertImageError(null);
+                  setInsertImageOpen(true);
+                }}
                 onOpenCover={() => {
                   if (isInteractionDisabled) return;
                   setCoverError(null);
@@ -1195,6 +1281,14 @@ export default function ProjectEditor({
         busy={coverBusy}
         error={coverError || undefined}
         onSelect={handleSelectCover}
+      />
+      <InsertImageModal
+        open={insertImageOpen}
+        onClose={() => setInsertImageOpen(false)}
+        items={coverItems}
+        busy={insertImageBusy}
+        error={insertImageError || undefined}
+        onConfirm={handleInsertImage}
       />
       <EditTitleModal
         open={editTitleOpen}

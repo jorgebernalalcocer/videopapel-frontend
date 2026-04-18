@@ -47,6 +47,7 @@ type EditingCanvasProps = {
   initialFrames?: number[]; initialTimeMs?: number; thumbsPerSecond?: number;
   thumbnailsCount?: number; thumbnailHeight?: number; onChange?: (timeMs: number) => void;
   disableAutoThumbnails?: boolean; playbackFps?: number; loop?: boolean; onInsertVideo?: () => void;
+  onInsertImage?: () => void;
   onOpenCover?: () => void;
   printAspectSlug?: string | null;
   onThumbsDensityChange?: (value: number) => void;
@@ -70,7 +71,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
   const {
     projectId, apiBase, accessToken, clips, clipId, videoSrc, durationMs, initialFrames,
     initialTimeMs = 0, thumbnailsCount, thumbsPerSecond = 8, thumbnailHeight = 68,
-    onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo,
+    onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo, onInsertImage,
     onOpenCover,
     printAspectSlug = 'fill',
     onThumbsDensityChange,
@@ -829,6 +830,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   canSave={Boolean(accessToken) && hasPendingChanges && !generating}
   isSaving={isSaving}
   onInsertVideo={onInsertVideo}
+  onInsertImage={onInsertImage}
   onInsertText={openCreateTextEditor}
   onInsertFrame={() => handleFrameButtonClick('create')}
   onEditFrame={() => handleFrameButtonClick('edit')}

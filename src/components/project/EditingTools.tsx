@@ -14,6 +14,7 @@ type EditingToolsProps = {
   canSave?: boolean
   isSaving?: boolean
   onInsertVideo?: () => void
+  onInsertImage?: () => void
   onInsertText?: () => void
   onInsertFrame?: () => void
   onEditFrame?: () => void
@@ -35,6 +36,7 @@ export default function EditingTools({
   canSave = false,
   isSaving = false,
   onInsertVideo,
+  onInsertImage,
   onInsertText,
   onInsertFrame,
   onEditFrame,
@@ -73,6 +75,18 @@ export default function EditingTools({
       return
     }
     onInsertText?.()
+  }
+
+  const handleInsertImageClick = () => {
+    if (actionsLocked) {
+      toast.warning(
+        isGeneratingSubtitles
+          ? 'Estamos generando subtítulos. Espera a que finalice para insertar una nueva imagen.'
+          : 'Este proyecto ya ha sido comprado. Duplícalo para modificarlo.'
+      )
+      return
+    }
+    onInsertImage?.()
   }
 
   const handleGenerateSubtitles = () => {
@@ -197,7 +211,7 @@ export default function EditingTools({
           <Button
             type="button"
             variant="outline"
-            onClick={handleInsertClick}
+            onClick={handleInsertImageClick}
             aria-disabled={actionsLocked}
             disabled={actionsLocked}
             aria-label="Insertar imagen"

@@ -144,11 +144,9 @@ export function useCombinedThumbs(params: {
               count: backendThumbnails.length,
               sample: backendThumbnails.slice(0, 4),
             })
-            if (!items || items.length === 0) items = backendThumbnails
+            items = backendThumbnails
             saveThumbsToCache(projectId, c.clipId, sig, backendThumbnails)
-            if (!indexedDbThumbs || indexedDbThumbs.length === 0) {
-              await saveThumbsToIndexedDb(projectId, c.clipId, sig, backendThumbnails)
-            }
+            await saveThumbsToIndexedDb(projectId, c.clipId, sig, backendThumbnails)
           } else {
             console.log('[useCombinedThumbs] sin thumbnails backend', { clipId: c.clipId })
           }
