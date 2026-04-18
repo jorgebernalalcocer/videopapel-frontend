@@ -403,14 +403,14 @@ export default function BigFrameViewer(props: {
             </div>
           </div>
         )}
-        {showPrintArea && !paintError && printOverlay && onOpenCover && (
+        {showPrintArea && !paintError && printFrame && isCoverPhoto && onOpenCover && (
           <div
             className="absolute z-40 pointer-events-none"
             style={{
               left: '50%',
               top: '50%',
-              width: `${printOverlay.width}px`,
-              height: `${printOverlay.height}px`,
+              width: `${printFrame.width}px`,
+              height: `${printFrame.height}px`,
               transform: 'translate(-50%, -50%)',
             }}
           >
@@ -428,7 +428,7 @@ export default function BigFrameViewer(props: {
                 aria-pressed={isCoverPhoto}
               >
                 <ImageIcon className="h-3.5 w-3.5" />
-                {isCoverPhoto ? 'Foto de portada' : 'Portada'}
+                Foto de portada
               </button>
             </div>
           </div>
