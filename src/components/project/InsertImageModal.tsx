@@ -10,7 +10,7 @@ type InsertImageModalProps = {
   items: FramePickerItem[]
   busy?: boolean
   error?: string
-  onConfirm: (args: { file: File; item: FramePickerItem }) => void | Promise<void>
+  onConfirm: (args: { file: File; items: FramePickerItem[] }) => void | Promise<void>
 }
 
 function FramePreview({ item }: { item: FramePickerItem }) {
@@ -60,7 +60,7 @@ export default function InsertImageModal({
   onConfirm,
 }: InsertImageModalProps) {
   const inputRef = useRef<HTMLInputElement | null>(null)
-  const [selectedItem, setSelectedItem] = useState<FramePickerItem | null>(null)
+  const [selectedItems, setSelectedItems] = useState<FramePickerItem[]>([])
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
@@ -86,7 +86,7 @@ export default function InsertImageModal({
   )
 
   const handleClose = () => {
-    setSelectedItem(null)
+    setSelectedItems([])
     setSelectedFile(null)
     if (inputRef.current) inputRef.current.value = ''
     onClose()
@@ -98,11 +98,18 @@ export default function InsertImageModal({
       onClose={handleClose}
       title="Insertar imagen"
       items={sortedItems}
-      selectedItem={selectedItem}
-      onSelectItem={setSelectedItem}
+      selectionMode="multiple"
+      selectedItems={selectedItems}
+      onToggleItem={(item) => {
+        setSelectedItems((current) =>
+          current.some((selectedItem) => selectedItem.id === item.id)
+            ? current.filter((selectedItem) => selectedItem.id !== item.id)
+            : [...current, item],
+        )
+      }}
       onConfirm={async () => {
-        if (!selectedItem || !selectedFile || busy) return
-        await onConfirm({ file: selectedFile, item: selectedItem })
+        if (!selectedItems.length || !selectedFile || busy) return
+        await onConfirm({ file: selectedFile, items: selectedItems })
         handleClose()
       }}
       confirmLabel="Establecer imagen"
@@ -150,10 +157,13 @@ export default function InsertImageModal({
 
           <div>
             <p className="text-sm font-medium text-gray-900">
-              Indica sobre que fotograma quieres establecer la nueva imagen.
+              Indica sobre qué fotograma o fotogramas quieres establecer la nueva imagen.
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              La imagen sustituirá visualmente a ese fotograma en el visor y la línea temporal.
+              La imagen sustituirá visualmente a los fotogramas seleccionados en el visor y la línea temporal.
+            </p>
+            <p className="mt-1 text-xs text-gray-500">
+              Seleccionados: {selectedItems.length}
             </p>
           </div>
         </div>

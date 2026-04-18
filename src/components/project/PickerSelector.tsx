@@ -8,8 +8,11 @@ type PickerSelectorProps<T extends { id: string | number }> = {
   onClose: () => void
   title: string
   items: T[]
-  selectedItem: T | null
-  onSelectItem: (item: T) => void
+  selectedItem?: T | null
+  onSelectItem?: (item: T) => void
+  selectionMode?: 'single' | 'multiple'
+  selectedItems?: T[]
+  onToggleItem?: (item: T) => void
   onConfirm: () => void | Promise<void>
   confirmLabel?: string
   confirmBusyLabel?: string
@@ -27,8 +30,11 @@ export default function PickerSelector<T extends { id: string | number }>({
   onClose,
   title,
   items,
-  selectedItem,
+  selectedItem = null,
   onSelectItem,
+  selectionMode = 'single',
+  selectedItems = [],
+  onToggleItem,
   onConfirm,
   confirmLabel = 'Confirmar',
   confirmBusyLabel,
@@ -40,6 +46,11 @@ export default function PickerSelector<T extends { id: string | number }>({
   preListSlot,
   renderItem,
 }: PickerSelectorProps<T>) {
+  const hasSelection =
+    selectionMode === 'multiple'
+      ? selectedItems.length > 0
+      : Boolean(selectedItem)
+
   return (
     <Modal
       open={open}
@@ -59,7 +70,7 @@ export default function PickerSelector<T extends { id: string | number }>({
             </button>
             <button
               type="button"
-              disabled={!selectedItem || loading || busy || confirmDisabled}
+              disabled={!hasSelection || loading || busy || confirmDisabled}
               className="px-4 py-2 rounded-xl bg-green-600 text-white hover:bg-green-700 disabled:opacity-50"
               onClick={() => {
                 void onConfirm()
@@ -79,14 +90,23 @@ export default function PickerSelector<T extends { id: string | number }>({
       ) : (
         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-auto pr-1">
           {items.map((item) => {
-            const selected = selectedItem?.id === item.id
+            const selected =
+              selectionMode === 'multiple'
+                ? selectedItems.some((selectedItem) => selectedItem.id === item.id)
+                : selectedItem?.id === item.id
             return (
               <li
                 key={item.id}
                 className={`rounded-lg border overflow-hidden cursor-pointer ${
                   selected ? 'ring-2 ring-blue-500' : 'hover:border-gray-400'
                 }`}
-                onClick={() => onSelectItem(item)}
+                onClick={() => {
+                  if (selectionMode === 'multiple') {
+                    onToggleItem?.(item)
+                    return
+                  }
+                  onSelectItem?.(item)
+                }}
               >
                 {renderItem({ item, selected })}
               </li>

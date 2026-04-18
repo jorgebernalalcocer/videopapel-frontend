@@ -636,7 +636,7 @@ export default function ProjectEditor({
   );
 
   const handleInsertImage = useCallback(
-    async ({ file, item }: { file: File; item: FramePickerItem }) => {
+    async ({ file, items }: { file: File; items: FramePickerItem[] }) => {
       if (!accessToken || isInteractionDisabled) {
         if (isInteractionDisabled) {
           toast.error("Duplica el proyecto para poder editarlo.");
@@ -680,28 +680,34 @@ export default function ProjectEditor({
           throw new Error(`Error subiendo la imagen a GCS (${uploadRes.status}).`);
         }
 
-        const createRes = await fetch(`${API_BASE}/projects/${projectId}/images/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          credentials: "include",
-          body: JSON.stringify({
-            project_clip_id: item.clipId,
-            frame_time_ms: item.frameTimeMs,
-            object_name,
-            content_type: file.type || "application/octet-stream",
-          }),
-        });
-        if (!createRes.ok) {
-          const detail = await createRes.text();
-          throw new Error(detail || `Error ${createRes.status} guardando la imagen.`);
+        for (const item of items) {
+          const createRes = await fetch(`${API_BASE}/projects/${projectId}/images/`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            credentials: "include",
+            body: JSON.stringify({
+              project_clip_id: item.clipId,
+              frame_time_ms: item.frameTimeMs,
+              object_name,
+              content_type: file.type || "application/octet-stream",
+            }),
+          });
+          if (!createRes.ok) {
+            const detail = await createRes.text();
+            throw new Error(detail || `Error ${createRes.status} guardando la imagen.`);
+          }
         }
 
         await fetchClips();
         setInsertImageOpen(false);
-        toast.success("Imagen establecida correctamente.");
+        toast.success(
+          items.length === 1
+            ? "Imagen establecida correctamente."
+            : `Imagen establecida en ${items.length} fotogramas.`,
+        );
       } catch (err: any) {
         setInsertImageError(err?.message || "No se pudo establecer la imagen.");
       } finally {
