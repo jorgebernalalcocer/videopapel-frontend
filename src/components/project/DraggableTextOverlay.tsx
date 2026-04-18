@@ -237,7 +237,7 @@ export default function DraggableTextOverlay({
           key={it.id}
           onPointerDown={(e) => onPointerDown(e as any, it)}
           // único elemento posicionado
-          className="absolute max-w-[70%]"
+          className="pointer-events-auto absolute max-w-[70%]"
           style={{ left, top, transform: 'translate(-50%, -50%)' }}
         >
           <TextFrame

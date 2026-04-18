@@ -3,13 +3,14 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Maximize2, Minimize2, Crop, Image as ImageIcon } from 'lucide-react'
+import { Maximize2, Minimize2, Crop, ImageUpscale, Save, Trash, Image as ImageIcon } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
 import FrameStyleOverlay from '@/components/project/viewer/FrameStyleOverlay'
 import ApplyEffect from '@/components/project/viewer/ApplyEffect'
 import { paintFrameToCanvas, seekVideo, setVideoSrcAndWait } from '@/utils/video'
 import type { FrameSettingClient } from '@/types/frame'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type ActiveTextItem = {
   id: number
@@ -462,7 +463,7 @@ export default function BigFrameViewer(props: {
         </ApplyEffect>
         {printFrame && insertedImage && (
           <div
-            className="absolute z-0"
+            className="absolute z-10"
             style={{
               left: '50%',
               top: '50%',
@@ -473,8 +474,8 @@ export default function BigFrameViewer(props: {
           >
             <div
               className={clsx(
-                'absolute',
-                imageEditMode ? 'cursor-move' : 'pointer-events-none',
+                'absolute pointer-events-auto',
+                imageEditMode ? 'cursor-move' : '',
               )}
               style={{
                 left: `${imageLayout.offset_x_pct * 100}%`,
@@ -483,7 +484,10 @@ export default function BigFrameViewer(props: {
                 height: `${imageLayout.height_pct * 100}%`,
                 transform: 'translate(-50%, -50%)',
               }}
-              onPointerDown={(event) => handleOverlayPointerDown(event, 'move')}
+              onPointerDown={(event) => {
+                if (!imageEditMode) return
+                handleOverlayPointerDown(event, 'move')
+              }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -503,7 +507,13 @@ export default function BigFrameViewer(props: {
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
                   <button
                     type="button"
-                    onClick={() => setImageEditMode(true)}
+                    onClick={() => {
+                      console.log('[BigFrameViewer] click en Editar imagen', {
+                        insertedImageId: insertedImage.id,
+                        imageEditMode,
+                      })
+                      setImageEditMode(true)
+                    }}
                     className="rounded-lg bg-black/70 px-4 py-2 text-sm font-medium text-white hover:bg-black/80"
                   >
                     Editar imagen
@@ -533,35 +543,43 @@ export default function BigFrameViewer(props: {
 
             {imageEditMode && !isPresentation && (
               <div className="absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleForceExpand}
-                  className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900"
-                >
-                  Forzar expansión
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!insertedImage || !onSaveInsertedImageLayout) return
-                    await onSaveInsertedImageLayout({ id: insertedImage.id, ...imageLayout })
-                    setImageEditMode(false)
-                  }}
-                  className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-                >
-                  Guardar cambios
-                </button>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (!insertedImage || !onDeleteInsertedImage) return
-                    await onDeleteInsertedImage(insertedImage.id)
-                    setImageEditMode(false)
-                  }}
-                  className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
-                >
-                  Borrar imagen
-                </button>
+            
+                    <ColorActionButton
+          onClick={() => handleForceExpand()}
+          color="amber"
+          icon={ImageUpscale}
+          size="compact"
+        >
+          Forzar expansión
+        </ColorActionButton>
+        <ColorActionButton
+  onClick={async () => {
+    if (!insertedImage || !onSaveInsertedImageLayout) return;
+    await onSaveInsertedImageLayout({ id: insertedImage.id, ...imageLayout });
+    setImageEditMode(false);
+  }}
+  color="emerald"
+  size="compact"
+  icon={Save}
+>
+  Guardar
+</ColorActionButton>
+
+<ColorActionButton
+  onClick={async () => {
+    if (!insertedImage || !onDeleteInsertedImage) return;
+    await onDeleteInsertedImage(insertedImage.id);
+    setImageEditMode(false);
+  }}
+  filled
+  color="red"
+  size="compact"
+  icon={Trash}
+>
+  Borrar
+</ColorActionButton>
+        
+                
               </div>
             )}
           </div>
@@ -691,7 +709,7 @@ export default function BigFrameViewer(props: {
 
       {/* Capa de textos arrastrables (solo si no hay error) */}
       {!paintError && (
-        <div className="absolute inset-0 z-40">
+        <div className="pointer-events-none absolute inset-0 z-40">
           <TextOverlayLayer
             wrapperRef={wrapperRef as React.RefObject<HTMLDivElement>}
             canvasRef={canvasRef as React.RefObject<HTMLCanvasElement>}
