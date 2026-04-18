@@ -418,7 +418,7 @@ export function ShareModal<T extends ShareableItem>({ item, resourceType, onClos
                 />
               </div>
 
-              {!canManageSharing && <p className="text-sm text-red-700">Solo el titular puede invitar personas o cambiar el nivel de acceso.</p>}
+              {!canManageSharing && <p className="text-sm text-red-700">Solo el titular puede invitar personas o cambiar el nivel de acceso. Duplica el proyecto si quieres que sea tuyo propio.</p>}
 
               <div className="space-y-3">
                 <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50 px-4 py-3">

@@ -403,7 +403,7 @@ export default function BigFrameViewer(props: {
             </div>
           </div>
         )}
-        {showPrintArea && !paintError && printOverlay && isCoverPhoto && onOpenCover && (
+        {showPrintArea && !paintError && printOverlay && onOpenCover && (
           <div
             className="absolute z-40 pointer-events-none"
             style={{
@@ -418,11 +418,17 @@ export default function BigFrameViewer(props: {
               <button
                 type="button"
                 onClick={onOpenCover}
-                className="inline-flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-xs font-semibold text-white transition hover:bg-black/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300"
+                className={clsx(
+                  'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-white shadow-sm ring-1 backdrop-blur transition focus-visible:outline-none',
+                  isCoverPhoto
+                    ? 'bg-yellow-500/20 ring-yellow-300 hover:bg-yellow-500/30 focus-visible:ring-yellow-400'
+                    : 'bg-white/10 ring-white/20 hover:bg-white/20 focus-visible:ring-blue-400'
+                )}
                 aria-label="Abrir modal de portada"
+                aria-pressed={isCoverPhoto}
               >
                 <ImageIcon className="h-3.5 w-3.5" />
-                Foto de portada
+                {isCoverPhoto ? 'Foto de portada' : 'Portada'}
               </button>
             </div>
           </div>
