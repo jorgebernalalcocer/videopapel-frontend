@@ -25,6 +25,7 @@ type Company = MyLogosCompany & {
 export default function LogosPage() {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+  const isCompanyUser = useAuth((s) => s.user?.account_type === 'company')
 
   const [companies, setCompanies] = useState<Company[]>([])
   const [companyLogos, setCompanyLogos] = useState<MyLogosLogo[]>([])
@@ -151,7 +152,7 @@ export default function LogosPage() {
           size="large"
           icon={Plus}
           title="Añadir logo"
-          disabled={!canRequest || companies.length === 0}
+          disabled={!canRequest || !isCompanyUser}
         >
           Añadir logo
         </ColorActionButton>

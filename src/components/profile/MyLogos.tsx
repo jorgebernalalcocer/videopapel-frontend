@@ -5,6 +5,7 @@ import { Palette, Plus, Expand } from 'lucide-react'
 import DeleteLogoButton from '@/components/DeleteLogoButton'
 import PreviewLogo from '@/components/profile/PreviewLogo'
 import { ColorActionButton } from '@/components/ui/color-action-button'
+import { useAuth } from '@/store/auth'
 
 
 export type MyLogosCompany = {
@@ -46,6 +47,7 @@ export default function MyLogos({
   showAddButton = true,
 }: MyLogosProps) {
   const [previewLogo, setPreviewLogo] = useState<MyLogosLogo | null>(null)
+  const isCompanyUser = useAuth((s) => s.user?.account_type === 'company')
 
   const companyMap = useMemo(
     () => new Map(companies.map((company) => [company.id, company.name])),
@@ -61,7 +63,7 @@ export default function MyLogos({
     [companyLogos],
   )
 
-  if (companies.length === 0) {
+  if (!isCompanyUser) {
     return (
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">

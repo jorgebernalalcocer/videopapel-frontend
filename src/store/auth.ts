@@ -10,6 +10,7 @@ type AuthUser = {
   email: string
   username?: string | null
   phone?: string | null
+  account_type?: 'individual' | 'company'
   is_active?: boolean
   is_superuser?: boolean
   is_staff?: boolean
@@ -21,6 +22,7 @@ interface AuthState {
   user: AuthUser | null
   hasHydrated: boolean
   login: (tokens: { access: string; refresh: string; user?: AuthUser | null }) => void
+  setUser: (user: AuthUser | null) => void
   logout: () => Promise<void>
   clearSession: () => void
   setHasHydrated: (v: boolean) => void
@@ -40,6 +42,8 @@ export const useAuth = create<AuthState>()(
       // Guarda tokens y usuario al loguear
       login: ({ access, refresh, user }) =>
         set({ accessToken: access, refreshToken: refresh, user }),
+
+      setUser: (user) => set({ user }),
 
       // 👇 NEW: actualizar tokens (p. ej., tras refresh)
       setTokens: ({ access, refresh }) =>

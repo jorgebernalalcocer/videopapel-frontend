@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
+import { useAuth } from '@/store/auth'
 
 export type CompanyFormData = {
   id?: number
@@ -41,6 +42,7 @@ export default function CompanyModal({
   const [form, setForm] = useState<CompanyFormData>(EMPTY_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const setAuthUser = useAuth((s) => s.setUser)
 
   const isEditing = Boolean(company?.id)
 
@@ -106,6 +108,16 @@ export default function CompanyModal({
       if (!res.ok) {
         const detail = await res.text()
         throw new Error(detail || `Error ${res.status}`)
+      }
+
+      const userRes = await fetch(`${apiBase}/auth/user/`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        credentials: 'include',
+      })
+      if (userRes.ok) {
+        setAuthUser(await userRes.json())
       }
 
       onSaved()

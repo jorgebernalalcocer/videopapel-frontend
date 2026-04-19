@@ -97,6 +97,7 @@ const pluralizeStat = (count: number, singular: string, plural: string) =>
 export default function ProfilePage() {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+  const accountType = useAuth((s) => s.user?.account_type)
   const isSuperuser = useAuth((s) => Boolean(s.user?.is_superuser))
   const mail = useAuth((s) => s.user?.email || '')
 
@@ -455,7 +456,7 @@ export default function ProfilePage() {
 
   // Helper to capitalize the first letter of a string
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-  const isCompanyUser = companies.length > 0
+  const isCompanyUser = accountType === 'company'
   const mobileStatsColumns = Math.ceil((isCompanyUser ? 8 : 6) / 2)
   const isGmailUser = /@gmail\.com$/i.test(mail)
   const primaryCompanyLogo =
@@ -496,8 +497,8 @@ export default function ProfilePage() {
             </h1>
             <p className="text-sm text-gray-500">
               {/* Assuming you have user email or another identifier */}
-              {companies.length === 0 && isSuperuser ? 'SuperUser' : ''}
-              {companies.length > 0 && ` Perfil de empresa: ${companies[0].name}`}
+              {!isCompanyUser && isSuperuser ? 'SuperUser' : ''}
+              {isCompanyUser && 'account_type company'}
 
 
             </p>
@@ -685,7 +686,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {companies.length === 0 && (
+      {!isCompanyUser && (
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-4">
             <div>
@@ -712,7 +713,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {companies.length > 0 && (
+      {isCompanyUser && (
         <header>
           <h1 className="text-3xl font-semibold text-gray-900">Perfil de empresa</h1>
           <p className="text-gray-600 mt-1">
@@ -720,7 +721,7 @@ export default function ProfilePage() {
           </p>
         </header>
       )}
-      {companies.length > 0 && (
+      {isCompanyUser && (
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
             <div>
@@ -833,7 +834,7 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {companies.length > 0 && (
+      {isCompanyUser && (
         <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
           <div className="border-b border-gray-100 px-4 py-4 sm:px-6">
             <h2 className="text-xl font-semibold text-gray-900">
@@ -1047,7 +1048,17 @@ export default function ProfilePage() {
         apiBase={API_BASE}
         accessToken={accessToken}
         onSaved={handleCompanySaved}
-        company={selectedCompany}
+        company={
+          selectedCompany
+            ? {
+                id: selectedCompany.id,
+                name: selectedCompany.name,
+                vat_number: selectedCompany.vat_number,
+                phone: selectedCompany.phone ?? '',
+                mail: selectedCompany.mail ?? '',
+              }
+            : null
+        }
       />
       <CompanyLogoModal
         open={isCompanyLogoModalOpen}

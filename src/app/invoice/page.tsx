@@ -154,9 +154,18 @@ const createZip = (files: Array<{ name: string; data: Uint8Array }>) => {
   endView.setUint32(16, offset, true)
   endView.setUint16(20, 0, true)
 
-  return new Blob([...localParts, ...centralParts, endRecord], {
-    type: 'application/zip',
-  })
+  const toBlobPart = (part: Uint8Array): ArrayBuffer => {
+    const copy = new Uint8Array(part.byteLength)
+    copy.set(part)
+    return copy.buffer
+  }
+
+  return new Blob(
+    [...localParts, ...centralParts, endRecord].map(toBlobPart),
+    {
+      type: 'application/zip',
+    },
+  )
 }
 
 const downloadBlob = (blob: Blob, filename: string) => {
@@ -173,6 +182,7 @@ const downloadBlob = (blob: Blob, filename: string) => {
 export default function InvoicePage() {
   const hasHydrated = useAuth((s) => s.hasHydrated)
   const accessToken = useAuth((s) => s.accessToken)
+  const isCompanyUser = useAuth((s) => s.user?.account_type === 'company')
 
   const [companies, setCompanies] = useState<Company[]>([])
   const [orders, setOrders] = useState<Order[]>([])
@@ -388,7 +398,7 @@ export default function InvoicePage() {
     )
   }
 
-  if (!loading && companies.length === 0) {
+  if (!loading && !isCompanyUser) {
     return (
       <section className="mx-auto max-w-6xl px-4 py-12">
         <h1 className="mb-4 text-3xl font-semibold text-gray-900">Facturas</h1>
