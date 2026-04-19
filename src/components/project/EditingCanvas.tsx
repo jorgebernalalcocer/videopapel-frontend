@@ -2,12 +2,15 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import DeleteInsertedImageButton from '@/components/project/DeleteInsertedImageButton'
 import PlayButton from '@/components/project/PlayButton'
 import EditingTools from '@/components/project/EditingTools'
 import DeleteFrameButton from '@/components/project/DeleteFrameButton'
 import CutClipButton from '@/components/project/CutClipButton'
+import ForceExpandInsertedImageButton from '@/components/project/ForceExpandInsertedImageButton'
 import RecoverDeletedButton from '@/components/project/RecoverDeletedButton'
 import SaveChangesButton from '@/components/project/SaveChangesButton'
+import SaveInsertedImageButton from '@/components/project/SaveInsertedImageButton'
 import { toast } from 'sonner'
 import BigFrameViewer from '@/components/project/viewer/BigFrameViewer'
 import GlobalTimeline from '@/components/project/timeline/GlobalTimeline'
@@ -22,8 +25,9 @@ import { Minimize, SkipBack } from 'lucide-react'
 
 import { useCombinedThumbs } from '@/hooks/useCombinedThumbs'
 import { usePlaybackStepper } from '@/hooks/usePlaybackStepper'
-import { useProjectTexts } from '@/hooks/useProjectTexts'
+import { useProjectTexts, type TextFrame } from '@/hooks/useProjectTexts'
 import { makeTimelineKeydownHandler } from '@/hooks/useKeyboardTimelineNav'
+import { removeThumbsFromCache } from '@/utils/thumbCache'
 import { formatTime, nearestIndex } from '@/utils/time'
 import type { FrameSettingClient } from '@/types/frame'
 import type { PageEnumerationSettingClient } from '@/types/pageEnumeration'
@@ -254,6 +258,13 @@ const currentThumb = useMemo(() => {
   return visibleThumbs[idx] ?? null
 }, [visibleThumbs, selectedId, selectedGlobalMs])
 
+  const [isEditingInsertedImage, setIsEditingInsertedImage] = useState(false)
+  const [canForceExpandInsertedImage, setCanForceExpandInsertedImage] = useState(false)
+  const [isSavingInsertedImage, setIsSavingInsertedImage] = useState(false)
+  const [onForceExpandInsertedImage, setOnForceExpandInsertedImage] = useState<(() => void) | undefined>(undefined)
+  const [onSaveInsertedImageAction, setOnSaveInsertedImageAction] = useState<(() => void | Promise<void>) | undefined>(undefined)
+  const [onDeleteInsertedImageAction, setOnDeleteInsertedImageAction] = useState<(() => void | Promise<void>) | undefined>(undefined)
+
   const handleSaveInsertedImageLayout = useCallback(async (payload: {
     id: number
     offset_x_pct: number
@@ -302,6 +313,40 @@ const currentThumb = useMemo(() => {
     toast.success('Imagen eliminada.')
   }, [accessToken, apiBase, projectId, onFrameChange])
 
+  const handleInsertedImageEditStateChange = useCallback((state: {
+    active: boolean
+    canForceExpand: boolean
+    onForceExpand?: () => void
+    onSave?: () => void | Promise<void>
+    onDelete?: () => void | Promise<void>
+  }) => {
+    setIsEditingInsertedImage(state.active)
+    setCanForceExpandInsertedImage(state.canForceExpand)
+    setOnForceExpandInsertedImage(() => state.onForceExpand)
+    setOnSaveInsertedImageAction(() => state.onSave)
+    setOnDeleteInsertedImageAction(() => state.onDelete)
+  }, [])
+
+  const handleSaveInsertedImageFromToolbar = useCallback(async () => {
+    if (!onSaveInsertedImageAction) return
+    setIsSavingInsertedImage(true)
+    try {
+      await onSaveInsertedImageAction()
+    } finally {
+      setIsSavingInsertedImage(false)
+    }
+  }, [onSaveInsertedImageAction])
+
+  const handleDeleteInsertedImageFromToolbar = useCallback(async () => {
+    if (!onDeleteInsertedImageAction) return
+    setIsSavingInsertedImage(true)
+    try {
+      await onDeleteInsertedImageAction()
+    } finally {
+      setIsSavingInsertedImage(false)
+    }
+  }, [onDeleteInsertedImageAction])
+
 
   // Textos del proyecto
   const [textsVersion, setTextsVersion] = useState(0)
@@ -326,9 +371,9 @@ const activeTextFrames = useMemo(() => {
     tGlobal: number
   }
 
-  const framesForClip = textFramesByClip[clipId] ?? []
+  const framesForClip: TextFrame[] = textFramesByClip[Number(clipId)] ?? []
 
-  return framesForClip.filter((tf) => {
+  return framesForClip.filter((tf: TextFrame) => {
     const gStart = tf.frame_start_global,
       gEnd = tf.frame_end_global
     const gSpec = tf.specific_frames_global ?? []
@@ -577,11 +622,7 @@ const stepBackward = useCallback(() => {
       )
       if (typeof window !== 'undefined') {
         for (const cid of byClip.keys()) {
-          try {
-            localStorage.removeItem(LS_KEY(projectId, cid))
-          } catch {
-            /* ignore */
-          }
+          removeThumbsFromCache(projectId, cid)
         }
       }
       setHasPendingChanges(false)
@@ -801,6 +842,7 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   showViewerControls
   onSaveInsertedImageLayout={handleSaveInsertedImageLayout}
   onDeleteInsertedImage={handleDeleteInsertedImage}
+  onInsertedImageEditStateChange={handleInsertedImageEditStateChange}
   leftHud={
     <div className="flex items-center gap-3">
       <DeleteFrameButton
@@ -848,6 +890,25 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
               disabled={!accessToken || isSaving || isGeneratingSubtitles || generating}
               isSaving={isSaving}
               className="h-8 gap-1.5 px-3 text-xs border-slate-200 text-black hover:text-black"
+            />
+          </div>
+        ) : isEditingInsertedImage ? (
+          <div className="flex w-full items-center justify-center gap-2 md:justify-start">
+            <ForceExpandInsertedImageButton
+              onClick={onForceExpandInsertedImage}
+              disabled={!canForceExpandInsertedImage || isSavingInsertedImage}
+              className="h-8 gap-1.5 px-3 text-xs"
+            />
+            <SaveInsertedImageButton
+              onClick={handleSaveInsertedImageFromToolbar}
+              disabled={isSavingInsertedImage || !onSaveInsertedImageAction}
+              isSaving={isSavingInsertedImage}
+              className="h-8 gap-1.5 px-3 text-xs"
+            />
+            <DeleteInsertedImageButton
+              onClick={handleDeleteInsertedImageFromToolbar}
+              disabled={isSavingInsertedImage || !onDeleteInsertedImageAction}
+              className="h-8 gap-1.5 px-3 text-xs"
             />
           </div>
         ) : (
@@ -906,6 +967,12 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   onOpenCover={onOpenCover}
   onDiscardChanges={handleDiscardChanges}
   editingDisabled={editingDisabled}
+  isEditingInsertedImage={isEditingInsertedImage}
+  canForceExpandInsertedImage={canForceExpandInsertedImage}
+  isSavingInsertedImage={isSavingInsertedImage}
+  onForceExpandInsertedImage={onForceExpandInsertedImage}
+  onSaveInsertedImage={handleSaveInsertedImageFromToolbar}
+  onDeleteInsertedImage={handleDeleteInsertedImageFromToolbar}
 />
       </div>
 

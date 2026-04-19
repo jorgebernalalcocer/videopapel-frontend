@@ -34,3 +34,11 @@ export function saveThumbsToCache(projectId: string, clipId: number | string, si
     localStorage.setItem(LS_KEY(projectId, clipId), JSON.stringify(payload))
   } catch { /* ignore */ }
 }
+
+export function removeThumbsFromCache(projectId: string, clipId: number | string) {
+  try {
+    localStorage.removeItem(LS_KEY(projectId, clipId))
+  } catch {
+    /* ignore */
+  }
+}

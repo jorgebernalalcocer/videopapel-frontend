@@ -1,33 +1,33 @@
 'use client'
 
-import { RotateCcw } from 'lucide-react'
+import { Trash } from 'lucide-react'
 
-import { Button } from '@/components/ui/button'
-import { cn } from '@/lib/utils'
 import { ColorActionButton } from '@/components/ui/color-action-button'
+import { cn } from '@/lib/utils'
 
-type RecoverDeletedButtonProps = {
+type DeleteInsertedImageButtonProps = {
   disabled?: boolean
   onClick?: () => void
   className?: string
 }
 
-export default function RecoverDeletedButton({
+export default function DeleteInsertedImageButton({
   disabled = false,
   onClick,
   className,
-}: RecoverDeletedButtonProps) {
+}: DeleteInsertedImageButtonProps) {
   return (
-     <ColorActionButton
+    <ColorActionButton
       type="button"
       onClick={onClick}
       disabled={disabled}
-      color="amber"
       filled
-      icon={RotateCcw}
+      color="red"
+      icon={Trash}
       size="compact"
+      className={cn(className)}
     >
-      Recuperar eliminados
+      Borrar imagen
     </ColorActionButton>
   )
 }

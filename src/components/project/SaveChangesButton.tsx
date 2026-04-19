@@ -4,6 +4,7 @@ import { Save } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type SaveChangesButtonProps = {
   disabled?: boolean
@@ -19,16 +20,16 @@ export default function SaveChangesButton({
   className,
 }: SaveChangesButtonProps) {
   return (
-    <Button
-      type="button"
-      variant="outline"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label="Guardar cambios"
-      className={cn('inline-flex items-center gap-2 !bg-white hover:!bg-white text-black border-slate-200', className)}
-    >
-      <Save className="h-4 w-4 text-green-600" />
-      <span>{isSaving ? 'Guardando…' : 'Guardar cambios'}</span>
-    </Button>
+<ColorActionButton
+  onClick={onClick}
+  disabled={disabled || isSaving}
+  color="blue"
+  size="compact"
+  filled
+  icon={Save}
+  aria-label="Guardar cambios"
+>
+  {isSaving ? 'Guardando…' : 'Guardar cambios'}
+</ColorActionButton>
   )
 }

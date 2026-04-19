@@ -3,8 +3,11 @@
 import { Button } from '@/components/ui/button'
 import { Play, Pause, Film, Camera, Type, Captions, Frame as FrameIcon, MonitorPlay, Image as ImageIcon, Hash } from 'lucide-react'
 import { toast } from 'sonner'
+import DeleteInsertedImageButton from '@/components/project/DeleteInsertedImageButton'
+import ForceExpandInsertedImageButton from '@/components/project/ForceExpandInsertedImageButton'
 import RecoverDeletedButton from '@/components/project/RecoverDeletedButton'
 import SaveChangesButton from '@/components/project/SaveChangesButton'
+import SaveInsertedImageButton from '@/components/project/SaveInsertedImageButton'
 
 type EditingToolsProps = {
   heightPx: number
@@ -26,6 +29,12 @@ type EditingToolsProps = {
   onOpenCover?: () => void
   onDiscardChanges?: () => void
   editingDisabled?: boolean
+  isEditingInsertedImage?: boolean
+  canForceExpandInsertedImage?: boolean
+  isSavingInsertedImage?: boolean
+  onForceExpandInsertedImage?: () => void
+  onSaveInsertedImage?: () => void
+  onDeleteInsertedImage?: () => void
 }
 
 export default function EditingTools({
@@ -48,10 +57,17 @@ export default function EditingTools({
   onOpenCover,
   onDiscardChanges,
   editingDisabled = false,
+  isEditingInsertedImage = false,
+  canForceExpandInsertedImage = false,
+  isSavingInsertedImage = false,
+  onForceExpandInsertedImage,
+  onSaveInsertedImage,
+  onDeleteInsertedImage,
 }: EditingToolsProps) {
   const hasPendingChanges = canSave && !isSaving
   const actionsLocked = isGeneratingSubtitles || editingDisabled
-  const showActionButtons = !hasPendingChanges
+  const showActionButtons = !hasPendingChanges && !isEditingInsertedImage
+  const showImageEditButtons = !hasPendingChanges && isEditingInsertedImage
 
   const handleInsertClick = () => {
     if (actionsLocked) {
@@ -150,7 +166,7 @@ export default function EditingTools({
       style={{ minHeight: '3rem' }}
       aria-label="Editing tools"
     >
-      {!hasPendingChanges && (
+      {!hasPendingChanges && !isEditingInsertedImage && (
         <>
           <Button
             type="button"
@@ -286,6 +302,24 @@ export default function EditingTools({
             <span className="hidden sm:inline">Enumeración</span>
           </Button>
         </>
+      )}
+
+      {showImageEditButtons && (
+        <div className="flex w-full items-center justify-center gap-2 md:justify-start">
+          <ForceExpandInsertedImageButton
+            onClick={onForceExpandInsertedImage}
+            disabled={!canForceExpandInsertedImage || isSavingInsertedImage}
+          />
+          <SaveInsertedImageButton
+            onClick={onSaveInsertedImage}
+            disabled={isSavingInsertedImage || !onSaveInsertedImage}
+            isSaving={isSavingInsertedImage}
+          />
+          <DeleteInsertedImageButton
+            onClick={onDeleteInsertedImage}
+            disabled={isSavingInsertedImage || !onDeleteInsertedImage}
+          />
+        </div>
       )}
 
       {hasPendingChanges && (

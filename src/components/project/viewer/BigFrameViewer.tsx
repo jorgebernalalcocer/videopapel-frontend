@@ -1,9 +1,9 @@
 // src/components/project/viewer/BigFrameViewer.tsx
 'use client'
 
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import clsx from 'clsx'
-import { Maximize2, Minimize2, Crop, ImageUpscale, Save, Trash, Image as ImageIcon } from 'lucide-react'
+import { Maximize2, Minimize2, Crop, Edit, Image as ImageIcon } from 'lucide-react'
 import BusyOverlay from '@/components/ui/BusyOverlay'
 import TextOverlayLayer from '@/components/project/overlays/TextOverlayLayer'
 import FrameStyleOverlay from '@/components/project/viewer/FrameStyleOverlay'
@@ -91,6 +91,13 @@ export default function BigFrameViewer(props: {
   isPresentation?: boolean
   onSaveInsertedImageLayout?: (payload: { id: number; offset_x_pct: number; offset_y_pct: number; width_pct: number; height_pct: number }) => void | Promise<void>
   onDeleteInsertedImage?: (imageId: number) => void | Promise<void>
+  onInsertedImageEditStateChange?: (state: {
+    active: boolean
+    canForceExpand: boolean
+    onForceExpand?: () => void
+    onSave?: () => void | Promise<void>
+    onDelete?: () => void | Promise<void>
+  }) => void
 }) {
   const {
     current,
@@ -120,6 +127,7 @@ export default function BigFrameViewer(props: {
     isPresentation = false,
     onSaveInsertedImageLayout,
     onDeleteInsertedImage,
+    onInsertedImageEditStateChange,
   } = props
 
   // 👇 te faltaban estos
@@ -389,7 +397,7 @@ export default function BigFrameViewer(props: {
     window.addEventListener('pointerup', onUp)
   }
 
-  const handleForceExpand = () => {
+  const handleForceExpand = useCallback(() => {
     if (!printFrame || !insertedImageNaturalSize) return
 
     const frameRatio = printFrame.width / printFrame.height
@@ -415,7 +423,39 @@ export default function BigFrameViewer(props: {
       width_pct: widthPct,
       height_pct: heightPct,
     })
-  }
+  }, [printFrame, insertedImageNaturalSize])
+
+  const handleSaveImageEdit = useCallback(async () => {
+    if (!insertedImage || !onSaveInsertedImageLayout) return
+    await onSaveInsertedImageLayout({ id: insertedImage.id, ...imageLayout })
+    setImageEditMode(false)
+  }, [imageLayout, insertedImage, onSaveInsertedImageLayout])
+
+  const handleDeleteImageEdit = useCallback(async () => {
+    if (!insertedImage || !onDeleteInsertedImage) return
+    await onDeleteInsertedImage(insertedImage.id)
+    setImageEditMode(false)
+  }, [insertedImage, onDeleteInsertedImage])
+
+  useEffect(() => {
+    onInsertedImageEditStateChange?.({
+      active: Boolean(imageEditMode && insertedImage && !isPresentation),
+      canForceExpand: Boolean(printFrame && insertedImageNaturalSize),
+      onForceExpand: handleForceExpand,
+      onSave: handleSaveImageEdit,
+      onDelete: handleDeleteImageEdit,
+    })
+  }, [
+    handleDeleteImageEdit,
+    handleForceExpand,
+    handleSaveImageEdit,
+    imageEditMode,
+    insertedImage,
+    insertedImageNaturalSize,
+    isPresentation,
+    onInsertedImageEditStateChange,
+    printFrame,
+  ])
 
   return (
     <div className={clsx(
@@ -505,19 +545,14 @@ export default function BigFrameViewer(props: {
 
               {!imageEditMode && !isPresentation && (
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-auto">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      console.log('[BigFrameViewer] click en Editar imagen', {
-                        insertedImageId: insertedImage.id,
-                        imageEditMode,
-                      })
-                      setImageEditMode(true)
-                    }}
-                    className="rounded-lg bg-black/70 px-4 py-2 text-sm font-medium text-white hover:bg-black/80"
-                  >
-                    Editar imagen
-                  </button>
+             <ColorActionButton
+  onClick={() => setImageEditMode(true)}
+  color="slate"
+  size="compact"
+  icon={Edit}
+>
+  Editar imagen
+</ColorActionButton>
                 </div>
               )}
 
@@ -541,47 +576,6 @@ export default function BigFrameViewer(props: {
               )}
             </div>
 
-            {imageEditMode && !isPresentation && (
-              <div className="absolute bottom-4 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2">
-            
-                    <ColorActionButton
-          onClick={() => handleForceExpand()}
-          color="amber"
-          icon={ImageUpscale}
-          size="compact"
-        >
-          Forzar expansión
-        </ColorActionButton>
-        <ColorActionButton
-  onClick={async () => {
-    if (!insertedImage || !onSaveInsertedImageLayout) return;
-    await onSaveInsertedImageLayout({ id: insertedImage.id, ...imageLayout });
-    setImageEditMode(false);
-  }}
-  color="emerald"
-  size="compact"
-  icon={Save}
->
-  Guardar
-</ColorActionButton>
-
-<ColorActionButton
-  onClick={async () => {
-    if (!insertedImage || !onDeleteInsertedImage) return;
-    await onDeleteInsertedImage(insertedImage.id);
-    setImageEditMode(false);
-  }}
-  filled
-  color="red"
-  size="compact"
-  icon={Trash}
->
-  Borrar
-</ColorActionButton>
-        
-                
-              </div>
-            )}
           </div>
         )}
         {activeFrameSetting && !showPrintArea && !paintError && printFrame && (
