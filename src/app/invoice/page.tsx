@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Download, FileArchive, FileSpreadsheet, ReceiptEuro } from 'lucide-react'
+import { CircleX, Download, FileArchive, FileSpreadsheet, ReceiptEuro, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import { ColorActionButton } from '@/components/ui/color-action-button'
@@ -60,6 +60,16 @@ const formatAmount = (value: string | number) => {
 const formatDate = (value?: string | null) => {
   if (!value) return '-'
   return new Date(value).toLocaleDateString()
+}
+
+const getInvoiceDateParts = (value?: string | null) => {
+  if (!value) return null
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return {
+    month: String(date.getMonth() + 1).padStart(2, '0'),
+    year: String(date.getFullYear()),
+  }
 }
 
 const escapeCsv = (value: string | number) => {
@@ -190,6 +200,9 @@ export default function InvoicePage() {
   const [error, setError] = useState<string | null>(null)
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [bulkDownloading, setBulkDownloading] = useState(false)
+  const [selectedMonth, setSelectedMonth] = useState('all')
+  const [selectedYear, setSelectedYear] = useState('all')
+  const [searchTerm, setSearchTerm] = useState('')
 
   const canRequest = Boolean(accessToken)
 
@@ -291,6 +304,89 @@ export default function InvoicePage() {
     )
   }, [orders])
 
+  const availableYears = useMemo(() => {
+    const years = new Set<string>()
+    invoices.forEach((invoice) => {
+      const parts = getInvoiceDateParts(invoice.orderDate)
+      if (parts) years.add(parts.year)
+    })
+    return Array.from(years).sort((a, b) => Number(b) - Number(a))
+  }, [invoices])
+
+  const availableMonths = useMemo(() => {
+    const months = new Set<string>()
+    invoices.forEach((invoice) => {
+      const parts = getInvoiceDateParts(invoice.orderDate)
+      if (!parts) return
+      if (selectedYear !== 'all' && parts.year !== selectedYear) return
+      months.add(parts.month)
+    })
+    return Array.from(months)
+      .sort((a, b) => Number(a) - Number(b))
+      .map((month) => ({
+        value: month,
+        label: new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(
+          new Date(2026, Number(month) - 1, 1),
+        ),
+      }))
+  }, [invoices, selectedYear])
+
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase()
+
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter((invoice) => {
+      const parts = getInvoiceDateParts(invoice.orderDate)
+
+      if (parts) {
+        if (selectedYear !== 'all' && parts.year !== selectedYear) return false
+        if (selectedMonth !== 'all' && parts.month !== selectedMonth) return false
+      } else if (selectedMonth !== 'all' || selectedYear !== 'all') {
+        return false
+      }
+
+      if (!normalizedSearchTerm) return true
+
+      const searchableValues = [
+        invoice.id,
+        invoice.orderPublicId,
+        invoice.kind,
+        invoice.label,
+        invoice.status,
+        invoice.totalAmount,
+        invoice.taxAmount,
+        invoice.subtotalAmount,
+        invoice.currency,
+        invoice.orderDate,
+        invoice.deliveryDate,
+        formatDate(invoice.orderDate),
+        formatDate(invoice.deliveryDate),
+        invoice.itemCount,
+        invoice.unitsCount,
+        invoice.pdfUrl,
+        invoice.filename,
+      ]
+
+      return searchableValues.some((value) =>
+        value?.toString().toLowerCase().includes(normalizedSearchTerm)
+      )
+    })
+  }, [invoices, normalizedSearchTerm, selectedMonth, selectedYear])
+
+  useEffect(() => {
+    if (selectedYear !== 'all' && !availableYears.includes(selectedYear)) {
+      setSelectedYear('all')
+    }
+  }, [availableYears, selectedYear])
+
+  useEffect(() => {
+    if (
+      selectedMonth !== 'all' &&
+      !availableMonths.some((month) => month.value === selectedMonth)
+    ) {
+      setSelectedMonth('all')
+    }
+  }, [availableMonths, selectedMonth])
+
   const handleDownload = useCallback(async (invoice: InvoiceRow) => {
     if (downloadingId === invoice.id) return
     setDownloadingId(invoice.id)
@@ -311,7 +407,7 @@ export default function InvoicePage() {
   }, [downloadingId])
 
   const handleExportCsv = useCallback(() => {
-    if (invoices.length === 0) {
+    if (filteredInvoices.length === 0) {
       toast.error('No hay facturas para exportar.')
       return
     }
@@ -331,7 +427,7 @@ export default function InvoicePage() {
         'unidades',
         'pdf',
       ].join(','),
-      ...invoices.map((invoice) =>
+      ...filteredInvoices.map((invoice) =>
         [
           invoice.label,
           invoice.orderPublicId,
@@ -355,14 +451,14 @@ export default function InvoicePage() {
       type: 'text/csv;charset=utf-8;',
     })
     downloadBlob(csvBlob, `facturas-${new Date().toISOString().slice(0, 10)}.csv`)
-  }, [invoices])
+  }, [filteredInvoices])
 
   const handleDownloadZip = useCallback(async () => {
-    if (invoices.length === 0 || bulkDownloading) return
+    if (filteredInvoices.length === 0 || bulkDownloading) return
     setBulkDownloading(true)
     try {
       const files = await Promise.all(
-        invoices.map(async (invoice) => {
+        filteredInvoices.map(async (invoice) => {
           const response = await fetch(invoice.pdfUrl)
           if (!response.ok) {
             throw new Error(`No se pudo descargar ${invoice.filename}`)
@@ -379,7 +475,7 @@ export default function InvoicePage() {
     } finally {
       setBulkDownloading(false)
     }
-  }, [bulkDownloading, invoices])
+  }, [bulkDownloading, filteredInvoices])
 
   if (!hasHydrated) {
     return (
@@ -421,11 +517,41 @@ export default function InvoicePage() {
         </div>
       </header>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex min-w-[160px] flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Mes</span>
+          <select
+            value={selectedMonth}
+            onChange={(event) => setSelectedMonth(event.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-slate-500"
+          >
+            <option value="all">Todos los meses</option>
+            {availableMonths.map((month) => (
+              <option key={month.value} value={month.value}>
+                {month.label.charAt(0).toUpperCase() + month.label.slice(1)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex min-w-[140px] flex-col gap-2">
+          <span className="text-xs font-semibold uppercase tracking-wide text-gray-500">Año</span>
+          <select
+            value={selectedYear}
+            onChange={(event) => setSelectedYear(event.target.value)}
+            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-slate-500"
+          >
+            <option value="all">Todos los años</option>
+            {availableYears.map((year) => (
+              <option key={year} value={year}>
+                {year}
+              </option>
+            ))}
+          </select>
+        </label>
         <button
           type="button"
           onClick={() => void handleDownloadZip()}
-          disabled={bulkDownloading || invoices.length === 0}
+          disabled={bulkDownloading || filteredInvoices.length === 0}
           className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 disabled:opacity-60"
         >
           <FileArchive className="h-4 w-4" />
@@ -434,12 +560,35 @@ export default function InvoicePage() {
         <button
           type="button"
           onClick={handleExportCsv}
-          disabled={invoices.length === 0}
+          disabled={filteredInvoices.length === 0}
           className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:opacity-60"
         >
           <FileSpreadsheet className="h-4 w-4" />
           Exportar CSV
         </button>
+      </div>
+
+      <div className="max-w-xl">
+        <label className="relative block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(event) => setSearchTerm(event.target.value)}
+            placeholder="Buscar por pedido, tipo, estado, importe, fecha, archivo..."
+            className="w-full rounded-xl border border-gray-200 bg-white py-3 pl-10 pr-10 text-sm text-gray-900 shadow-sm outline-none transition focus:border-gray-400"
+          />
+          {searchTerm && (
+            <button
+              type="button"
+              onClick={() => setSearchTerm('')}
+              aria-label="Limpiar búsqueda"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-black-900 transition hover:text-gray-600"
+            >
+              <CircleX className="h-4 w-4" />
+            </button>
+          )}
+        </label>
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white shadow-sm">
@@ -449,10 +598,13 @@ export default function InvoicePage() {
           {!loading && !error && invoices.length === 0 ? (
             <p className="text-sm text-gray-500">Todavía no hay facturas disponibles.</p>
           ) : null}
+          {!loading && !error && invoices.length > 0 && filteredInvoices.length === 0 ? (
+            <p className="text-sm text-gray-500">No hay facturas que coincidan con los filtros o la búsqueda.</p>
+          ) : null}
 
-          {!loading && !error && invoices.length > 0 ? (
+          {!loading && !error && filteredInvoices.length > 0 ? (
             <ul className="space-y-4">
-              {invoices.map((invoice) => (
+              {filteredInvoices.map((invoice) => (
                 <li
                   key={invoice.id}
                   className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-4"

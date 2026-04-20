@@ -23,7 +23,7 @@ export default function CartButton() {
       size="compact"
       icon={ShoppingBasket}
     >
-      Mi carrito
+      Cesta
     </ColorActionButton>
   )
 }
