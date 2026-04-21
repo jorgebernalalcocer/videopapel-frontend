@@ -498,7 +498,7 @@ export default function ProfilePage() {
             <p className="text-sm text-gray-500">
               {/* Assuming you have user email or another identifier */}
               {!isCompanyUser && isSuperuser ? 'SuperUser' : ''}
-              {isCompanyUser && 'account_type company'}
+              {isCompanyUser && 'Tipo de cuenta: Empresa'}
 
 
             </p>

@@ -37,6 +37,8 @@ type Order = {
   public_id: string
   status: string
   subtotal_amount: string
+  discount_amount?: string
+  discount_code?: string | null
   tax_amount: string
   total_amount: string
   currency: string
@@ -205,6 +207,8 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
       order.public_id,
       order.status,
       order.subtotal_amount,
+      order.discount_amount,
+      order.discount_code,
       order.tax_amount,
       order.total_amount,
       order.currency,
@@ -305,6 +309,11 @@ export function MyOrders({ compact = false, embed = false, orderId }: MyOrdersPr
                       </div>
                       <div className="text-right text-sm text-gray-700">
                         <div>Subtotal: {formatAmount(order.subtotal_amount)} €</div>
+                        {order.discount_code && parseFloat(order.discount_amount || '0') > 0 && (
+                          <div className="text-amber-700">
+                            Descuento ({order.discount_code}): -{formatAmount(order.discount_amount)} €
+                          </div>
+                        )}
                         <div>IVA: {formatAmount(order.tax_amount)} €</div>
                         <p className="text-base font-semibold text-gray-900">Total: {formatAmount(order.total_amount)} €</p>
                       </div>

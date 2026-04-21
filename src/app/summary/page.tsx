@@ -3,11 +3,13 @@
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { BadgePercent } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
 import { useProjectPdfExport } from '@/hooks/useProjectPdfExport'
 import ShippingSelector from '@/components/orders/ShippingSelector'
 import { ProjectPriceCard, type PriceBreakdown } from '@/components/pricing/ProjectPriceCard'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -35,6 +37,9 @@ type CartResponse = {
   shipping_label?: string | null
   shipping_zone?: string | null
   subtotal_with_shipping?: string
+  discount_code?: string | null
+  discount_amount?: string
+  discounted_subtotal?: string
   tax_amount: string
   tax_with_shipping?: string
   total_amount: string
@@ -73,6 +78,9 @@ export default function SummaryPage() {
   const [addressesLoading, setAddressesLoading] = useState(false)
   const [addressesError, setAddressesError] = useState<string | null>(null)
   const [selectedAddressId, setSelectedAddressId] = useState<number | null>(null)
+  const [discountCode, setDiscountCode] = useState('')
+  const [appliedDiscountCode, setAppliedDiscountCode] = useState<string | null>(null)
+  const [isApplyingDiscount, setIsApplyingDiscount] = useState(false)
   const { exportPdf, exporting: exportingPdf } = useProjectPdfExport()
 
   const canRequest = Boolean(accessToken)
@@ -82,22 +90,33 @@ export default function SummaryPage() {
     setLoading(true)
     setError(null)
     try {
-      const query = selectedAddressId ? `?shipping_address_id=${selectedAddressId}` : ''
+      const params = new URLSearchParams()
+      if (selectedAddressId) params.set('shipping_address_id', String(selectedAddressId))
+      if (appliedDiscountCode) params.set('discount_code', appliedDiscountCode)
+      const query = params.toString() ? `?${params.toString()}` : ''
       const res = await fetch(`${API_BASE}/cart/${query}`, {
         headers: { Authorization: `Bearer ${accessToken}` },
         credentials: 'include',
       })
       if (!res.ok) {
-        const detail = await res.text()
-        throw new Error(detail || `Error ${res.status}`)
+        let message = ''
+        try {
+          const payload = await res.json()
+          message = payload?.discount_code?.[0] || payload?.discount_code || payload?.detail || ''
+        } catch {
+          message = await res.text()
+        }
+        throw new Error(message || `Error ${res.status}`)
       }
-      setCart(await res.json())
+      const data = await res.json()
+      setCart(data)
+      setAppliedDiscountCode(data.discount_code ?? null)
     } catch (err: any) {
       setError(err?.message || 'No se pudo cargar la cesta.')
     } finally {
       setLoading(false)
     }
-  }, [API_BASE, accessToken, canRequest, selectedAddressId])
+  }, [API_BASE, accessToken, canRequest, selectedAddressId, appliedDiscountCode])
 
   useEffect(() => {
     if (canRequest) {
@@ -179,9 +198,63 @@ export default function SummaryPage() {
     return parsed.toFixed(2)
   }, [cart])
 
+  const discountFormatted = useMemo(() => {
+    if (!cart?.discount_amount) return '0.00'
+    const parsed = parseFloat(cart.discount_amount || '0')
+    return parsed.toFixed(2)
+  }, [cart])
+
+  const discountedSubtotalFormatted = useMemo(() => {
+    if (!cart?.discounted_subtotal) return null
+    const parsed = parseFloat(cart.discounted_subtotal || '0')
+    return parsed.toFixed(2)
+  }, [cart])
+
   const canFinalize = Boolean(
     cart && cart.items.length > 0 && selectedAddressId && !isCheckingOut && !exportingPdf
   )
+
+  const applyDiscountCode = useCallback(async () => {
+    const normalized = discountCode.trim().toUpperCase()
+    if (!normalized) {
+      setAppliedDiscountCode(null)
+      setDiscountCode('')
+      await fetchCart()
+      return
+    }
+
+    setIsApplyingDiscount(true)
+    setError(null)
+    try {
+      const params = new URLSearchParams()
+      if (selectedAddressId) params.set('shipping_address_id', String(selectedAddressId))
+      params.set('discount_code', normalized)
+      const res = await fetch(`${API_BASE}/cart/?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        let message = ''
+        try {
+          const payload = await res.json()
+          message = payload?.discount_code?.[0] || payload?.discount_code || payload?.detail || ''
+        } catch {
+          message = await res.text()
+        }
+        throw new Error(message || `Error ${res.status}`)
+      }
+      const data = await res.json()
+      setCart(data)
+      setAppliedDiscountCode(data.discount_code ?? normalized)
+      setDiscountCode(data.discount_code ?? normalized)
+      toast.success(`Código ${data.discount_code ?? normalized} aplicado.`)
+    } catch (err: any) {
+      setAppliedDiscountCode(null)
+      toast.error(err?.message || 'No se pudo aplicar el código de descuento.')
+    } finally {
+      setIsApplyingDiscount(false)
+    }
+  }, [API_BASE, accessToken, discountCode, fetchCart, selectedAddressId])
 
   const finalizePurchase = useCallback(async () => {
     if (!accessToken) return
@@ -208,11 +281,20 @@ export default function SummaryPage() {
           Authorization: `Bearer ${accessToken}`,
         },
         credentials: 'include',
-        body: JSON.stringify({ shipping_address_id: selectedAddressId }),
+        body: JSON.stringify({
+          shipping_address_id: selectedAddressId,
+          discount_code: appliedDiscountCode,
+        }),
       })
       if (!res.ok) {
-        const detail = await res.text()
-        throw new Error(detail || `Error ${res.status}`)
+        let message = ''
+        try {
+          const payload = await res.json()
+          message = payload?.discount_code?.[0] || payload?.discount_code || payload?.detail || ''
+        } catch {
+          message = await res.text()
+        }
+        throw new Error(message || `Error ${res.status}`)
       }
       const data = await res.json()
       toast.success(`Pedido creado correctamente (#${data.id}).`)
@@ -223,7 +305,7 @@ export default function SummaryPage() {
     } finally {
       setIsCheckingOut(false)
     }
-  }, [accessToken, selectedAddressId, cart, exportPdf, fetchCart, router])
+  }, [accessToken, selectedAddressId, cart, exportPdf, fetchCart, router, appliedDiscountCode])
 
   if (!hasHydrated) {
     return (
@@ -289,7 +371,37 @@ export default function SummaryPage() {
             </div>
           )}
         </div>
-        <div className="flex flex-col gap-4 border-t border-gray-100 px-6 py-4 md:flex-row md:items-end">
+        <div className="border-t border-gray-100 px-6 py-4">
+          <div className="mb-4 max-w-xl space-y-2">
+            <label htmlFor="discount-code" className="block text-sm font-medium text-gray-700">
+              Codigo de descuento
+            </label>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <input
+                id="discount-code"
+                type="text"
+                value={discountCode}
+                onChange={(e) => setDiscountCode(e.target.value.toUpperCase())}
+                placeholder="Introduce tu código"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-amber-500 focus:ring-2 focus:ring-amber-100"
+              />
+              <ColorActionButton
+                color="amber"
+                icon={BadgePercent}
+                disabled={isApplyingDiscount || loading || !hasItems}
+                onClick={() => {
+                  void applyDiscountCode()
+                }}
+                className="sm:self-end"
+              >
+                {isApplyingDiscount ? 'Aplicando…' : 'Aplicar'}
+              </ColorActionButton>
+            </div>
+            {appliedDiscountCode ? (
+              <p className="text-sm text-emerald-700">Código aplicado: {appliedDiscountCode}</p>
+            ) : null}
+          </div>
+          <div className="flex flex-col gap-4 md:flex-row md:items-end">
           <div className="flex-1 min-w-[220px] space-y-1 text-sm text-gray-600">
             <div className="flex items-center justify-between">
               <span>Subtotal</span>
@@ -300,6 +412,20 @@ export default function SummaryPage() {
                 <span>{cart?.shipping_label || 'Envío'}</span>
                 <span>{shippingFormatted} €</span>
               </div>
+            )}
+            {appliedDiscountCode && (
+              <>
+                <div className="flex items-center justify-between text-amber-700">
+                  <span>Descuento ({appliedDiscountCode})</span>
+                  <span>-{discountFormatted} €</span>
+                </div>
+                {discountedSubtotalFormatted !== null && (
+                  <div className="flex items-center justify-between">
+                    <span>Base imponible</span>
+                    <span>{discountedSubtotalFormatted} €</span>
+                  </div>
+                )}
+              </>
             )}
             <div className="flex items-center justify-between">
               <span>IVA (21%)</span>
@@ -334,6 +460,7 @@ export default function SummaryPage() {
             >
               {exportingPdf ? 'Generando PDF…' : isCheckingOut ? 'Procesando…' : 'Finalizar compra'}
             </button>
+          </div>
           </div>
         </div>
       </div>
