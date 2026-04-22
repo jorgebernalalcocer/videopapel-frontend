@@ -2,11 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, Trash } from 'lucide-react'
 import GenerateTemporalInvitation from '@/components/GenerateTemporalInvitation'
 import InviteClienteModal from '@/components/InviteClienteModal'
 import { deleteCompanyGuestAccess, fetchCompanyGuestAccesses, type InviteClientItem } from '@/lib/companyGuestAccess'
 import { useAuth } from '@/store/auth'
+import { ColorActionButton } from '@/components/ui/color-action-button'
+
 
 type CompanyItem = { id: number; name: string }
 
@@ -86,7 +88,7 @@ export default function InvitePage() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <KeyRound className="h-8 w-8 text-emerald-600" />
+            <KeyRound className="h-8 w-8 text-amber-600" />
             <div>
               <h1 className="text-3xl font-semibold text-grey-600">Invitar clientes</h1>
               <p className="text-sm text-gray-500">Permite el acceso temporal a tus clientes para que suban sus videos.</p>
@@ -121,25 +123,38 @@ export default function InvitePage() {
                       <div className="space-y-1">
                         <p className={expired ? 'text-sm font-semibold text-red-600' : 'text-sm font-semibold text-gray-900'}>{remaining}</p>
                         <p className="text-sm text-gray-700">{item.client_name || 'Cliente sin nombre'}</p>
-                        <Link
-                          href={{
-                            pathname: `/invite/${item.id}`,
-                            query: item.client_name ? { client_name: item.client_name } : undefined,
-                          }}
-                          className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 transition hover:bg-emerald-50 hover:text-emerald-700"
-                        >
-                          {item.uploaded_videos_count} videos subidos
-                        </Link>
+                        {item.uploaded_videos_count > 0 ? (
+                          <Link
+                            href={{
+                              pathname: `/invite/${item.id}`,
+                              query: item.client_name ? { client_name: item.client_name } : undefined,
+                            }}
+                            className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 transition hover:bg-emerald-50 hover:text-emerald-700"
+                          >
+                            {item.uploaded_videos_count} videos subidos
+                          </Link>
+                        ) : (
+                          <span className="inline-flex cursor-not-allowed rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-400">
+                            0 videos subidos
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="md:ml-auto">
-                      <button
-                        type="button"
-                        onClick={() => void deleteCompanyGuestAccess(item.id).then(() => setItems((current) => current.filter((entry) => entry.id !== item.id))).catch((err) => setError(err?.message || 'No se pudo eliminar la invitación.'))}
-                        className="rounded-2xl border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition hover:bg-red-50"
-                      >
-                        Eliminar invitación
-                      </button>
+         <ColorActionButton
+  type="button"
+  color="red"
+  size="compact"
+  filled
+  icon={Trash}
+  onClick={() => 
+    void deleteCompanyGuestAccess(item.id)
+      .then(() => setItems((current) => current.filter((entry) => entry.id !== item.id)))
+      .catch((err) => setError(err?.message || 'No se pudo eliminar la invitación.'))
+  }
+>
+  Eliminar invitación
+</ColorActionButton>
                     </div>
                   </li>
                 )
