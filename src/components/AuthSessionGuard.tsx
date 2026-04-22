@@ -13,6 +13,8 @@ const PUBLIC_PATH_PREFIXES = [
   '/auth/verify-email',
   '/auth/resend-verification',
   '/invitations',
+  '/event-invitations',
+  '/acceso',
 ]
 
 const PROTECTED_PATH_PREFIXES = [
@@ -25,6 +27,7 @@ const PROTECTED_PATH_PREFIXES = [
   '/orders',
   '/profile',
   '/rectification-invoice',
+  '/invite',
 ]
 
 function isProtectedPath(pathname: string) {
