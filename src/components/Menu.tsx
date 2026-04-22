@@ -70,6 +70,10 @@ export default function Menu() {
   const accessToken = useAuth((s) => s.accessToken)
   const canRequest = Boolean(accessToken)
   const apiBase = process.env.NEXT_PUBLIC_API_BASE!
+  const userLabel =
+    user?.actor_type === 'company_guest'
+      ? `@${(user.company_name || '').trim().toLowerCase() || 'empresa'}`
+      : user?.email || ''
 
   const fetchCompaniesCount = useCallback(async () => {
     if (!canRequest || !accessToken) {
@@ -145,7 +149,7 @@ export default function Menu() {
         <nav className="hidden items-center gap-3 md:flex">
           {user ? (
             <>
-              <span className="text-sm text-gray-600">Hola {user.email}</span>
+              <span className="text-sm text-gray-600">Hola {userLabel}</span>
               <ProjectsButton />
               <EventsButton />
               <ClipsButton />

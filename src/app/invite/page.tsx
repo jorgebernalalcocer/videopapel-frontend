@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
+import Link from 'next/link'
 import { KeyRound } from 'lucide-react'
 import GenerateTemporalInvitation from '@/components/GenerateTemporalInvitation'
 import InviteClienteModal from '@/components/InviteClienteModal'
@@ -120,7 +121,15 @@ export default function InvitePage() {
                       <div className="space-y-1">
                         <p className={expired ? 'text-sm font-semibold text-red-600' : 'text-sm font-semibold text-gray-900'}>{remaining}</p>
                         <p className="text-sm text-gray-700">{item.client_name || 'Cliente sin nombre'}</p>
-                        <p className="text-sm text-gray-500">{item.uploaded_videos_count} videos subidos</p>
+                        <Link
+                          href={{
+                            pathname: `/invite/${item.id}`,
+                            query: item.client_name ? { client_name: item.client_name } : undefined,
+                          }}
+                          className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 transition hover:bg-emerald-50 hover:text-emerald-700"
+                        >
+                          {item.uploaded_videos_count} videos subidos
+                        </Link>
                       </div>
                     </div>
                     <div className="md:ml-auto">

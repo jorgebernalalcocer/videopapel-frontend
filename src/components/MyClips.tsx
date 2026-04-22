@@ -3,8 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/store/auth'
 import DeleteClipButton from './DeleteClipButton'
-import GoProjectButton from './GoProjectButton'
-import UploadVideoTriggerButton from '@/components/UploadVideoTriggerButton'
 
 type Video = {
   id: number
@@ -17,13 +15,13 @@ type Video = {
   uploaded_at: string
 }
 
-const TITLE = 'Mis videos'
-
 function TitleBar({
+  title = 'Videos digitales',
   subtitle,
   subtitleClassName = 'text-gray-500',
   showUploadButton = false,
 }: {
+  title?: string
   subtitle?: string
   subtitleClassName?: string
   showUploadButton?: boolean
@@ -31,7 +29,7 @@ function TitleBar({
   return (
     <div className="mb-6 flex items-center justify-between gap-4">
       <div>
-                  <h1 className="text-3xl font-semibold">Videos digitales</h1>
+        <h1 className="text-3xl font-semibold">{title}</h1>
 
         {subtitle ? <p className={`mt-1 text-sm ${subtitleClassName}`}>{subtitle}</p> : null}
       </div>
@@ -39,7 +37,15 @@ function TitleBar({
   )
 }
 
-export default function MyClips() {
+export default function MyClips({
+  fetchPath = '/videos/',
+  title = 'Videos digitales',
+  emptyMessage = 'Aún no has subido ningún video.',
+}: {
+  fetchPath?: string
+  title?: string
+  emptyMessage?: string
+}) {
   const [clips, setClips] = useState<Video[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -52,7 +58,7 @@ export default function MyClips() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch(`${API_BASE}/videos/`, {
+      const res = await fetch(`${API_BASE}${fetchPath}`, {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         credentials: 'include',
       })
@@ -63,7 +69,7 @@ export default function MyClips() {
     } finally {
       setLoading(false)
     }
-  }, [API_BASE, accessToken])
+  }, [API_BASE, accessToken, fetchPath])
 
   useEffect(() => {
     if (!hasHydrated || !accessToken) return
@@ -84,7 +90,7 @@ export default function MyClips() {
   if (!hasHydrated) {
     return (
       <section className="mt-12 w-full max-w-6xl">
-        <TitleBar subtitle="Cargando…" />
+        <TitleBar title={title} subtitle="Cargando…" />
       </section>
     )
   }
@@ -92,7 +98,7 @@ export default function MyClips() {
   if (!accessToken) {
     return (
       <section className="mt-12 w-full max-w-6xl">
-        <TitleBar subtitle="Inicia sesión para ver tus videos." />
+        <TitleBar title={title} subtitle="Inicia sesión para ver tus videos." />
       </section>
     )
   }
@@ -100,7 +106,7 @@ export default function MyClips() {
   if (loading) {
     return (
       <section className="mt-12 w-full max-w-6xl">
-        <TitleBar subtitle="Cargando…" showUploadButton />
+        <TitleBar title={title} subtitle="Cargando…" showUploadButton={fetchPath === '/videos/'} />
       </section>
     )
   }
@@ -108,7 +114,7 @@ export default function MyClips() {
   if (error) {
     return (
       <section className="mt-12 w-full max-w-6xl">
-        <TitleBar subtitle={error} subtitleClassName="text-sm text-red-600" showUploadButton />
+        <TitleBar title={title} subtitle={error} subtitleClassName="text-sm text-red-600" showUploadButton={fetchPath === '/videos/'} />
       </section>
     )
   }
@@ -116,14 +122,14 @@ export default function MyClips() {
   if (!clips.length) {
     return (
       <section className="mt-12 w-full max-w-6xl">
-        <TitleBar subtitle="Aún no has subido ningún video." showUploadButton />
+        <TitleBar title={title} subtitle={emptyMessage} showUploadButton={fetchPath === '/videos/'} />
       </section>
     )
   }
 
   return (
     <section className="mt-6 w-full max-w-6xl sm:mt-12">
-      <TitleBar showUploadButton />
+      <TitleBar title={title} subtitle={undefined} showUploadButton={fetchPath === '/videos/'} />
 
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(280px,1fr))] gap-6">
         {clips.map((v) => (

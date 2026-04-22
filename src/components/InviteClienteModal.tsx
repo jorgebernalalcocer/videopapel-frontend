@@ -125,7 +125,7 @@ export default function InviteClienteModal({ open, companyId, onClose, onCreated
         </div>
       ) : created ? (
         <div className="space-y-4 text-center">
-          <p className="text-sm font-medium text-gray-500">Acceso de {durationLabel} a tu cliente</p>
+          <p className="text-sm font-medium text-gray-500">Tu cliente tiene {durationLabel} de acceso.</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={created.qr_image_url} alt="QR de invitación temporal" className="mx-auto h-64 w-64 rounded-2xl border border-gray-200 bg-white p-3" />
           <p className="break-all rounded-2xl bg-gray-50 px-4 py-3 text-xs text-gray-600">{created.access_url}</p>

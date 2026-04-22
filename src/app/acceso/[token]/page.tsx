@@ -79,7 +79,7 @@ export default function CompanyGuestAccessPage({ params }: { params: Promise<{ t
         <h1 className="mt-3 text-3xl font-semibold text-gray-900">Acceso temporal</h1>
         {detail ? (
           <p className="mt-4 text-sm text-gray-600">
-            {detail.client_name ? `${detail.client_name}, ` : ''}puedes acceder temporalmente a la empresa <strong>{detail.company_name}</strong> para subir vídeos y crear proyectos propios.
+            {detail.client_name ? `${detail.client_name}, ` : ''}Puedes acceder temporalmente al perfil de <strong>{detail.company_name}</strong> para subir vídeos y crear proyectos propios.
           </p>
         ) : null}
         {error ? <p className="mt-6 rounded-2xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}

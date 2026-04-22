@@ -9,6 +9,7 @@ type AuthUser = {
   id: number
   email: string
   username?: string | null
+  company_name?: string | null
   phone?: string | null
   account_type?: 'individual' | 'company' | 'company_guest'
   is_active?: boolean
