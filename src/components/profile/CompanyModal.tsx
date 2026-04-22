@@ -1,9 +1,18 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
+import { BriefcaseBusiness, Building2, Landmark, Megaphone, Package, Printer, Camera, Gem, PartyPopper, ArrowBigDown } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
+import SelectPersonalize, { type SelectPersonalizeOption } from '@/components/SelectPersonalize'
 import { toast } from 'sonner'
 import { useAuth } from '@/store/auth'
+
+export type CompanySectorOption = {
+  id: number
+  name: string
+  slug: string
+  description?: string | null
+}
 
 export type CompanyFormData = {
   id?: number
@@ -11,6 +20,7 @@ export type CompanyFormData = {
   vat_number: string
   phone: string
   mail?: string | null
+  sector: string
 }
 
 type CompanyModalProps = {
@@ -27,9 +37,26 @@ const EMPTY_FORM: CompanyFormData = {
   vat_number: '',
   phone: '',
   mail: '',
+  sector: '',
 }
 
 const trimOrEmpty = (value: string | null | undefined) => value?.trim() || ''
+const DEFAULT_SECTOR_ICON = BriefcaseBusiness
+const SECTOR_PLACEHOLDER = '__unselected__'
+
+const getSectorIcon = (slug: string) => {
+  const normalized = slug.toLowerCase()
+  if (normalized.includes('impr') || normalized.includes('print') || normalized.includes('med')) return Printer
+  if (normalized.includes('foto') || normalized.includes('video') || normalized.includes('film')) return Camera
+  if (normalized.includes('plan') || normalized.includes('wed') || normalized.includes('gem')) return Gem
+  if (normalized.includes('event') || normalized.includes('fest') || normalized.includes('congr')) return PartyPopper
+  if (normalized.includes('sector') || normalized.includes('sector') || normalized.includes('tecno')) return ArrowBigDown
+  if (normalized.includes('market') || normalized.includes('public') || normalized.includes('media')) return Megaphone
+  if (normalized.includes('industr') || normalized.includes('fabric') || normalized.includes('logist')) return Package
+  if (normalized.includes('finan') || normalized.includes('legal') || normalized.includes('consult')) return Landmark
+  if (normalized.includes('inmob') || normalized.includes('constr') || normalized.includes('hotel')) return Building2
+  return DEFAULT_SECTOR_ICON
+}
 
 export default function CompanyModal({
   open,
@@ -40,6 +67,8 @@ export default function CompanyModal({
   company,
 }: CompanyModalProps) {
   const [form, setForm] = useState<CompanyFormData>(EMPTY_FORM)
+  const [sectorOptions, setSectorOptions] = useState<CompanySectorOption[]>([])
+  const [isLoadingSectors, setIsLoadingSectors] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const setAuthUser = useAuth((s) => s.setUser)
@@ -56,15 +85,80 @@ export default function CompanyModal({
             vat_number: company.vat_number || '',
             phone: company.phone || '',
             mail: company.mail || '',
+            sector: company.sector || '',
           }
         : EMPTY_FORM
     )
     setError(null)
   }, [company, open])
 
+  useEffect(() => {
+    if (!open || !accessToken) return
+
+    let isCancelled = false
+
+    const fetchSectors = async () => {
+      setIsLoadingSectors(true)
+      try {
+        const res = await fetch(`${apiBase}/company-sectors/`, {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: 'include',
+        })
+        if (!res.ok) {
+          const detail = await res.text()
+          throw new Error(detail || `Error ${res.status}`)
+        }
+
+        const payload = await res.json()
+        const list: CompanySectorOption[] = Array.isArray(payload)
+          ? payload
+          : Array.isArray(payload?.results)
+          ? payload.results
+          : []
+
+        if (!isCancelled) {
+          setSectorOptions(list)
+        }
+      } catch (err: any) {
+        if (!isCancelled) {
+          const msg = err?.message || 'No se pudieron cargar los sectores.'
+          setSectorOptions([])
+          setError(msg)
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingSectors(false)
+        }
+      }
+    }
+
+    void fetchSectors()
+
+    return () => {
+      isCancelled = true
+    }
+  }, [accessToken, apiBase, open])
+
   const updateField = <K extends keyof CompanyFormData>(key: K, value: CompanyFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
+
+  const sectorSelectOptions: SelectPersonalizeOption<string>[] = [
+    {
+      value: SECTOR_PLACEHOLDER,
+      label: 'Selecciona un sector',
+      description: 'Campo obligatorio',
+      icon: DEFAULT_SECTOR_ICON,
+    },
+    ...sectorOptions.map((sector) => ({
+      value: String(sector.id),
+      label: sector.name,
+      description: trimOrEmpty(sector.description) || 'Selecciona este sector',
+      icon: getSectorIcon(sector.slug),
+    })),
+  ]
 
   const handleClose = () => {
     if (isSubmitting) return
@@ -80,7 +174,13 @@ export default function CompanyModal({
       return
     }
 
-    if (!trimOrEmpty(form.name) || !trimOrEmpty(form.vat_number) || !trimOrEmpty(form.phone)) {
+    if (
+      !trimOrEmpty(form.name) ||
+      !trimOrEmpty(form.vat_number) ||
+      !trimOrEmpty(form.phone) ||
+      !trimOrEmpty(form.sector) ||
+      form.sector === SECTOR_PLACEHOLDER
+    ) {
       setError('Completa los campos obligatorios.')
       return
     }
@@ -102,6 +202,7 @@ export default function CompanyModal({
           vat_number: trimOrEmpty(form.vat_number).toUpperCase(),
           phone: trimOrEmpty(form.phone),
           mail: trimOrEmpty(form.mail) || null,
+          sector: Number(form.sector),
         }),
       })
 
@@ -173,6 +274,29 @@ export default function CompanyModal({
             className="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
           />
         </label>
+
+        <div className="block text-sm font-medium text-gray-700">
+          <span className="mb-1 block">Sector</span>
+          {sectorSelectOptions.length > 0 ? (
+            <SelectPersonalize
+              value={form.sector || SECTOR_PLACEHOLDER}
+              options={sectorSelectOptions}
+              onChange={(value) => updateField('sector', value)}
+              disabled={isSubmitting || isLoadingSectors}
+              align="start"
+              triggerClassName="mt-1 flex w-full"
+              menuClassName="w-[var(--radix-dropdown-menu-trigger-width)] min-w-[260px]"
+            />
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="mt-1 inline-flex w-full items-center justify-between gap-3 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm text-gray-500"
+            >
+              {isLoadingSectors ? 'Cargando sectores…' : 'No hay sectores disponibles'}
+            </button>
+          )}
+        </div>
 
         <label className="block text-sm font-medium text-gray-700">
           Email empresa (opcional)

@@ -44,6 +44,9 @@ type Company = MyLogosCompany & {
   vat_number: string
   phone?: string | null
   mail?: string | null
+  sector?: number | null
+  sector_name?: string | null
+  sector_slug?: string | null
   invoice_emails?: string[]
   created_at?: string
 }
@@ -456,7 +459,8 @@ export default function ProfilePage() {
 
   // Helper to capitalize the first letter of a string
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
-  const isCompanyUser = accountType === 'company'
+  const hasCompanyProfile = companies.length > 0
+  const isCompanyUser = accountType === 'company' && hasCompanyProfile
   const mobileStatsColumns = Math.ceil((isCompanyUser ? 8 : 6) / 2)
   const isGmailUser = /@gmail\.com$/i.test(mail)
   const primaryCompanyLogo =
@@ -1056,6 +1060,7 @@ export default function ProfilePage() {
                 vat_number: selectedCompany.vat_number,
                 phone: selectedCompany.phone ?? '',
                 mail: selectedCompany.mail ?? '',
+                sector: selectedCompany.sector ? String(selectedCompany.sector) : '',
               }
             : null
         }
