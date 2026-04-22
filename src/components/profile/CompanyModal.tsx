@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useEffect, useState } from 'react'
-import { BriefcaseBusiness, Building2, Landmark, Megaphone, Package, Printer, Camera, Gem, PartyPopper, ArrowBigDown } from 'lucide-react'
+import { BriefcaseBusiness, Building2, Landmark, Megaphone, Package, Printer, Camera, Gem, PartyPopper, Gift } from 'lucide-react'
 import { Modal } from '@/components/ui/Modal'
 import SelectPersonalize, { type SelectPersonalizeOption } from '@/components/SelectPersonalize'
 import { toast } from 'sonner'
@@ -50,7 +50,7 @@ const getSectorIcon = (slug: string) => {
   if (normalized.includes('foto') || normalized.includes('video') || normalized.includes('film')) return Camera
   if (normalized.includes('plan') || normalized.includes('wed') || normalized.includes('gem')) return Gem
   if (normalized.includes('event') || normalized.includes('fest') || normalized.includes('congr')) return PartyPopper
-  if (normalized.includes('sector') || normalized.includes('sector') || normalized.includes('tecno')) return ArrowBigDown
+  if (normalized.includes('suvenir') || normalized.includes('souvenir') || normalized.includes('tecno')) return Gift
   if (normalized.includes('market') || normalized.includes('public') || normalized.includes('media')) return Megaphone
   if (normalized.includes('industr') || normalized.includes('fabric') || normalized.includes('logist')) return Package
   if (normalized.includes('finan') || normalized.includes('legal') || normalized.includes('consult')) return Landmark

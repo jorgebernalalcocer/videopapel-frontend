@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { BookOpen, Film, Home, List, Palette, PartyPopper, ReceiptEuro, ShoppingBasket, User } from 'lucide-react'
+import { BookOpen, Film, Home, List, Palette, PartyPopper, ReceiptEuro, ShoppingBasket, User, KeyRound } from 'lucide-react'
 import type { ElementType } from 'react'
 
 type ActionCardItem = {
@@ -91,6 +91,15 @@ const invoicesCard: ActionCardItem = {
   textClassName: 'text-stone-900',
 }
 
+const inviteClientsCard: ActionCardItem = {
+  href: '/invite',
+  icon: KeyRound,
+  label: 'Invitar clientes',
+  iconClassName: 'text-yellow-700',
+  cardClassName: 'bg-yellow-50 border-yellow-100',
+  textClassName: 'text-yellow-900',
+}
+
 function ActionCard({
   href,
   icon: Icon,
@@ -134,6 +143,10 @@ export default function ProfileActionCards({
   if (companiesCount > 0) {
     cards.push(logosCard)
     cards.push(invoicesCard)
+  }
+
+  if (companiesCount > 0) {
+    cards.push(inviteClientsCard)
   }
 
   if (showProfileCard && !profileCardFirst) {

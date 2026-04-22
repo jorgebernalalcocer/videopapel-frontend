@@ -589,7 +589,7 @@ export default function ProfilePage() {
         <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-100 px-6 py-4">
           <div>
             <h2 className="text-xl font-semibold text-gray-900">
-              Direcciones de envío
+              Direcciones de entrega
             </h2>
             <p className="text-sm text-gray-500">
               Guarda varias direcciones para usarlas durante tus compras.
