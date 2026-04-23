@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { KeyRound, Trash } from 'lucide-react'
+import { KeyRound, Trash, Film, BookOpen } from 'lucide-react'
 import GenerateTemporalInvitation from '@/components/GenerateTemporalInvitation'
 import InviteClienteModal from '@/components/InviteClienteModal'
 import { deleteCompanyGuestAccess, fetchCompanyGuestAccesses, type InviteClientItem } from '@/lib/companyGuestAccess'
@@ -123,21 +123,64 @@ export default function InvitePage() {
                       <div className="space-y-1">
                         <p className={expired ? 'text-sm font-semibold text-red-600' : 'text-sm font-semibold text-gray-900'}>{remaining}</p>
                         <p className="text-sm text-gray-700">{item.client_name || 'Cliente sin nombre'}</p>
-                        {item.uploaded_videos_count > 0 ? (
-                          <Link
-                            href={{
-                              pathname: `/invite/${item.id}`,
-                              query: item.client_name ? { client_name: item.client_name } : undefined,
-                            }}
-                            className="inline-flex rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-600 transition hover:bg-emerald-50 hover:text-emerald-700"
-                          >
-                            {item.uploaded_videos_count} videos subidos
-                          </Link>
-                        ) : (
-                          <span className="inline-flex cursor-not-allowed rounded-full bg-gray-100 px-3 py-1 text-sm text-gray-400">
-                            0 videos subidos
-                          </span>
-                        )}
+                        <div className="flex flex-wrap gap-2">
+                         {/* Sección de Vídeos */}
+{item.uploaded_videos_count > 0 ? (
+  <Link
+    href={{
+      pathname: `/invite/${item.id}`,
+      query: item.client_name ? { client_name: item.client_name } : undefined,
+    }}
+  >
+    <ColorActionButton
+      color="red"
+      size="compact"
+      icon={Film}
+    >
+      {item.uploaded_videos_count} {item.uploaded_videos_count === 1 ? 'video digital' : 'videos digitales'}
+    </ColorActionButton>
+  </Link>
+) : (
+  <ColorActionButton
+    color="emerald"
+    size="compact"
+    icon={Film}
+    className="opacity-50 cursor-not-allowed"
+  >
+    0 videos digital
+  </ColorActionButton>
+  
+)}
+{item.project_count > 0 ? (
+  <Link
+    href={{
+      pathname: `/invite/${item.id}/projects`,
+      query: item.client_name ? { client_name: item.client_name } : undefined,
+    }}
+  >
+    <ColorActionButton
+      type="button"
+      color="amber"
+      size="compact"
+      icon={BookOpen} // Asegúrate de importar Folder de lucide-react
+    >
+      {item.project_count} {item.project_count === 1 ? 'proyecto de papel' : 'proyectos de papel'}
+    </ColorActionButton>
+  </Link>
+) : (
+  <div className="cursor-not-allowed">
+    <ColorActionButton
+      type="button"
+      color="amber"
+      size="compact"
+      icon={BookOpen}
+      className="opacity-50 pointer-events-none"
+    >
+      0 proyectos
+    </ColorActionButton>
+  </div>
+)}
+                        </div>
                       </div>
                     </div>
                     <div className="md:ml-auto">

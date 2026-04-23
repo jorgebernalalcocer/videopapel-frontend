@@ -85,6 +85,7 @@ type MyProjectsProps = {
   searchPlaceholder?: string;
   fetchOnMount?: boolean;
   currentEventId?: string | null;
+  fetchPath?: string;
 };
 
 export default function MyProjects({
@@ -93,6 +94,7 @@ export default function MyProjects({
   searchPlaceholder = "Buscar por título, filtro, tamaño, usuario...",
   fetchOnMount = true,
   currentEventId = null,
+  fetchPath = "/projects/",
 }: MyProjectsProps) {
   const [projects, setProjects] = useState<Project[]>(providedProjects ?? []);
   const [searchTerm, setSearchTerm] = useState("");
@@ -121,7 +123,7 @@ export default function MyProjects({
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/projects/`, {
+      const res = await fetch(`${API_BASE}${fetchPath}`, {
         headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         credentials: "include",
       });
@@ -133,7 +135,7 @@ export default function MyProjects({
     } finally {
       setLoading(false);
     }
-  }, [API_BASE, accessToken]);
+  }, [API_BASE, accessToken, fetchOnMount, fetchPath]);
 
   useEffect(() => {
     if (providedProjects) {

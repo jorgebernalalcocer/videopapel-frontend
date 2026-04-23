@@ -31,6 +31,7 @@ import { MyOrders } from '@/components/orders/MyOrders'
 import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
 import LogoutButton from '@/components/LogoutButton'
 import ProfileActionCards from '@/components/profile/ProfileActionCards'
+import { fetchCompanyGuestAccesses } from '@/lib/companyGuestAccess'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -112,6 +113,7 @@ export default function ProfilePage() {
     cart: 0,
     invoices: 0,
     logos: 0,
+    invites: 0,
   })
 
   const [addresses, setAddresses] = useState<ShippingAddress[]>([])
@@ -268,12 +270,19 @@ export default function ProfilePage() {
         ? companyLogosPayload.results
         : []
 
+      let invitesCount = 0
+      if (companiesList[0]?.id) {
+        const guestPayload = await fetchCompanyGuestAccesses(companiesList[0].id)
+        invitesCount = Array.isArray(guestPayload?.results) ? guestPayload.results.length : 0
+      }
+
       setCompanies(companiesList)
       setCompanyAddresses(companyAddressesList)
       setCompanyLogos(companyLogosList)
       setStats((prev) => ({
         ...prev,
         logos: companyLogosList.length,
+        invites: invitesCount,
       }))
     } catch (err: any) {
       setBillingError(err?.message || 'No se pudieron cargar las direcciones de facturación.')
@@ -461,7 +470,7 @@ export default function ProfilePage() {
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1)
   const hasCompanyProfile = companies.length > 0
   const isCompanyUser = accountType === 'company' && hasCompanyProfile
-  const mobileStatsColumns = Math.ceil((isCompanyUser ? 8 : 6) / 2)
+  const mobileStatsColumns = 5
   const isGmailUser = /@gmail\.com$/i.test(mail)
   const primaryCompanyLogo =
     isCompanyUser
@@ -567,6 +576,14 @@ export default function ProfilePage() {
                 className="border-stone-200 bg-stone-50"
               />
             )}
+            {isCompanyUser && (
+              <ProfileStat
+                label="Invitar"
+                count={stats.invites}
+                href="/invite"
+                className="border-yellow-100 bg-yellow-50"
+              />
+            )}
           </div>
         </div>
       </div>
@@ -574,7 +591,20 @@ export default function ProfilePage() {
 
       {/* --- NEW SECTION: Action Cards Grid --- */}
       <div className="hidden md:block">
-        <ProfileActionCards companiesCount={companies.length} />
+        <ProfileActionCards
+          companiesCount={companies.length}
+          stats={{
+            projects: stats.projects,
+            events: stats.events,
+            videos: stats.videos,
+            orders: stats.orders,
+            cart: stats.cart,
+            invoices: stats.invoices,
+            logos: stats.logos,
+            addresses: addresses.length,
+            invites: stats.invites,
+          }}
+        />
       </div>
       {/* --- END NEW SECTION --- */}
 
