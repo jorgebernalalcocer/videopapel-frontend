@@ -127,29 +127,33 @@ export default function ProfileActionCards({
   showProfileCard = false,
   profileCardFirst = false,
   companiesCount = 0,
+  guestRestricted = false,
 }: {
   className?: string
   onCardClick?: () => void
   showProfileCard?: boolean
   profileCardFirst?: boolean
   companiesCount?: number
+  guestRestricted?: boolean
 }) {
-  const cards = [...actionCards]
+  const cards = guestRestricted
+    ? actionCards.filter((card) => card.href === '/projects' || card.href === '/clips')
+    : [...actionCards]
 
-  if (showProfileCard && profileCardFirst) {
+  if (!guestRestricted && showProfileCard && profileCardFirst) {
     cards.unshift(profileCard)
   }
 
-  if (companiesCount > 0) {
+  if (!guestRestricted && companiesCount > 0) {
     cards.push(logosCard)
     cards.push(invoicesCard)
   }
 
-  if (companiesCount > 0) {
+  if (!guestRestricted && companiesCount > 0) {
     cards.push(inviteClientsCard)
   }
 
-  if (showProfileCard && !profileCardFirst) {
+  if (!guestRestricted && showProfileCard && !profileCardFirst) {
     cards.push(profileCard)
   }
 

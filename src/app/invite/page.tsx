@@ -142,7 +142,7 @@ export default function InvitePage() {
   </Link>
 ) : (
   <ColorActionButton
-    color="emerald"
+    color="red"
     size="compact"
     icon={Film}
     className="opacity-50 cursor-not-allowed"

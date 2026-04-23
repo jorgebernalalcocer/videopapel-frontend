@@ -70,8 +70,9 @@ export default function Menu() {
   const accessToken = useAuth((s) => s.accessToken)
   const canRequest = Boolean(accessToken)
   const apiBase = process.env.NEXT_PUBLIC_API_BASE!
+  const isCompanyGuest = user?.actor_type === 'company_guest'
   const userLabel =
-    user?.actor_type === 'company_guest'
+    isCompanyGuest
       ? `@${(user.company_name || '').trim().toLowerCase() || 'empresa'}`
       : user?.email || ''
 
@@ -151,11 +152,15 @@ export default function Menu() {
             <>
               <span className="text-sm text-gray-600">Hola {userLabel}</span>
               <ProjectsButton />
-              <EventsButton />
               <ClipsButton />
-              <OrdersButton />
-              <CartButtonString />
-              <ProfileButton />
+              {!isCompanyGuest ? (
+                <>
+                  <EventsButton />
+                  <OrdersButton />
+                  <CartButtonString />
+                  <ProfileButton />
+                </>
+              ) : null}
             </>
           ) : (
             <>
@@ -191,6 +196,7 @@ export default function Menu() {
                     onCardClick={() => setIsMobileMenuOpen(false)}
                     showProfileCard
                     companiesCount={companiesCount}
+                    guestRestricted={isCompanyGuest}
                   />
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
