@@ -26,9 +26,12 @@ type PublicProjectResponse = {
   }
   clips: PublicClip[]
 }
-
-// const PREVIEW_PROJECT_ID = 'f807820c-036d-4d05-a016-a631a449251a'
-const PREVIEW_PROJECT_ID = '6b201603-0b01-4aa7-b9c5-8254ebf40f89'
+const PROD_PREVIEW_PROJECT_ID = 'd7740f4b-e562-4834-9ae9-a20d2c1a0654'
+const LOCAL_PREVIEW_PROJECT_ID = '6b201603-0b01-4aa7-b9c5-8254ebf40f89'
+const PREVIEW_PROJECT_ID =
+  process.env.NODE_ENV === 'production'
+    ? PROD_PREVIEW_PROJECT_ID
+    : LOCAL_PREVIEW_PROJECT_ID
 
 export default function LandingProjectPreview() {
   const apiBase = process.env.NEXT_PUBLIC_API_BASE ?? ''
