@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation';
 
 import { useAuth } from '@/store/auth';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/http';
+import { apiFetch, ApiError } from '@/lib/http';
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton'; // 🚨 IMPORTAMOS EL BOTÓN
 
 // --- ZOD SCHEMAS REFINADOS PARA DJANGO ---
@@ -107,8 +107,8 @@ export default function RegisterPage() {
       let errorMessage = 'Error en el registro';
 
       // Lógica de manejo de errores (conservada de tu código original)
-      if (err?.data && typeof err.data === 'object') {
-        const e = err.data;
+      if (err instanceof ApiError && err.data && typeof err.data === 'object') {
+        const e = err.data as Record<string, unknown>;
         if (e.email) errorMessage = 'Email: ' + (Array.isArray(e.email) ? e.email.join(' ') : String(e.email));
         else if (e.phone) errorMessage = 'Teléfono: ' + (Array.isArray(e.phone) ? e.phone.join(' ') : String(e.phone));
         else if (e.username) errorMessage = 'Nombre de usuario: ' + (Array.isArray(e.username) ? e.username.join(' ') : String(e.username));

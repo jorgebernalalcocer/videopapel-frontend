@@ -9,7 +9,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/store/auth';
 import { Button } from '@/components/ui/button';
-import { apiFetch } from '@/lib/http';
+import { apiFetch, ApiError } from '@/lib/http';
 import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
 
 const schema = z.object({
@@ -37,6 +37,7 @@ export default function LoginPage() {
   const router = useRouter();
   const login = useAuth((s) => s.login);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [googleOnlyAccount, setGoogleOnlyAccount] = useState(false);
 
   const {
     register,
@@ -49,6 +50,7 @@ export default function LoginPage() {
 
   const onSubmit = async (values: FormData) => {
     setServerError(null);
+    setGoogleOnlyAccount(false);
     try {
       // ✅ usa el wrapper: activa/desactiva el spinner global automáticamente
       const data = await apiFetch<LoginResponse>('/auth/token/', {
@@ -65,6 +67,12 @@ export default function LoginPage() {
       // redirige
       router.push('/projects'); // o /dashboard
     } catch (err: any) {
+      const code =
+        err instanceof ApiError && err.data && typeof err.data === 'object'
+          ? (err.data as { code?: string }).code
+          : undefined;
+
+      setGoogleOnlyAccount(code === 'google_account_password_not_set');
       setServerError(err.message || 'Error en el inicio de sesión');
     }
   };
@@ -131,6 +139,16 @@ export default function LoginPage() {
             {serverError && (
               <div className="rounded-md bg-red-50 p-3 text-sm text-red-700">
                 {serverError}
+              </div>
+            )}
+
+            {googleOnlyAccount && (
+              <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+                Puedes entrar con Google o crear una contraseña local desde{' '}
+                <Link href="/reset-password" className="font-medium underline">
+                  recuperar contraseña
+                </Link>
+                .
               </div>
             )}
 

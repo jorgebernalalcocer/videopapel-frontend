@@ -62,6 +62,9 @@ export default function ResetPasswordRequestPage() {
         <p className="text-sm text-gray-500 mb-6">
           Introduce tu email y te enviaremos un enlace para restablecerla.
         </p>
+        <p className="text-sm text-blue-700 mb-6">
+          Si tu cuenta se creó con Google, este proceso también te permite definir una contraseña local.
+        </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
