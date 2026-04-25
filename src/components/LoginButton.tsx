@@ -2,7 +2,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { LogIn } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 export default function LoginButton() {
   const router = useRouter()
@@ -12,8 +13,13 @@ export default function LoginButton() {
   }
 
   return (
-    <Button variant="secondary" onClick={handleLogin}>
+    <ColorActionButton
+      color="emerald"
+      size="compact"
+      icon={LogIn}
+      onClick={handleLogin}
+    >
       Iniciar sesión
-    </Button>
+    </ColorActionButton>
   )
 }

@@ -2,7 +2,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
+import { User } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 export default function RegisterButton() {
   const router = useRouter()
@@ -12,8 +13,14 @@ export default function RegisterButton() {
   }
 
   return (
-    <Button variant="default" onClick={handleRegister}>
+    <ColorActionButton
+      color="emerald"
+      filled
+      size="compact"
+      icon={User}
+      onClick={handleRegister}
+    >
       Registrarse
-    </Button>
+    </ColorActionButton>
   )
 }

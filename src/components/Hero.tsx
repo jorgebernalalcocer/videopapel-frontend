@@ -1,6 +1,11 @@
 // src/components/Hero.tsx
 import Link from "next/link";
 import { pacifico, pacificoFontStack } from '@/fonts/pacifico'
+import { ColorActionButton } from "@/components/ui/color-action-button";
+import { User, Scroll } from "lucide-react";
+// import NewProjectButton from '@/components/NewProjectButton'
+
+
 
 
 export default function Hero() {
@@ -32,23 +37,33 @@ export default function Hero() {
   </span>
 </Link> */}
         <p className="mt-6 max-w-2xl text-lg text-neutral-700 dark:text-neutral-300">
-          Diseña, visualiza y solicita videos impresos de tus proyectos creativos. Previsualización en tiempo real,
-          perfiles de color profesionales y entrega en casa.
+          Diseña, visualiza y solicita videos impresos. Previsualización en tiempo real,
+          100% personalizable y entrega en casa.
         </p>
         <div className="mt-9 flex flex-col sm:flex-row gap-3">
-          <Link
-            href="/editor"
-            aria-label="Abrir el editor de VideoPapel"
-            className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold ring-1 ring-transparent bg-black text-white hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-black dark:bg-white dark:text-black"
-          >
-            Empieza gratis
-          </Link>
-          <Link
-            href="#caracteristicas"
-            className="inline-flex items-center justify-center rounded-2xl px-5 py-3 text-base font-semibold ring-1 ring-black/10 dark:ring-white/10 hover:bg-black/5 dark:hover:bg-white/5"
-          >
-            Ver características
-          </Link>
+{/* Botón de Registro */}
+{/* <Link href="/register" aria-label="Abrir el editor de VideoPapel">
+    <ColorActionButton
+      color="emerald" // O el color oscuro que use tu componente
+      filled
+      size="large"
+      icon={User}
+    >
+      Registrarsee
+    </ColorActionButton>
+  </Link> */}
+  {/* <NewProjectButton /> */}
+
+  {/* Botón de Características */}
+  <Link href="#caracteristicas">
+    <ColorActionButton
+      color="slate" // O el color con borde/claro que use tu componente
+      size="large"
+      icon={Scroll}
+    >
+      Ver características
+    </ColorActionButton>
+  </Link>
         </div>
         <ul className="mt-10 grid gap-2 text-sm text-neutral-600 dark:text-neutral-400 sm:grid-cols-2">
           <li>✔️ Soportes premium: papeles fotográficos</li>
