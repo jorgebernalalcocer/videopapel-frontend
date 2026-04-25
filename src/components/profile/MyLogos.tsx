@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Palette, Plus, Expand } from 'lucide-react'
+import { Palette, Plus, Expand, ImagePlus } from 'lucide-react'
 import DeleteLogoButton from '@/components/DeleteLogoButton'
 import PreviewLogo from '@/components/profile/PreviewLogo'
 import { ColorActionButton } from '@/components/ui/color-action-button'
@@ -101,8 +101,8 @@ export default function MyLogos({
                 onClick={onAddLogo}
                 color="slate"
                 filled
-                size="compact"
-                icon={Plus}
+                size="large"
+                icon={ImagePlus}
                 title="Añadir logo"
                 disabled={!canRequest}
               >

@@ -5,6 +5,11 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   MapPin,
   Plus,
+  SquarePlus,
+  CirclePlus,
+  ReceiptEuro,
+  ShieldPlus,
+  HousePlus,
   Printer,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -32,6 +37,7 @@ import { MyOrdersHeader } from '@/components/orders/MyOrdersHeader'
 import LogoutButton from '@/components/LogoutButton'
 import ProfileActionCards from '@/components/profile/ProfileActionCards'
 import { fetchCompanyGuestAccesses } from '@/lib/companyGuestAccess'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE!
 
@@ -625,15 +631,17 @@ export default function ProfilePage() {
               Guarda varias direcciones para usarlas durante tus compras.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-            disabled={!canRequest}
-          >
-            <Plus className="h-4 w-4" />
-            Añadir nueva dirección
-          </button>
+     <ColorActionButton
+  type="button"
+  onClick={() => setModalOpen(true)}
+  color="lime"
+  filled={true}
+  size="large"
+  icon={HousePlus}
+  disabled={!canRequest}
+>
+  Añadir nueva dirección
+</ColorActionButton>
         </div>
 
         <div className="px-6 py-6">
@@ -731,18 +739,20 @@ export default function ProfilePage() {
                 Crea tu perfil de empresa para obtener facturas.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedCompany(null)
-                setCompanyModalOpen(true)
-              }}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-              disabled={!canRequest}
-            >
-              <Plus className="h-4 w-4" />
-              Crear perfil de empresa
-            </button>
+<ColorActionButton
+  type="button"
+  onClick={() => {
+    setSelectedCompany(null)
+    setCompanyModalOpen(true)
+  }}
+  color="emerald"
+  filled={true}
+  size="large"
+  icon={ShieldPlus}
+  disabled={!canRequest}
+>
+  Crear perfil de empresa
+</ColorActionButton>
           </div>
         </div>
       )}
@@ -766,15 +776,17 @@ export default function ProfilePage() {
                 Guarda las direcciones de facturación que necesites.
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => setBillingModalOpen(true)}
-              className="inline-flex items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60"
-              disabled={!canRequest}
-            >
-              <Plus className="h-4 w-4" />
-              Añadir dirección facturación
-            </button>
+  <ColorActionButton
+  type="button"
+  onClick={() => setBillingModalOpen(true)}
+  color="stone"
+  filled
+  size="large" // O 'large' si prefieres el tamaño original py-2/text-sm
+  icon={ReceiptEuro}
+  disabled={!canRequest}
+>
+  Añadir dirección facturación
+</ColorActionButton>
           </div>
 
           <div className="px-6 py-6">
@@ -918,7 +930,6 @@ export default function ProfilePage() {
                           </div>
                           <div className="w-full sm:w-auto">
                             <EditActionButton
-                              compact
                               fullWidthOnMobile
                               onClick={() => {
                                 setSelectedCompany(company)

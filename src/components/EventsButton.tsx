@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/ui/Modal'
 import NewProjectButton from '@/components/NewProjectButton'
-import { PartyPopper } from 'lucide-react'
+import { PartyPopper, CircleArrowRight, CircleOff } from 'lucide-react'
 import { useAuth } from '@/store/auth'
 import { ColorActionButton } from '@/components/ui/color-action-button'
 
@@ -221,22 +221,30 @@ export default function EventsButton({
               )}
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={resetWizard}
-                disabled={submitting}
-                className="rounded-xl border px-4 py-2 text-gray-700 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={submitting || !name.trim()}
-                className="rounded-xl bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                Siguiente
-              </button>
+<ColorActionButton
+  type="button"
+  onClick={resetWizard}
+  disabled={submitting}
+  color="slate" // O el color neutro que soporte tu componente (ej. "white" o "slate")
+  size="large"
+  
+  icon={CircleOff}
+  className={submitting ? "opacity-50 cursor-not-allowed" : ""}
+>
+  Cancelar
+</ColorActionButton>
+    <ColorActionButton
+  type="button"
+  onClick={handleNext}
+  disabled={submitting || !name.trim()}
+  color="purple"
+  size="large"
+  icon={CircleArrowRight}
+  filled
+  className={submitting || !name.trim() ? "opacity-50 cursor-not-allowed" : ""}
+>
+  Siguiente
+</ColorActionButton>
             </div>
           </div>
         }

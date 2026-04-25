@@ -4,6 +4,9 @@ import { FormEvent, useEffect, useState } from 'react'
 import ProvinceSelectField from '@/components/forms/ProvinceSelectField'
 import { Modal } from '@/components/ui/Modal'
 import { toast } from 'sonner'
+import { Save, CircleOff } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
+
 
 export type ShippingAddressPayload = {
   label: string
@@ -288,21 +291,34 @@ export default function ShippingAddressModal({
         {error && <p className="text-sm text-red-600">{error}</p>}
 
         <div className="flex justify-end gap-2 pt-2">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-md border px-4 py-2 text-sm hover:bg-gray-50"
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </button>
-          <button
-            type="submit"
-            className="rounded-md bg-purple-600 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-700 disabled:opacity-60"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? 'Guardando…' : isBillingMode ? 'Guardar dirección de facturación' : 'Guardar dirección'}
-          </button>
+    
+                        <ColorActionButton
+  type="button"
+  onClick={handleClose}
+  disabled={isSubmitting}
+  color="slate" // O el color neutro que soporte tu componente (ej. "white" o "slate")
+  size="large"
+  
+  icon={CircleOff}
+  className={isSubmitting ? "opacity-50 cursor-not-allowed" : ""}
+>
+  Cancelar
+</ColorActionButton>
+<ColorActionButton
+  type="submit"
+  color="purple"
+  size="large"
+  icon={Save}
+  filled
+  disabled={isSubmitting}
+  className={isSubmitting ? "opacity-60" : ""}
+>
+  {isSubmitting 
+    ? 'Guardando…' 
+    : isBillingMode 
+      ? 'Guardar dirección de facturación' 
+      : 'Guardar dirección'}
+</ColorActionButton>
         </div>
       </form>
     </Modal>

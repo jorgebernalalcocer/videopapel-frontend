@@ -35,6 +35,12 @@ const colorStyles = {
     filledBg: 'bg-purple-100',
     hover: 'hover:bg-purple-700',
   },
+  hardpurple: {
+    text: 'text-purple-900',
+    ring: 'ring-purple-300',
+    filledBg: 'bg-purple-200',
+    hover: 'hover:bg-purple-700',
+  },
   blue: {
     text: 'text-blue-700',
     ring: 'ring-blue-200',
@@ -70,6 +76,24 @@ const colorStyles = {
     ring: 'ring-slate-200',
     filledBg: 'bg-slate-100',
     hover: 'hover:bg-slate-700',
+  },
+  lime: {
+    text: 'text-lime-700',
+    ring: 'ring-lime-200',
+    filledBg: 'bg-lime-100',
+    hover: 'hover:bg-lime-700',
+  },
+  white: {
+    text: 'text-gray-700',
+    ring: 'ring-gray-200',
+    filledBg: 'bg-white',
+    hover: 'hover:bg-gray-100',
+  },
+  yellow: {
+    text: 'text-yellow-700',
+    ring: 'ring-yellow-200',
+    filledBg: 'bg-yellow-50',
+    hover: 'hover:bg-yellow-700',
   },
 } as const
 
@@ -147,10 +171,8 @@ export function ColorActionButton({
   ...props
 }: ColorActionButtonProps) {
   if (asChild) {
-    const child = React.Children.only(children) as React.ReactElement<{
-      children?: React.ReactNode
-      className?: string
-    }>
+   const child = React.Children.only(children) as React.ReactElement<React.HTMLAttributes<HTMLElement>>
+
 
     return (
       <Slot

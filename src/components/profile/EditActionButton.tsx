@@ -1,11 +1,12 @@
 'use client'
 
 import { SquarePen } from 'lucide-react'
+import { ColorActionButton } from '@/components/ui/color-action-button'
 
 type EditActionButtonProps = {
   onClick: () => void
   label?: string
-  compact?: boolean
+  compact?: boolean // Mantenemos la prop por compatibilidad, pero forzaremos 'mini'
   disabled?: boolean
   fullWidthOnMobile?: boolean
 }
@@ -18,18 +19,21 @@ export default function EditActionButton({
   fullWidthOnMobile = false,
 }: EditActionButtonProps) {
   return (
-    <button
+    <ColorActionButton
       type="button"
       onClick={onClick}
       disabled={disabled}
+      color="red"
+      size="mini"
+      // Si compact es true, no mostramos el icono según tu lógica original
+      icon={!compact ? SquarePen : undefined}
       className={
-        compact
-          ? `${fullWidthOnMobile ? 'flex w-full justify-center sm:inline-flex sm:w-auto' : 'shrink-0'} rounded-md border px-3 py-2 text-sm font-medium hover:bg-gray-50 disabled:opacity-60`
-          : `${fullWidthOnMobile ? 'flex w-full justify-center md:inline-flex md:w-auto' : 'inline-flex'} items-center gap-2 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:opacity-60`
+        fullWidthOnMobile 
+          ? 'flex w-full justify-center sm:inline-flex sm:w-auto' 
+          : ''
       }
     >
-      {!compact && <SquarePen className="h-4 w-4" />}
       {label}
-    </button>
+    </ColorActionButton>
   )
 }

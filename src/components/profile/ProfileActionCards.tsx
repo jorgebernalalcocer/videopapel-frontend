@@ -78,7 +78,7 @@ const logosCard: ActionCardItem = {
   icon: Palette,
   label: 'Logos',
   iconClassName: 'text-slate-700',
-  cardClassName: 'bg-slate-50 border-slate-200',
+  cardClassName: 'bg-slate-100 border-slate-200',
   textClassName: 'text-slate-900',
 }
 
@@ -87,7 +87,7 @@ const invoicesCard: ActionCardItem = {
   icon: ReceiptEuro,
   label: 'Facturas',
   iconClassName: 'text-stone-700',
-  cardClassName: 'bg-stone-50 border-stone-200',
+  cardClassName: 'bg-stone-200 border-stone-200',
   textClassName: 'text-stone-900',
 }
 
@@ -95,9 +95,9 @@ const inviteClientsCard: ActionCardItem = {
   href: '/invite',
   icon: KeyRound,
   label: 'Invitar clientes',
-  iconClassName: 'text-yellow-700',
-  cardClassName: 'bg-yellow-50 border-yellow-100',
-  textClassName: 'text-yellow-900',
+  iconClassName: 'text-purple-900',
+  cardClassName: 'bg-purple-200 border-purple-100',
+  textClassName: 'text-purple-900',
 }
 
 function ActionCard({

@@ -8,7 +8,7 @@ import { Modal } from '@/components/ui/Modal'
 // 1. ⭐️ Importar el nuevo componente modal
 import VideoPickerModal, { type VideoItem } from '@/components/project/VideoPickerModal'
 
-import { FilePlus } from 'lucide-react'
+import { FilePlus, CircleArrowRight, CircleOff } from 'lucide-react'
 import { ColorActionButton } from '@/components/ui/color-action-button'
 
 
@@ -159,23 +159,31 @@ export default function NewProjectButton({ eventId = null }: NewProjectButtonPro
               )}
             </div>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                disabled={submitting}
-                className="px-4 py-2 rounded-xl border text-gray-700 hover:bg-gray-50"
-              >
-                Cancelar
-              </button>
-              {/* El botón Siguiente ahora pasa directamente al VideoPicker */}
-              <button
-                type="button"
-                onClick={handleNext}
-                disabled={submitting || name.trim().length === 0}
-                className="px-4 py-2 rounded-xl bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
-              >
-                Siguiente
-              </button>
+              <ColorActionButton
+  type="button"
+  onClick={() => setOpen(false)}
+  disabled={submitting}
+  color="slate" // O el color neutro que soporte tu componente (ej. "white" o "slate")
+  size="large"
+  
+  icon={CircleOff}
+  className={submitting ? "opacity-50 cursor-not-allowed" : ""}
+>
+  Cancelar
+</ColorActionButton>
+           
+                  <ColorActionButton
+  type="button"
+  onClick={handleNext}
+  disabled={submitting || name.trim().length === 0}
+  color="purple"
+  size="large"
+  icon={CircleArrowRight}
+  filled
+  className={submitting || !name.trim() ? "opacity-50 cursor-not-allowed" : ""}
+>
+  Siguiente
+</ColorActionButton>
             </div>
           </div>
         }

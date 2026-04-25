@@ -2,7 +2,6 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Button } from '@/components/ui/button'
 import { CircleUserRound } from 'lucide-react'
 import { ColorActionButton } from '@/components/ui/color-action-button'
 

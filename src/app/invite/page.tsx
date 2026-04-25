@@ -88,7 +88,7 @@ export default function InvitePage() {
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
-            <KeyRound className="h-8 w-8 text-amber-600" />
+            <KeyRound className="h-8 w-8 text-purple-700" />
             <div>
               <h1 className="text-3xl font-semibold text-grey-600">Invitar clientes</h1>
               <p className="text-sm text-gray-500">Permite el acceso temporal a tus clientes para que suban sus videos.</p>

@@ -12,8 +12,9 @@ export default function GenerateTemporalInvitation({ onClick }: Props) {
     <ColorActionButton
       type="button"
       onClick={onClick}
-      color="amber"
+      color="hardpurple"
       size="large"
+      filled
       icon={KeyRound}
     >
       Generar invitación
