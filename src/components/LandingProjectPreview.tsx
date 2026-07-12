@@ -93,7 +93,7 @@ export default function LandingProjectPreview() {
   })
 
   return (
-    <>
+    <div className="bg-[#faf9f5]">
       <section className="mx-auto max-w-6xl px-6 pb-16 pt-10">
         <div className="mb-6">
           <h2 className="text-2xl sm:text-3xl font-semibold text-gray-900">
@@ -132,6 +132,6 @@ export default function LandingProjectPreview() {
       <section className="mx-auto max-w-6xl px-6 pb-56 pt-8 sm:pt-12">
         <EventsLandingSection />
       </section>
-    </>
+    </div>
   )
 }

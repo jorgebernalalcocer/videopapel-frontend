@@ -140,11 +140,13 @@ export default function Menu() {
             fontFamily: fascinateFontStack,
             fontSize: '2rem',
             lineHeight: 2,
-            color: '#78ad70',
+            // color: '#78ad70',
+            color: '#b0aea5',
+
           }}
           onClick={() => setIsMobileMenuOpen(false)}
         >
-          <span className="block px-1">papel video</span>
+          <span className="block px-1">papel . video</span>
         </Link>
 
         <nav className="hidden items-center gap-3 md:flex">

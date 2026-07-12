@@ -27,7 +27,7 @@ export default function EventsLandingSection({
           </div>
           <div className="space-y-3">
             <h2 id="events-empty-title" className="max-w-2xl text-3xl font-semibold tracking-tight text-gray-900 sm:text-4xl">
-              Organiza proyectos por bodas, marcas, ferias o cualquier evento en un solo lugar.
+              Organiza proyectos por bodas, graduaciones, comuniones, cumpleaños, despedidas o cualquier evento en un solo lugar.
             </h2>
             <p className="max-w-2xl text-base leading-7 text-gray-600">
               La seccion de eventos te permite agrupar proyectos relacionados, compartirlos con clientes o equipos
