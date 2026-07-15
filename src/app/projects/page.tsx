@@ -9,7 +9,7 @@ import { BookOpen } from 'lucide-react'
 
 export default function ProjectsPage() {
   return (
-    <main className="min-h-screen px-6 py-10">
+    <main className="min-h-screen bg-[#faf9f5] px-6 py-10">
       <div className="mx-auto w-full max-w-6xl">
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">

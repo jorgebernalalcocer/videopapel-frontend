@@ -18,6 +18,7 @@ type BaseTileModalProps = {
   onClose: () => void
   title?: ReactNode
   description?: ReactNode
+  headerContent?: ReactNode
   tiles: TileOption[]
   selectedId?: string | number | null
   loading?: boolean
@@ -34,6 +35,7 @@ export function BaseTileModal({
   onClose,
   title,
   description,
+  headerContent,
   tiles,
   selectedId,
   loading = false,
@@ -62,6 +64,7 @@ export function BaseTileModal({
       size="lg"
       {...modalProps}
     >
+      {headerContent ? <div className="mb-4">{headerContent}</div> : null}
       {loading ? (
         <div className="py-12 text-center text-sm text-gray-500">Cargando…</div>
       ) : error ? (

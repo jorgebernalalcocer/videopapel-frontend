@@ -65,6 +65,7 @@ type EditingCanvasProps = {
   disableAutoThumbnails?: boolean; playbackFps?: number; loop?: boolean; onInsertVideo?: () => void;
   onInsertImage?: () => void;
   onOpenCover?: () => void;
+  onOpenLogoConfig?: () => void;
   printAspectSlug?: string | null;
   onThumbsDensityChange?: (value: number) => void;
   printSizeLabel?: string | null;
@@ -79,6 +80,7 @@ type EditingCanvasProps = {
   printEffectName?: string | null;
   coverFrame?: { projectClipId: number; frameTimeMs: number } | null;
   editingDisabled?: boolean;
+  isCompanyUser?: boolean;
 }
 
 /* ===== Componente ===== */
@@ -89,6 +91,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     initialTimeMs = 0, thumbnailsCount, thumbsPerSecond = 8, thumbnailHeight = 68,
     onChange, disableAutoThumbnails = false, playbackFps = 12, loop = true, onInsertVideo, onInsertImage,
     onOpenCover,
+    onOpenLogoConfig,
     printAspectSlug = 'fill',
     onThumbsDensityChange,
     printSizeLabel,
@@ -101,6 +104,7 @@ export default function EditingCanvas(props: EditingCanvasProps) {
     printEffectName = null,
     coverFrame = null,
     editingDisabled = false,
+    isCompanyUser = false,
   } = props
   const { onFrameChange, onPageEnumerationChange } = props
   const qualityDpi = printQualityDpi ?? printQualityPpi ?? null
@@ -965,7 +969,9 @@ const onTimelineKeyDown = makeTimelineKeydownHandler(
   hasFrame={Boolean(frameSetting && frameSetting.frame)}
   onOpenPresentation={() => setIsPresentationOpen(true)}
   onOpenCover={onOpenCover}
+  onOpenLogoConfig={onOpenLogoConfig}
   onDiscardChanges={handleDiscardChanges}
+  isCompanyUser={isCompanyUser}
   editingDisabled={editingDisabled}
   isEditingInsertedImage={isEditingInsertedImage}
   canForceExpandInsertedImage={canForceExpandInsertedImage}

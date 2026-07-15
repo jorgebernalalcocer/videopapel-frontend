@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { Play, Pause, Film, Camera, Type, Captions, Frame as FrameIcon, MonitorPlay, Image as ImageIcon, Hash } from 'lucide-react'
+import { Play, Pause, Film, Camera, Type, Captions, Frame as FrameIcon, MonitorPlay, Image as ImageIcon, Hash, BadgePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import DeleteInsertedImageButton from '@/components/project/DeleteInsertedImageButton'
 import ForceExpandInsertedImageButton from '@/components/project/ForceExpandInsertedImageButton'
@@ -27,7 +27,9 @@ type EditingToolsProps = {
   hasFrame?: boolean
   onOpenPresentation?: () => void
   onOpenCover?: () => void
+  onOpenLogoConfig?: () => void
   onDiscardChanges?: () => void
+  isCompanyUser?: boolean
   editingDisabled?: boolean
   isEditingInsertedImage?: boolean
   canForceExpandInsertedImage?: boolean
@@ -55,7 +57,9 @@ export default function EditingTools({
   hasFrame = false,
   onOpenPresentation,
   onOpenCover,
+  onOpenLogoConfig,
   onDiscardChanges,
+  isCompanyUser = false,
   editingDisabled = false,
   isEditingInsertedImage = false,
   canForceExpandInsertedImage = false,
@@ -158,6 +162,14 @@ export default function EditingTools({
     if (typeof window !== 'undefined') {
       window.location.reload()
     }
+  }
+
+  const handleOpenLogoConfig = () => {
+    if (editingDisabled) {
+      toast.warning('Este proyecto ya ha sido comprado. Duplícalo para modificarlo.')
+      return
+    }
+    onOpenLogoConfig?.()
   }
 
   return (
@@ -301,6 +313,20 @@ export default function EditingTools({
             <Hash className="h-4 w-4 text-slate-700" />
             <span className="hidden sm:inline">Enumeración</span>
           </Button>
+
+          {isCompanyUser && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleOpenLogoConfig}
+              disabled={editingDisabled}
+              aria-label="Configurar logo"
+              className="inline-flex items-center gap-2"
+            >
+              <BadgePlus className="h-4 w-4 text-slate-700" />
+              <span className="hidden sm:inline">Configurar logo</span>
+            </Button>
+          )}
         </>
       )}
 

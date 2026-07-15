@@ -16,7 +16,7 @@ export default function EventsLandingSection({
     <section
       aria-labelledby="events-empty-title"
       className={[
-        'overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-br from-emerald-50 via-white to-lime-50',
+        'overflow-hidden rounded-3xl border border-emerald-100 bg-[#f0eee6]',
         className ?? '',
       ].join(' ')}
     >

@@ -42,12 +42,15 @@ import ShareProjectButton from "@/components/ShareProjectButton";
 import { ShareModal } from "@/components/ShareModal";
 import EditTitleModal from "@/components/project/EditTitleModal";
 import PrintStylePresetPdfModal from "@/components/project/PrintStylePresetPdfModal";
+import ProjectLogoModal from "@/components/project/ProjectLogoModal";
+import CompanyLogoModal from "@/components/profile/CompanyLogoModal";
 import { SquarePen } from "lucide-react";
 import {
   ProjectPriceCard,
   type PriceBreakdown,
 } from "@/components/pricing/ProjectPriceCard";
 import { Modal } from "@/components/ui/Modal";
+import type { MyLogosLogo, MyLogosCompany } from "@/components/profile/MyLogos";
 
 /* =========================
    Tipos
@@ -129,6 +132,7 @@ type Project = {
     image_url: string | null;
     video_url: string | null;
   } | null;
+  company_logo?: MyLogosLogo | null;
 };
 
 type ProjectPricePreview = {
@@ -204,12 +208,19 @@ export default function ProjectEditor({
   const [effectsModalOpen, setEffectsModalOpen] = useState(false);
   const [coverPickerOpen, setCoverPickerOpen] = useState(false);
   const [insertImageOpen, setInsertImageOpen] = useState(false);
+  const [projectLogoModalOpen, setProjectLogoModalOpen] = useState(false);
+  const [companyLogoUploadOpen, setCompanyLogoUploadOpen] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [coverError, setCoverError] = useState<string | null>(null);
   const [insertImageError, setInsertImageError] = useState<string | null>(null);
+  const [projectLogoError, setProjectLogoError] = useState<string | null>(null);
   const [creatingClip, setCreatingClip] = useState(false);
   const [coverBusy, setCoverBusy] = useState(false);
   const [insertImageBusy, setInsertImageBusy] = useState(false);
+  const [projectLogoBusy, setProjectLogoBusy] = useState(false);
+  const [companyLogosLoading, setCompanyLogosLoading] = useState(false);
+  const [companyLogos, setCompanyLogos] = useState<MyLogosLogo[]>([]);
+  const [companies, setCompanies] = useState<MyLogosCompany[]>([]);
   const [editTitleOpen, setEditTitleOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [advancedPdfModalOpen, setAdvancedPdfModalOpen] = useState(false);
@@ -218,6 +229,7 @@ export default function ProjectEditor({
     : null;
   const isProjectExported = project?.status === "exported";
   const currentUser = useAuth((s) => s.user);
+  const isCompanyUser = currentUser?.account_type === "company";
   // 1. Definición de variables de campos incompletos (usan const y ; al final)
   //    Se utiliza el cortocircuito lógico (&&) para que la variable sea el string o false/undefined.
   const qualityNotCompleted =
@@ -444,6 +456,51 @@ export default function ProjectEditor({
   const handleThumbsDensityChange = useCallback(async () => {
     await fetchClips();
   }, [fetchClips]);
+
+  const fetchCompanyLogos = useCallback(async () => {
+    if (!accessToken || !isCompanyUser) return;
+    setCompanyLogosLoading(true);
+    setProjectLogoError(null);
+    try {
+      const withAuth = {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        credentials: "include" as const,
+      };
+      const [companiesRes, logosRes] = await Promise.all([
+        fetch(`${API_BASE}/companies/`, withAuth),
+        fetch(`${API_BASE}/company-logos/`, withAuth),
+      ]);
+      if (!companiesRes.ok) {
+        const detail = await companiesRes.text();
+        throw new Error(detail || `Error ${companiesRes.status}`);
+      }
+      if (!logosRes.ok) {
+        const detail = await logosRes.text();
+        throw new Error(detail || `Error ${logosRes.status}`);
+      }
+
+      const companiesPayload = await companiesRes.json();
+      const logosPayload = await logosRes.json();
+      setCompanies(
+        Array.isArray(companiesPayload)
+          ? companiesPayload
+          : Array.isArray(companiesPayload?.results)
+            ? companiesPayload.results
+            : [],
+      );
+      setCompanyLogos(
+        Array.isArray(logosPayload)
+          ? logosPayload
+          : Array.isArray(logosPayload?.results)
+            ? logosPayload.results
+            : [],
+      );
+    } catch (err: any) {
+      setProjectLogoError(err?.message || "No se pudieron cargar los logos.");
+    } finally {
+      setCompanyLogosLoading(false);
+    }
+  }, [API_BASE, accessToken, isCompanyUser]);
 
   const openEffectsModal = useCallback(() => setEffectsModalOpen(true), []);
   const closeEffectsModal = useCallback(() => setEffectsModalOpen(false), []);
@@ -715,6 +772,43 @@ export default function ProjectEditor({
       }
     },
     [API_BASE, accessToken, fetchClips, isInteractionDisabled, projectId],
+  );
+
+  const handleSelectProjectLogo = useCallback(
+    async (logoId: number) => {
+      if (!accessToken || isInteractionDisabled) {
+        if (isInteractionDisabled) {
+          toast.error("Duplica el proyecto para poder editarlo.");
+        }
+        return;
+      }
+      setProjectLogoError(null);
+      setProjectLogoBusy(true);
+      try {
+        const res = await fetch(`${API_BASE}/projects/${projectId}/company-logo/`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          credentials: "include",
+          body: JSON.stringify({ company_logo_id: logoId }),
+        });
+        if (!res.ok) {
+          const detail = await res.text();
+          throw new Error(detail || `Error ${res.status} al guardar el logo.`);
+        }
+        const data = await res.json();
+        setProject(data);
+        setProjectLogoModalOpen(false);
+        toast.success("Logo configurado.");
+      } catch (err: any) {
+        setProjectLogoError(err?.message || "No se pudo guardar el logo.");
+      } finally {
+        setProjectLogoBusy(false);
+      }
+    },
+    [API_BASE, accessToken, isInteractionDisabled, projectId],
   );
 
   const handleAddToCart = useCallback(async () => {
@@ -1081,6 +1175,13 @@ export default function ProjectEditor({
                   setCoverError(null);
                   setCoverPickerOpen(true);
                 }}
+                onOpenLogoConfig={() => {
+                  if (isInteractionDisabled || !isCompanyUser) return;
+                  setProjectLogoError(null);
+                  setProjectLogoModalOpen(true);
+                  void fetchCompanyLogos();
+                }}
+                isCompanyUser={isCompanyUser}
                 editingDisabled={isInteractionDisabled}
               />
             ) : (
@@ -1274,13 +1375,7 @@ export default function ProjectEditor({
           </>
         }
       >
-        {/* <div className="space-y-2 text-sm text-gray-700">
-          <p>Este proyecto es público, pero pertenece a otra cuenta. Crea una copia para guardarlo en tu espacio.</p>
-          {duplicateError && <p className="text-red-600">{duplicateError}</p>}
-        </div> */}
-        {/* <p className="text-sm text-gray-700">
-          Duplícalo para tener una copia propia y poder editarlo a tu gusto
-        </p> */}
+        {duplicateError ? <p className="text-sm text-red-600">{duplicateError}</p> : null}
       </Modal>
 
       {/* Modal de selección de video */}
@@ -1308,6 +1403,28 @@ export default function ProjectEditor({
         busy={insertImageBusy}
         error={insertImageError || undefined}
         onConfirm={handleInsertImage}
+      />
+      <ProjectLogoModal
+        open={projectLogoModalOpen}
+        onClose={() => setProjectLogoModalOpen(false)}
+        logos={companyLogos}
+        selectedLogoId={project.company_logo?.id ?? null}
+        loading={companyLogosLoading}
+        error={projectLogoError}
+        busy={projectLogoBusy}
+        onSelect={handleSelectProjectLogo}
+        onAddLogo={() => setCompanyLogoUploadOpen(true)}
+      />
+      <CompanyLogoModal
+        open={companyLogoUploadOpen}
+        onClose={() => setCompanyLogoUploadOpen(false)}
+        apiBase={API_BASE}
+        accessToken={accessToken}
+        companies={companies}
+        onSaved={() => {
+          setCompanyLogoUploadOpen(false);
+          void fetchCompanyLogos();
+        }}
       />
       <EditTitleModal
         open={editTitleOpen}
