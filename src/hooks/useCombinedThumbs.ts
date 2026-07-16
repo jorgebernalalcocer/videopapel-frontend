@@ -1,6 +1,5 @@
 // src/hooks/useCombinedThumbs.ts
 import { useEffect, useState } from 'react'
-import { cloudinaryFrameUrlFromVideoUrl } from '@/utils/cloudinary'
 import { loadThumbsFromIndexedDb, saveThumbsToIndexedDb } from '@/utils/thumbsIndexedDb'
 import { buildSig, loadThumbsFromCache, saveThumbsToCache, Thumbnail } from '@/utils/thumbCache'
 
@@ -196,9 +195,9 @@ export function useCombinedThumbs(params: {
           items = items.filter((it) => it.t >= start && it.t < end)
 
           if (items.some((it) => !it.url) && !disableAutoThumbnails) {
-            items = items.map((it) => ({ t: it.t, url: cloudinaryFrameUrlFromVideoUrl(c.videoSrc, it.t, thumbnailHeight) }))
-            saveThumbsToCache(projectId, c.clipId, sig, items)
-
+            // Sin Cloudinary: ya no sintetizamos URLs de preview en el cliente.
+            // Persistimos los tiempos de frame en el backend para que el worker
+            // (bucket de Google Cloud) genere las miniaturas correspondientes.
             if (accessToken) {
               try {
                 await fetch(`${apiBase}/projects/${projectId}/clips/${c.clipId}/frames/`, {

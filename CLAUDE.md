@@ -15,16 +15,46 @@ npm run dev        # next dev --turbopack, port 3000
 npm run build      # next build --turbopack
 npm run lint       # eslint (next/core-web-vitals + next/typescript)
 npx tsc --noEmit   # typecheck — NOT run by the build, see below
+npm test           # vitest run — all tests once (CI/verify)
+npm run test:watch # vitest — watch mode
+npm run test:ui    # vitest --ui — browser UI
 ./deploy-vercel.sh {unionlocal|papel}   # prod deploy, needs ~/.vercel-tokens
 ```
 
-There is no test framework in this repo — no test script, no test files. Don't invent a `npm test`.
+Tests run on **Vitest + Testing Library** (jsdom). See the `## Testing` section below for conventions. `npm test` is **not** wired into `npm run build` or the deploy script — run it explicitly.
 
 `npm run gen:api` runs `openapi-typescript-codegen` against the backend's live schema at `http://localhost:8000/api/schema/`, writing to `src/lib/api`. **That directory does not exist and its output has never been committed** — the whole codebase is hand-written fetch calls. Running it would create `src/lib/api/` alongside the existing `src/lib/api.ts` module; don't run it casually.
 
 ### The build hides errors
 
-`next.config.ts` sets both `eslint.ignoreDuringBuilds` and `typescript.ignoreBuildErrors`. A green `npm run build` means nothing about type or lint health. Run `npx tsc --noEmit` and `npm run lint` explicitly to verify a change.
+`next.config.ts` sets both `eslint.ignoreDuringBuilds` and `typescript.ignoreBuildErrors`. A green `npm run build` means nothing about type or lint health. Run `npx tsc --noEmit` and `npm run lint` explicitly to verify a change. Note `npx tsc --noEmit` currently reports **pre-existing** errors in several unrelated files (e.g. `profile/page.tsx`, `DuplicateProjectButton.tsx`, `MyClips.tsx`, `IconsTiles.tsx`) — that's the known baseline the ignored build papers over, not something your change introduced. Check that your touched files are clean rather than expecting a zero-error run.
+
+## Testing
+
+**Stack:** Vitest + `@testing-library/react` + `@testing-library/user-event` + `jest-dom`, environment `jsdom`. Config in `vitest.config.ts`, setup in `vitest.setup.ts` (imports `jest-dom` matchers + `cleanup()` after each test). There is **no** Jest — don't add it.
+
+- **Test files are co-located** next to the code they cover: `foo.ts` → `foo.test.ts`, `Bar.tsx` → `Bar.test.tsx`. `include` glob is `src/**/*.{test,spec}.{ts,tsx}`.
+- `globals: true` — `describe/it/expect/vi` are available without imports, but the existing tests import them explicitly; match that.
+- **Env vars for tests live in `vitest.config.ts`** under `test.env` (`NEXT_PUBLIC_API_BASE` + `NEXT_PUBLIC_API_BASE_URL` = `http://localhost:8000`). This is mandatory because `lib/env.ts` **throws at import time** if no base URL is set, and it's imported transitively by `store/auth.ts`, `lib/http.ts`, etc. If a new test's import chain touches `lib/env.ts` and there's no base, the whole file fails to load — the env block is what prevents that.
+- The `@/*` alias resolves natively via `resolve.tsconfigPaths: true` (no `vite-tsconfig-paths` plugin).
+
+### Mocking patterns (match the HTTP path of the code under test)
+
+The three HTTP paths from the architecture table each mock differently:
+
+- **raw `fetch` code** (dominant pattern, and `lib/http.ts`/token-route wrappers that call `fetch` directly) → `vi.stubGlobal('fetch', vi.fn().mockResolvedValue(...))`. Build fake responses as `{ ok, status, statusText, json: async () => data, text: async () => '...' }`. For a component that both GETs and PATCHes (e.g. a `*Selector`), route the mock on `init?.method`.
+- **`lib/api.ts` `apiFetch` code** (the `lib/*Invitations.ts` / `companyGuestAccess.ts` wrappers, which get a **raw `Response`** back) → `vi.mock('@/lib/api', () => ({ apiFetch: vi.fn() }))` then `vi.mocked(apiFetch).mockResolvedValue(res as Response)`. Don't stub global fetch for these.
+- **zustand stores** are module singletons: reset with `useAuth.setState({...})` / `useLoading.setState({ pending: 0 })` in `beforeEach`, and `localStorage.clear()` for the persisted auth store. Call actions via `useStore.getState().action()`.
+
+### Component patterns
+
+- Heavy children that self-load data (e.g. `ProjectEditor` inside `ProjectEditorGate`) → **stub via `vi.mock`** so the test targets only the unit under test. Same for `next/navigation` (`notFound`, `useRouter`).
+- Assert on **user-visible output**: `getByText`, `getByLabelText`, `findBy*` for async. Only reach into `className`/attributes when the behavior genuinely is visual (e.g. the color tier in `PrintQualityBadge.test.tsx`).
+- Interaction tests use `userEvent.click(...)` + `waitFor`/`findBy*`. See `OrientationSelector.test.tsx` for the load→select→PATCH→callback (and error-revert) flow.
+
+### Coverage so far (good examples to copy)
+
+`store/auth.test.ts`, `lib/http.test.ts` (DRF error normalization), `utils/time.test.ts`, `lib/spanishProvinces.test.ts`, `components/project/PrintQualityBadge.test.tsx` (presentational), `components/project/ProjectEditorGate.test.tsx` (hydration gate + mocked child), `lib/projectInvitations.test.ts` + `lib/companyGuestAccess.test.ts` (wrapper mocking), `components/project/OrientationSelector.test.tsx` (interaction).
 
 ## Architecture
 

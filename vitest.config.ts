@@ -1,9 +1,12 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [react()],
+  // Resuelve el alias @/* leyendo los paths del tsconfig (soporte nativo de Vite)
+  resolve: {
+    tsconfigPaths: true,
+  },
   test: {
     // Entorno de navegador simulado para tests de componentes
     environment: 'jsdom',
