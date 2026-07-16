@@ -15,6 +15,8 @@ type Props = {
   projectId: string
   value?: number | null
   onSaved?: (aspect: PrintAspect) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   className?: string
 }
 
@@ -24,6 +26,7 @@ export default function AspectSelector({
   projectId,
   value,
   onSaved,
+  onProjectUpdated,
   className,
 }: Props) {
   const [options, setOptions] = useState<PrintAspect[]>([])
@@ -90,6 +93,8 @@ export default function AspectSelector({
           const text = await res.text()
           throw new Error(text || `PATCH ${res.status}`)
         }
+        const updatedProject = await res.json().catch(() => null)
+        if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
         const saved = options.find((opt) => opt.id === nextId)
         if (saved && onSaved) onSaved(saved)
       } catch (err: any) {
@@ -99,7 +104,7 @@ export default function AspectSelector({
         setSaving(false)
       }
     },
-    [apiBase, accessToken, canRequest, options, onSaved, projectId, selectedId, value]
+    [apiBase, accessToken, canRequest, options, onSaved, onProjectUpdated, projectId, selectedId, value]
   )
 
   return (

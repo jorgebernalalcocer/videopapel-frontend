@@ -16,6 +16,8 @@ type Props = {
   value?: number | null
   /** Callback opcional tras guardar */
   onSaved?: (pq: PrintOrientation) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   className?: string
 }
 
@@ -25,6 +27,7 @@ export default function OrientationSelector({
   projectId,
   value,
   onSaved,
+  onProjectUpdated,
   className,
 }: Props) {
   const [options, setOptions] = useState<PrintOrientation[]>([])
@@ -86,6 +89,8 @@ export default function OrientationSelector({
           const text = await res.text()
           throw new Error(text || `PATCH ${res.status}`)
         }
+        const updatedProject = await res.json().catch(() => null)
+        if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
         const saved = options.find((o) => o.id === nextId)
         if (saved && onSaved) onSaved(saved)
       } catch (e: any) {
@@ -95,7 +100,7 @@ export default function OrientationSelector({
         setSaving(false)
       }
     },
-    [apiBase, accessToken, projectId, canRequest, options, onSaved, selectedId]
+    [apiBase, accessToken, projectId, canRequest, options, onSaved, onProjectUpdated, selectedId]
   )
 
   return (

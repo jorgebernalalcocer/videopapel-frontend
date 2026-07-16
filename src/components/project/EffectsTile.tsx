@@ -27,6 +27,8 @@ type EffectsTileProps = {
   value?: number | null
   onClose: () => void
   onSaved?: (effect: PrintEffect | null) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   previewClip?: EffectPreviewClip | null
 }
 
@@ -38,6 +40,7 @@ export default function EffectsTile({
   value,
   onClose,
   onSaved,
+  onProjectUpdated,
   previewClip,
 }: EffectsTileProps) {
   const [effects, setEffects] = useState<PrintEffect[]>([])
@@ -124,6 +127,8 @@ export default function EffectsTile({
         const text = await res.text()
         throw new Error(text || `Error ${res.status}`)
       }
+      const updatedProject = await res.json().catch(() => null)
+      if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
       setSelectedId(nextId)
       const saved = effects.find((effect) => effect.id === nextId) ?? null
       onSaved?.(saved)
@@ -133,7 +138,7 @@ export default function EffectsTile({
     } finally {
       setSavingId(null)
     }
-  }, [accessToken, apiBase, projectId, effects, onClose, onSaved])
+  }, [accessToken, apiBase, projectId, effects, onClose, onSaved, onProjectUpdated])
 
   const renderPreview = useCallback(
     (tile: TileOption) => (

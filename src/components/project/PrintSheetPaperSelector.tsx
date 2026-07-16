@@ -15,6 +15,8 @@ type Props = {
   projectId: string
   value?: number | null
   onSaved?: (paper: PrintSheetPaper | null) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   className?: string
 }
 
@@ -24,6 +26,7 @@ export default function PrintSheetPaperSelector({
   projectId,
   value,
   onSaved,
+  onProjectUpdated,
   className,
 }: Props) {
   const [options, setOptions] = useState<PrintSheetPaper[]>([])
@@ -86,6 +89,8 @@ export default function PrintSheetPaperSelector({
           const text = await res.text()
           throw new Error(text || `PATCH ${res.status}`)
         }
+        const updatedProject = await res.json().catch(() => null)
+        if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
         const saved = options.find((opt) => opt.id === nextId) ?? null
         if (onSaved) onSaved(saved)
       } catch (e: any) {
@@ -95,7 +100,7 @@ export default function PrintSheetPaperSelector({
         setSaving(false)
       }
     },
-    [apiBase, accessToken, projectId, canRequest, options, onSaved, selectedId]
+    [apiBase, accessToken, projectId, canRequest, options, onSaved, onProjectUpdated, selectedId]
   )
 
   return (

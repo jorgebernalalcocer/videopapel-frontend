@@ -17,6 +17,8 @@ type Props = {
   value?: number | null
   /** Callback opcional tras guardar */
   onSaved?: (ps: PrintSize | null) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   className?: string
 }
 
@@ -26,6 +28,7 @@ export default function PrintSizeSelector({
   projectId,
   value,
   onSaved,
+  onProjectUpdated,
   className,
 }: Props) {
   const [options, setOptions] = useState<PrintSize[]>([])
@@ -88,6 +91,8 @@ export default function PrintSizeSelector({
           const text = await res.text()
           throw new Error(text || `PATCH ${res.status}`)
         }
+        const updatedProject = await res.json().catch(() => null)
+        if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
         const saved = nextId === '' ? null : options.find((opt) => opt.id === nextId) ?? null
         if (onSaved) onSaved(saved)
       } catch (e: any) {
@@ -97,7 +102,7 @@ export default function PrintSizeSelector({
         setSaving(false)
       }
     },
-    [apiBase, accessToken, projectId, canRequest, options, onSaved, selectedId]
+    [apiBase, accessToken, projectId, canRequest, options, onSaved, onProjectUpdated, selectedId]
   )
 
   return (

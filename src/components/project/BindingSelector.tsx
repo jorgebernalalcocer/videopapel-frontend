@@ -14,6 +14,8 @@ type Props = {
   projectId: string
   value?: number | null
   onSaved?: (binding: PrintBindingOption | null) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   className?: string
 }
 
@@ -23,6 +25,7 @@ export default function BindingSelector({
   projectId,
   value,
   onSaved,
+  onProjectUpdated,
   className,
 }: Props) {
   const [options, setOptions] = useState<PrintBindingOption[]>([])
@@ -92,6 +95,8 @@ export default function BindingSelector({
           const detail = await res.text()
           throw new Error(detail || `PATCH print-binding ${res.status}`)
         }
+        const updatedProject = await res.json().catch(() => null)
+        if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
         const saved = nextId === '' ? null : options.find(opt => opt.id === nextId) ?? null
         if (onSaved) onSaved(saved)
       } catch (e: any) {
@@ -101,7 +106,7 @@ export default function BindingSelector({
         setSaving(false)
       }
     },
-    [apiBase, accessToken, projectId, canRequest, options, onSaved, selectedId],
+    [apiBase, accessToken, projectId, canRequest, options, onSaved, onProjectUpdated, selectedId],
   )
 
   return (

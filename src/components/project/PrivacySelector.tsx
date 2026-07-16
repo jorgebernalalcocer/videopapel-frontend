@@ -8,6 +8,8 @@ type Props = {
   projectId: string
   value?: boolean | null
   onSaved?: (isPublic: boolean) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   className?: string
 }
 
@@ -17,6 +19,7 @@ export default function PrivacySelector({
   projectId,
   value = false,
   onSaved,
+  onProjectUpdated,
   className,
 }: Props) {
   const [current, setCurrent] = useState<boolean>(Boolean(value))
@@ -50,6 +53,8 @@ export default function PrivacySelector({
           const text = await res.text()
           throw new Error(text || `Error ${res.status} guardando privacidad.`)
         }
+        const updatedProject = await res.json().catch(() => null)
+        if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
         onSaved?.(next)
       } catch (err: any) {
         setError(err?.message || 'No se pudo actualizar la privacidad.')
@@ -58,7 +63,7 @@ export default function PrivacySelector({
         setSaving(false)
       }
     },
-    [apiBase, accessToken, projectId, canRequest, current, onSaved]
+    [apiBase, accessToken, projectId, canRequest, current, onSaved, onProjectUpdated]
   )
 
   return (

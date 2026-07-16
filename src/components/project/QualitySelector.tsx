@@ -17,6 +17,8 @@ type Props = {
   value?: number | null
   /** Callback opcional tras guardar */
   onSaved?: (pq: PrintQuality) => void
+  /** Recibe el proyecto actualizado que devuelve el PATCH, para refrescar sin recargar */
+  onProjectUpdated?: (project: unknown) => void
   className?: string
 }
 
@@ -26,6 +28,7 @@ export default function QualitySelector({
   projectId,
   value,
   onSaved,
+  onProjectUpdated,
   className,
 }: Props) {
   const [options, setOptions] = useState<PrintQuality[]>([])
@@ -87,6 +90,8 @@ export default function QualitySelector({
           const text = await res.text()
           throw new Error(text || `PATCH ${res.status}`)
         }
+        const updatedProject = await res.json().catch(() => null)
+        if (updatedProject && onProjectUpdated) onProjectUpdated(updatedProject)
         const saved = options.find((o) => o.id === nextId)
         if (saved && onSaved) onSaved(saved)
       } catch (e: any) {
@@ -96,7 +101,7 @@ export default function QualitySelector({
         setSaving(false)
       }
     },
-    [apiBase, accessToken, projectId, canRequest, options, onSaved, selectedId]
+    [apiBase, accessToken, projectId, canRequest, options, onSaved, onProjectUpdated, selectedId]
   )
 
   return (
