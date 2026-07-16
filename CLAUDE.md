@@ -1,0 +1,102 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## What this is
+
+VideoPapel — a Next.js frontend that turns uploaded videos into printable flipbooks ("videos de papel"): the user picks frames from a video clip, styles them (frames, text, logos, page numbers), and orders a printed product. All persistence, media processing and PDF generation live in a **separate Django/DRF backend** (default `http://localhost:8000`); this repo is UI only.
+
+**UI copy, comments, and error messages are in Spanish.** Match that when adding user-facing strings.
+
+## Commands
+
+```bash
+npm run dev        # next dev --turbopack, port 3000
+npm run build      # next build --turbopack
+npm run lint       # eslint (next/core-web-vitals + next/typescript)
+npx tsc --noEmit   # typecheck — NOT run by the build, see below
+./deploy-vercel.sh {unionlocal|papel}   # prod deploy, needs ~/.vercel-tokens
+```
+
+There is no test framework in this repo — no test script, no test files. Don't invent a `npm test`.
+
+`npm run gen:api` runs `openapi-typescript-codegen` against the backend's live schema at `http://localhost:8000/api/schema/`, writing to `src/lib/api`. **That directory does not exist and its output has never been committed** — the whole codebase is hand-written fetch calls. Running it would create `src/lib/api/` alongside the existing `src/lib/api.ts` module; don't run it casually.
+
+### The build hides errors
+
+`next.config.ts` sets both `eslint.ignoreDuringBuilds` and `typescript.ignoreBuildErrors`. A green `npm run build` means nothing about type or lint health. Run `npx tsc --noEmit` and `npm run lint` explicitly to verify a change.
+
+## Architecture
+
+### It's a client-side SPA wearing App Router
+
+156 of 168 `.tsx` files are `'use client'`. There are no server components fetching data, no route handlers, no server actions. `src/app/*/page.tsx` files are thin shells that render a client component from `src/components/`. Data loading happens in `useEffect` in the browser, after auth hydration.
+
+**React Query is installed and mounted (`components/Providers.tsx`) but never used** — `useQuery`/`useMutation`/`queryKey` appear zero times. Every fetch is a raw `fetch` with `useState`/`useEffect`. `src/lib/queryClient.ts` has no importers (`Providers` constructs its own client). Follow the existing manual pattern rather than introducing React Query for one component.
+
+### Three overlapping HTTP paths (pick deliberately)
+
+| Path | Base URL | Auth | Returns | Used by |
+|---|---|---|---|---|
+| `lib/http.ts` `apiFetch<T>` | `API_URL` from `lib/env.ts` | none | parsed JSON, throws `ApiError` | 3 files (password reset, rectification) |
+| `lib/api.ts` `apiFetch` | `NEXT_PUBLIC_API_BASE` | Bearer + refresh-on-401 retry | raw `Response` | `ShareModal` + the `lib/*Invitations.ts` / `companyGuestAccess.ts` wrappers |
+| raw `fetch` | `NEXT_PUBLIC_API_BASE` | hand-written `Authorization: Bearer` | raw `Response` | ~111 call sites, the dominant pattern |
+
+Only `lib/api.ts` does token refresh. `lib/http.ts` is the only one that increments the global loading store (`store/loading.ts` → `GlobalSpinner`) and the only one that normalizes backend error shapes into a message (`buildErrorMessage` walks `detail`/`error`/first-field-array — DRF style). When touching a component, keep its existing helper unless you're deliberately migrating it.
+
+### Env vars — two names for the same backend
+
+- `NEXT_PUBLIC_API_BASE` — legacy, read directly by `lib/api.ts`, `useProjectPdfExport`, and most components.
+- `NEXT_PUBLIC_API_BASE_URL` (+ `NEXT_PUBLIC_API_PREFIX`, default `/api/v1`) — read by `lib/env.ts`, which composes `API_URL` and **throws at import time if neither base is set**.
+
+Both must be present in `.env.development.local` or the app breaks in different places. Also used: `NEXT_PUBLIC_GOOGLE_CLIENT_ID`, `NEXT_PUBLIC_GA_MEASUREMENT_ID`, `NEXT_PUBLIC_FAKE_LATENCY_MS` (artificial delay floor in `lib/http.ts`, for testing spinners).
+
+### Auth
+
+`src/store/auth.ts` is the real auth: a zustand `persist` store (localStorage key `videopapel-auth`) holding `accessToken`, `refreshToken`, and `user`.
+
+It uses **`skipHydration: true`**, so `hasHydrated` gates everything. Reading `accessToken` before `hasHydrated` is true always yields `null` and will fire spurious redirects/fetches. Follow `ProjectEditorGate.tsx` — render a placeholder until `hasHydrated`, then decide.
+
+`src/hooks/useAuth.ts` is **dead code with zero importers** — a parallel localStorage `access_token` implementation that contradicts the store. Same for `src/store/editor.ts` (a layers store nothing imports). Don't extend them; `import { useAuth } from '@/store/auth'` is the live one (35 importers).
+
+`components/AuthSessionGuard.tsx` (mounted in the root layout) does two global things:
+1. **Monkey-patches `window.fetch`** to inspect every 401 for a `token_not_valid` payload and force a logout + redirect to `/login?session_expired=1`. Any fetch anywhere is subject to this.
+2. Client-side route protection from a hardcoded `PROTECTED_PATH_PREFIXES` array. **New authenticated routes must be added to that list** — there is no middleware and no server-side guard.
+
+### Actors and access model
+
+Beyond normal users, a project carries `current_user_role: 'owner' | 'edit' | 'view'` and `current_user_can_edit` / `current_user_can_manage_sharing` flags that drive UI gating. Three separate invitation flows, each with its own token route and `lib/` wrapper:
+
+- `/invitations/[token]` → `lib/projectInvitations.ts` — share a project.
+- `/event-invitations/[token]` → `lib/eventInvitations.ts` — events group projects.
+- `/acceso/[token]` and `/invite/[accessId]` → `lib/companyGuestAccess.ts` — QR/temporary company-guest access; calls `setGuestSession()` to mint a session for a non-registered visitor (`account_type: 'company_guest'`).
+
+### The editor (the core of the app)
+
+`components/project/ProjectEditor.tsx` (~1460 lines) is the shell — loads the project, owns all print settings (quality, size, orientation, effect, aspect, binding, sheet paper, privacy), and renders selector/badge pairs. `components/project/EditingCanvas.tsx` (~1157 lines) is the frame-picking surface.
+
+Domain model: **Project → clips → frames → thumbnails**. A clip is a video with `duration_ms`, `time_start_ms`/`time_end_ms` (trim), and `frames` — an array of **millisecond timestamps** that become printed pages.
+
+Thumbnail sourcing is the subtle part (`hooks/useCombinedThumbs.ts`):
+- Backend-generated thumbnails (worker → GCS/CDN) are preferred; missing ones fall back to **Cloudinary URL transformations built by string surgery** on the video URL (`utils/cloudinary.ts` splices `so_<secs>,c_scale,h_,f_jpg` after the `/video/upload/` segment).
+- Frames snap to a grid whose **density is 1–8 thumbs/sec** (`MAX_DENSITY = 8`). Density changes re-derive the grid and re-snap frame times.
+- Results are cached twice: localStorage (`utils/thumbCache.ts`, keys `vp:thumbs:<projectId>:<clipId>`) and IndexedDB (`utils/thumbsIndexedDb.ts`, DB `vp-thumbs-cache`). Both key off a **signature** from `buildSig()` (clipId, src, duration, count, height, framesVersion, `v: 4`). **Any change to how thumbnails are generated must bump the `v` in `buildSig`**, or users get stale cached frames.
+
+PDF export lives in `hooks/useProjectPdfExport.ts`: `POST /projects/:id/export-pdf/` → `{ file }` URL, with `clean_output` and `print_style_preset_id` variants.
+
+### Commerce flow
+
+`/cart` → `/summary` → `/shipping` → `/invoice` → `/orders/[id]`, against `/cart/`, `/checkout/`, `/orders/`, `/shipping-addresses/`, `/company-addresses/`. Post-purchase problems go through `/order-issues/` and `/rectification-invoice` (`/order-issues/rectification-flow/`). Spanish invoicing specifics live in `lib/spanishProvinces.ts`.
+
+## UI conventions
+
+- **Tailwind v4, CSS-first.** There is no `tailwind.config.*` — the theme is `@theme inline` + oklch CSS variables in `src/app/globals.css`. Add design tokens there, not in a config file.
+- shadcn/ui, **new-york** style, `rsc: true`, neutral base, aliases per `components.json`. Radix under `components/ui/`. Icons: `lucide-react`. Use `cn()` from `@/lib/utils`.
+- **Reuse the house modal primitives** instead of raw Radix dialogs: `ui/Modal.tsx` (base), `ui/BaseTileModal.tsx` (the tile/option-picker grid behind most `*PickerModal`/`*Tiles` components), and `ui/ConfirmProvider.tsx` — confirmation is the promise-based `const confirm = useConfirm(); if (await confirm({...}))`, not `window.confirm`.
+- Toasts: `sonner` (`import { toast } from 'sonner'`). Animation: `framer-motion`. Route progress bar: `TopProgress` (nprogress).
+- Editor settings follow a consistent **`Print*Badge` (display) + `*Selector` (edit)** pair wrapped in `SelectableBadgeWrapper`. Adding a new print setting means following that pair.
+- Decorative fonts are per-component in `src/fonts/` (borel, cookie, fascinate, pacifico) via `next/font`.
+
+## Deploys
+
+The same codebase ships to **two Vercel projects** — `unionlocal` and `papel` — selected by `./deploy-vercel.sh <target>`. The script rewrites `.vercel/project.json`, sets the local git author to match the target's account, and pushes an empty commit if the last author doesn't match (Vercel's "Git author must have access" check). Tokens come from `~/.vercel-tokens`, not the repo.
