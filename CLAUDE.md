@@ -51,6 +51,13 @@ The three HTTP paths from the architecture table each mock differently:
 - Heavy children that self-load data (e.g. `ProjectEditor` inside `ProjectEditorGate`) → **stub via `vi.mock`** so the test targets only the unit under test. Same for `next/navigation` (`notFound`, `useRouter`).
 - Assert on **user-visible output**: `getByText`, `getByLabelText`, `findBy*` for async. Only reach into `className`/attributes when the behavior genuinely is visual (e.g. the color tier in `PrintQualityBadge.test.tsx`).
 - Interaction tests use `userEvent.click(...)` + `waitFor`/`findBy*`. See `OrientationSelector.test.tsx` for the load→select→PATCH→callback (and error-revert) flow.
+- **Hooks that expose async actions** (`useProjectPdfExport`, etc.) → test with `renderHook`. When asserting state (`result.current.error`, …) **after an action that rejects**, wrap the rejection assertion *inside* `act`: `await act(async () => { await expect(result.current.doThing()).rejects.toThrow(...) })`, then read `result.current`. If you leave `expect(...).rejects` outside `act` (e.g. `await expect(act(() => ...)).rejects`), React hasn't flushed the `setState` from the hook's `catch` when you read the result — the state still looks null. `useProjectPdfExport.test.ts` uses the correct pattern.
+
+### Shared harnesses for clone components
+
+Many `*Selector` components are structurally identical (GET options on mount → PATCH on pick → revert on error). Instead of near-duplicate test files, there's a parametrized harness at `src/test/selectorHarness.tsx` exposing `runRadioSelectorSuite(config)`; each radio-selector test (e.g. `QualitySelector.test.tsx`) is ~12 lines of config. The harness lives outside the `*.test` glob so it doesn't run on its own — it only executes when a test file imports it. Follow this pattern when adding tests for a new batch of clone components rather than copy-pasting the suite.
+
+Two `next/navigation` mock notes that recur: use `vi.hoisted(() => ({ replace: vi.fn(), pathname: '/' }))` for mutable router/pathname refs (the object is safe to reference inside the hoisted `vi.mock` factory), and drive the fetch-monkey-patch in `AuthSessionGuard` with a minimal fake response (`{ status, clone: () => ({ json: async () => payload }) }`) plus `window.history.replaceState` to set `window.location.pathname`. See `AuthSessionGuard.test.tsx`.
 
 ### Coverage so far (good examples to copy)
 
